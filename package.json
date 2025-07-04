@@ -1,0 +1,28 @@
+{
+  "name": "pos",
+  "version": "0.0.1",
+  "description": ".",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon ./main.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.9.0",
+    "body-parser": "^2.2.0",
+    "bootstrap": "^5.3.6",
+    "dotenv": "^17.0.1",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "express-session": "^1.18.1",
+    "memorystore": "^1.6.7",
+    "mysql": "^2.18.1",
+    "mysql2": "^3.14.1",
+    "pos": "file:"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
