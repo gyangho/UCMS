@@ -36,7 +36,8 @@ function requireValidSession(req, res, next) {
       }
       return res.redirect("/");
     } else if (err) {
-      return next(err);
+      newErr = new Error("세션이 만료되었거나 찾을 수 없습니다.");
+      newErr.code = "CannotFindSessionID";
     }
     if (req.path === "/") {
       return res.redirect("/dashboard");
@@ -62,11 +63,11 @@ app.use("/auth", authRouter);
 app.use(requireValidSession);
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error("[" + new Date() + "]" + "\t" + "Error: " + err.code);
   res.send(`
     <script>
-      alert("Internal Server ERROR");
-      window.location.href = "/auth/logout"; 
+      alert("${err.message}");
+      window.location.href = "/"; 
     </script>
   `);
 });
