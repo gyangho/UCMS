@@ -23,7 +23,7 @@ async function call(method, uri, param, header) {
       data: param, // 전송할 요청 데이터 (body)
     });
   } catch (err) {
-    return next(err);
+    throw err;
   }
   // 요청 성공 또는 실패에 상관없이 응답 데이터 반환
   return rtn.data;
@@ -56,7 +56,7 @@ router.get("/authorize", function (req, res) {
 });
 
 // 카카오 인증 서버에서 전달받은 인가 코드로 액세스 토큰 발급 요청
-router.get("/redirect", async function (req, res) {
+router.get("/redirect", async function (req, res, next) {
   // 인가 코드 발급 요청에 필요한 파라미터 구성
   const param = qs.stringify({
     grant_type: "authorization_code", // 인증 방식 고정값
@@ -72,14 +72,18 @@ router.get("/redirect", async function (req, res) {
   // 카카오 인증 서버에 액세스 토큰 요청
   const rtn = await call("POST", token_uri, param, header);
 
-  // 세션 고정 방어: 로그인 직후 세션 ID 교체
-  req.session.regenerate((err, next) => {
-    if (err) return next(err);
-    // 발급받은 액세스 토큰을 세션에 저장 (로그인 상태 유지 목적)
-    req.session.key = rtn.access_token;
-    // 로그인 완료 후 사용자 정보 받아오기
-    res.status(302).redirect(`${domain}/auth/profile`);
-  });
+  try {
+    // 세션 고정 방어: 로그인 직후 세션 ID 교체
+    req.session.regenerate((err, next) => {
+      if (err) throw err;
+      // 발급받은 액세스 토큰을 세션에 저장 (로그인 상태 유지 목적)
+      req.session.key = rtn.access_token;
+      // 로그인 완료 후 사용자 정보 받아오기
+      res.status(302).redirect(`${domain}/auth/profile`);
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.get("/profile", async function (req, res, next) {
@@ -128,15 +132,23 @@ router.get("/profile", async function (req, res, next) {
 });
 
 // 로그아웃 요청: 세션을 종료하고 사용자 로그아웃 처리
-router.get("/logout", async function (req, res) {
-  const uri = api_host + "/v1/user/logout"; // 로그아웃 API 주소
-  const header = {
-    Authorization: "Bearer " + req.session.key, // 세션에 저장된 액세스 토큰 전달
-  };
-
-  const rtn = await call("POST", uri, null, header); // 카카오 API에 로그아웃 요청 전송
-  req.session.destroy(); // 세션 삭제 (로그아웃 처리)
-  res.redirect("/");
+router.get("/logout", async function (req, res, next) {
+  try {
+    const uri = api_host + "/v1/user/logout"; // 로그아웃 API 주소
+    const header = {
+      Authorization: "Bearer " + req.session.key, // 세션에 저장된 액세스 토큰 전달
+    };
+    const rtn = await call("POST", uri, null, header); // 카카오 API에 로그아웃 요청 전송
+    req.session.destroy(); // 세션 삭제 (로그아웃 처리)
+    res.redirect("/");
+  } catch (err) {
+    if (err.response.status == 401) {
+      const newErr = new Error("인증정보 없는 로그아웃");
+      newErr.code = "NoAuthInfoLogout";
+      return next(newErr);
+    }
+    next(err);
+  }
 });
 
 // 연결 끊기 요청: 사용자와 앱의 연결을 해제하고 세션 종료
