@@ -57,24 +57,24 @@ router.get("/authorize", function (req, res) {
 
 // 카카오 인증 서버에서 전달받은 인가 코드로 액세스 토큰 발급 요청
 router.get("/redirect", async function (req, res, next) {
-  // 인가 코드 발급 요청에 필요한 파라미터 구성
-  const param = qs.stringify({
-    grant_type: "authorization_code", // 인증 방식 고정값
-    client_id: client_id, // 내 앱의 REST API 키
-    redirect_uri: redirect_uri, // 등록된 리다이렉트 URI
-    code: req.query.code, // 전달받은 인가 코드
-    client_secret: client_secret, // 클라이언트 시크 사용 시 추가
-  });
-
-  // API 요청 헤더 설정
-  const header = { "content-type": "application/x-www-form-urlencoded" };
-
-  // 카카오 인증 서버에 액세스 토큰 요청
-  const rtn = await call("POST", token_uri, param, header);
-
   try {
+    // 인가 코드 발급 요청에 필요한 파라미터 구성
+    const param = qs.stringify({
+      grant_type: "authorization_code", // 인증 방식 고정값
+      client_id: client_id, // 내 앱의 REST API 키
+      redirect_uri: redirect_uri, // 등록된 리다이렉트 URI
+      code: req.query.code, // 전달받은 인가 코드
+      client_secret: client_secret, // 클라이언트 시크 사용 시 추가
+    });
+
+    // API 요청 헤더 설정
+    const header = { "content-type": "application/x-www-form-urlencoded" };
+
+    // 카카오 인증 서버에 액세스 토큰 요청
+    const rtn = await call("POST", token_uri, param, header);
+
     // 세션 고정 방어: 로그인 직후 세션 ID 교체
-    req.session.regenerate((err, next) => {
+    req.session.regenerate((err) => {
       if (err) throw err;
       // 발급받은 액세스 토큰을 세션에 저장 (로그인 상태 유지 목적)
       req.session.key = rtn.access_token;
@@ -94,12 +94,12 @@ router.get("/profile", async function (req, res, next) {
     Authorization: "Bearer " + req.session.key, // 세션에 저장된 액세스 토큰 전달
   };
 
-  const rtn = await call("POST", uri, param, header); // 카카오 API에 요청 전송
-
-  req.session.kakao_id = rtn.id;
-  req.session.save();
-
   try {
+    const rtn = await call("POST", uri, param, header); // 카카오 API에 요청 전송
+
+    req.session.kakao_id = rtn.id;
+    req.session.save();
+
     const user = {
       kakao_id: rtn.id,
       nickname: rtn.kakao_account.profile.nickname,
