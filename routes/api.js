@@ -10,7 +10,9 @@ router.get("/user", async (req, res, next) => {
     ]);
 
     if (rows.length === 0) {
-      throw new Error("사용자를 찾을 수 없습니다.");
+      newErr = new Error("사용자를 찾을 수 없습니다.");
+      newErr.code = "CannotFindUserInfo";
+      throw newErr;
     }
 
     return res.json(rows[0]);
