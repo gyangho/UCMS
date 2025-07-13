@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>구매 기록</title>
+    <link rel="stylesheet" href="../styles/posstyle.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            background-color: #f9fafb;
+            color: #333;
+        }
+
+        .top-bar {
+            position: sticky;
+            top: 0;
+            background-color: #ffffff;
+            border-bottom: 1px solid #ddd;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: flex-end;
+            z-index: 10;
+        }
+
+        .top-bar button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .top-bar button:hover {
+            background-color: #0056b3;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 16px;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .record-entry {
+            background: #ffffff;
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .record-entry ul {
+            padding-left: 20px;
+            margin-top: 8px;
+            margin-bottom: 8px;
+        }
+
+        .record-entry li {
+            margin-bottom: 4px;
+        }
+
+        .summary {
+            background-color: #fef9e7;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 40px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .summary h3 {
+            margin-top: 0;
+        }
+
+        .summary ul {
+            padding-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        .summary li {
+            margin-bottom: 6px;
+        }
+
+        .summary-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 260px;
+            background-color: #fff8dc;
+            border: 1px solid #ddd;
+            padding: 16px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            z-index: 50;
+        }
+
+        .summary-panel .summary {
+            background: none;
+            box-shadow: none;
+            padding: 0;
+            margin: 0 0 12px 0;
+        }
+
+        #clear-data {
+            width: 150px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 0;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        #clear-data:hover {
+            background-color: #b02a37;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="top-bar">
+        <button onclick="location.href='/'">🏠 구매 화면</button>
+    </div>
+    <h2>🧾 구매 기록</h2>
+    <!-- 기존 summary와 버튼을 다음과 같이 수정 -->
+    <div id="records"></div>
+    <button id="clear-data">🧨 구매기록 초기화</button>
+
+    <!-- 통계 박스를 오른쪽 하단에 고정 -->
+    <div class="summary-panel">
+        <div id="summary" class="summary"></div>
+    </div>
+
+    <script src="../js/records.js"></script>
+</body>
+
+</html>

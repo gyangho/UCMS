@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>POS</title>
+    <link rel="stylesheet" href="../styles/posstyle.css" />
+</head>
+
+<body>
+    <div class="container">
+        <div class="products">
+            <button data-name="버터쿠키" data-price="1500">버터쿠키<br>1500원</button>
+            <button data-name="플레인휘낭시에" data-price="1200">플레인 휘낭시에<br>1200원</button>
+            <button data-name="고구마식빵휘낭" data-price="1800">고구마 식빵 휘낭<br>1800원</button>
+            <button data-name="고구마휘낭시에" data-price="2300">고구마 휘낭시에<br>2300원</button>
+            <button data-name="흑임자휘낭시에" data-price="2400">흑임자 휘낭시에<br>2400원</button>
+            <button data-name="행운과자" data-price="900">행운과자<br>900원</button>
+            <button data-name="행운과자증정" data-price="0">행운과자(증정)<br>0원</button>
+            <button class="empty"></button> <!-- 빈칸용 -->
+            <button class="record-button-fixed" onclick="location.href='/records'">🧾 구매 기록 조회</button>
+        </div>
+
+        <div class="cart-area">
+            <div id="cart-top">
+                <button id="clear">초기화</button>
+            </div>
+            <div id="cart"></div>
+            <div id="total">총합: 0원</div> <!-- 총합 위치 수정 -->
+            <button id="purchase">구매</button>
+        </div>
+    </div>
+    <script src="../js/pos.js"></script>
+</body>
+
+</html>
