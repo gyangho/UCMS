@@ -1,20 +1,21 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const path = require('path');
+const path = require("path");
 
-
-router.use(express.static(path.join(__dirname, '../public')));
-
-router.get('/dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/pages/dashboard.html'));
+router.get("/dashboard", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/views/dashboard.html"));
 });
 
-router.get('/pos', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/pages/pos.html'));
+router.get("/pos", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/views/pos.html"));
 });
 
-router.get('/records', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/pages/records.html'));
+router.get("/records", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/views/records.html"));
+});
+
+router.get("/mypage", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/views/mypage.html"));
 });
 
 module.exports = router;
