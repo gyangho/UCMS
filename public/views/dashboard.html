@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UCMS</title>
+    <link rel="stylesheet" href="../styles/dashboard.css" />
+    <link rel="stylesheet" href="../styles/header.css" />
+  </head>
+
+  <body>
+    <header>
+      <img src="../images/small-logo.png" alt="로고" class="small-logo" />
+      <div class="header-right">
+        <div class="user-info" id="userInfo">로그인 정보 불러오는 중...</div>
+        <a href="/auth/logout" class="logout-btn">로그아웃</a>
+      </div>
+    </header>
+
+    <main>
+      <div class="func-btn" onclick="location.href='/member'">
+        <span class="icon">👤</span>
+        <span>인사</span>
+      </div>
+      <div class="func-btn" onclick="location.href='/func2'">Func2</div>
+      <div class="func-btn" onclick="location.href='/func3'">Func3</div>
+      <div class="func-btn" onclick="location.href='/func4'">Func4</div>
+      <div class="func-btn" onclick="location.href='/func5'">Func5</div>
+      <div class="func-btn" onclick="location.href='/func6'">Func6</div>
+    </main>
+
+    <script src="../js/userinfo.js"></script>
+  </body>
+</html>
