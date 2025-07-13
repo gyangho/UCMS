@@ -5,9 +5,10 @@ const db = require("../db");
 // 사용자 정보 API
 router.get("/user", async (req, res, next) => {
   try {
-    const [rows] = await db.query(`SELECT * FROM users where kakao_id = ? `, [
-      req.session.kakao_id,
-    ]);
+    const [rows] = await db.query(
+      `SELECT name, thumbnail_image FROM users where kakao_id = ? `,
+      [req.session.kakao_id]
+    );
 
     if (rows.length === 0) {
       newErr = new Error("사용자를 찾을 수 없습니다.");
@@ -23,9 +24,7 @@ router.get("/user", async (req, res, next) => {
 
 router.get("/records", async (req, res) => {
   try {
-    const [rows] = await db.query(
-      "SELECT * FROM purchases ORDER BY purchase_time DESC"
-    );
+    const [rows] = await db.query("SELECT * FROM purchases ORDER BY purchase_time DESC");
 
     // 상품별 총합 계산
     const summary = {
