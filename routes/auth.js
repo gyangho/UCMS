@@ -102,10 +102,12 @@ router.get("/profile", async function (req, res, next) {
 
     const user = {
       kakao_id: rtn.id,
-      nickname: rtn.kakao_account.profile.nickname,
-      email: rtn.kakao_account.email,
-      profile_image: rtn.kakao_account.profile.profile_image_url,
       thumbnail_image: rtn.kakao_account.profile.thumbnail_image_url,
+      profile_image: rtn.kakao_account.profile.profile_image_url,
+      name: rtn.kakao_account.name,
+      email: rtn.kakao_account.email,
+      phone: rtn.kakao_account.phone_number.replace("+82", "0").replace(/\s/g, ""),
+      gender: rtn.kakao_account.gender === "male" ? "남자" : "여자",
     };
 
     const query = `
@@ -115,19 +117,33 @@ router.get("/profile", async function (req, res, next) {
       .map(() => "?")
       .join(", ")})
     ON DUPLICATE KEY UPDATE
-    nickname        = VALUES(nickname),
-    email           = VALUES(email),
     profile_image   = VALUES(profile_image),
     thumbnail_image = VALUES(thumbnail_image),
+    name            = VALUES(name),
+    email           = VALUES(email),
+    phone           = VALUES(phone),
+    gender          = VALUES(gender),
     updated_at = CURRENT_TIMESTAMP;
   `;
     const values = Object.values(user);
 
     await db.query(query, values);
+
+    const [row] = await db.query(
+      `SELECT authority + 0 AS authority FROM Members WHERE name =? AND phone = ?`,
+      [user.name, user.phone]
+    );
+
+    console.log(row);
+    if (row.length === 0) {
+      req.session.authority = "0";
+    } else {
+      req.session.authority = row[0].authority;
+    }
+    req.session.save();
   } catch (err) {
     return next(err);
   }
-
   res.redirect("/dashboard"); // 조회한 사용자 정보를 클라이언트에 반환
 });
 
