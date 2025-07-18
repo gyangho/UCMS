@@ -15,6 +15,7 @@ const defaultRouter = require("./routes/router");
 const apiRouter = require("./routes/api");
 const authRouter = require("./routes/auth");
 const memberRouter = require("./routes/member");
+const botRouter = require("./routes/bot");
 
 const app = express();
 const DOMAIN = process.env.DOMAIN;
@@ -61,6 +62,7 @@ app.use("/", defaultRouter);
 app.use("/api", apiRouter);
 app.use("/auth", authRouter);
 app.use("/member", memberRouter);
+app.use("/bot", botRouter);
 
 app.use((err, req, res, next) => {
   if (err.status === 401 || err.code) {
@@ -92,7 +94,11 @@ async function requireValidSession(req, res, next) {
     //세션 정보 검색
     const sessionInfo = await sessionStore.get(req.sessionID);
     if (!sessionInfo) {
-      if (req.path === "/" || req.path.startsWith("/auth")) {
+      if (
+        req.path === "/" ||
+        req.path.startsWith("/auth") ||
+        req.path.startsWith("/bot")
+      ) {
         return next();
       }
       const newErr = new Error("세션이 만료되었거나 찾을 수 없습니다.");
