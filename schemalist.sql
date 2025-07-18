@@ -5,7 +5,7 @@ CREATE TABLE Members (
   phone VARCHAR(20) NOT NULL,
   gender ENUM('남자', '여자') NOT NULL,
   generation INT NOT NULL,
-  authority ENUM('일반','부원','임원진','부회장','회장','admin')  NOT NULL DEFAULT '일반',
+  authority ENUM('일반','부원','임원진','부회장','회장','admin') NOT NULL DEFAULT '일반'
 );
 
 
