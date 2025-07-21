@@ -40,6 +40,21 @@ CREATE TABLE `purchases` (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE recruit_responses (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  response_id   VARCHAR(100) NOT NULL UNIQUE,
+  form_id       VARCHAR(100) NOT NULL,
+  answers_json  JSON NOT NULL,
+  synced_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
-
-
+CREATE TABLE events (
+  id            BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  title         VARCHAR(255) NOT NULL COMMENT '일정 제목',
+  description   TEXT         NULL COMMENT '세부 설명',
+  start_time    DATETIME     NOT NULL COMMENT '시작 시각',
+  end_time      DATETIME     NOT NULL COMMENT '종료 시각',
+  created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+                   ON UPDATE CURRENT_TIMESTAMP
+);

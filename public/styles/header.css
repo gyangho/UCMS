@@ -23,6 +23,7 @@ header {
   align-items: center;
   gap: 8px;
   font-size: 12px;
+  cursor: pointer;
 }
 
 .user-info img {
@@ -30,6 +31,7 @@ header {
   height: 28px;
   border-radius: 50%;
   object-fit: cover;
+  cursor: pointer;
 }
 
 .logout-btn {
