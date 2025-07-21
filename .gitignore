@@ -1,5 +1,6 @@
 #personal
 *.txt
+keys/
 
 # Logs
 logs

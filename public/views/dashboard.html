@@ -17,15 +17,26 @@
     </header>
 
     <main>
-      <div class="func-btn" onclick="location.href='/member'">
-        <span class="icon">👤</span>
-        <span>인사</span>
+      <div class="func-btn-container">
+        <span class="category-icon">👨‍👩‍👧‍👦</span>
+        <div class="func-btn" onclick="location.href='/member'">부원 관리</div>
       </div>
-      <div class="func-btn" onclick="location.href='/api/coupang'">Func2</div>
-      <div class="func-btn" onclick="location.href='/func3'">Func3</div>
-      <div class="func-btn" onclick="location.href='/func4'">Func4</div>
-      <div class="func-btn" onclick="location.href='/func5'">Func5</div>
-      <div class="func-btn" onclick="location.href='/func6'">Func6</div>
+      <div class="func-btn-container">
+        <span class="category-icon">🐥</span>
+        <div class="func-btn" onclick="location.href='/recruit/responses'">응답 조회</div>
+        <div class="func-btn" onclick="location.href='/recruit'">면접 타임테이블</div>
+        <div class="func-btn" onclick="location.href='/recruit'"></div>
+      </div>
+      <div class="func-btn-container">
+        <span class="category-icon">🗓️</span>
+        <div class="func-btn" onclick="location.href='/schedule'">일정 관리</div>
+        <div class="func-btn" onclick="location.href='/'"></div>
+      </div>
+      <div class="func-btn-container">
+        <span class="category-icon">💰</span>
+        <div class="func-btn" onclick="location.href='/member'">회비 장부</div>
+        <div class="func-btn" onclick="location.href='/'"></div>
+      </div>
     </main>
 
     <script src="../js/userinfo.js"></script>
