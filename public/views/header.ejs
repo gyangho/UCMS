@@ -1,0 +1,87 @@
+<style>
+  header {
+    background: white;
+    padding: 12px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 3px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .small-logo {
+    height: 36px;
+    cursor: pointer;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .user-info img {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    cursor: pointer;
+  }
+
+  .logout-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+    background: #e7f0ff;
+    color: #3a82f7;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-decoration: none;
+  }
+
+  .logout-btn:hover {
+    background: #3a82f7;
+    color: #ffffff;
+  }
+</style>
+<header>
+  <img src="../images/small-logo.png" alt="로고" class="small-logo" />
+  <div class="header-right">
+    <div class="user-info" id="userInfo">로그인 정보 불러오는 중...</div>
+    <a href="/auth/logout" class="logout-btn">로그아웃</a>
+  </div>
+</header>
+<script>
+  const logo = document.querySelector(".small-logo");
+  const userInfo = document.querySelector(".user-info");
+
+  logo.addEventListener("click", function () {
+    window.location.href = "/";
+  });
+
+  userInfo.addEventListener("click", function () {
+    window.location.href = "/mypage";
+  });
+
+  // 로그인한 사용자 정보 불러오기 (예: /api/user 반환값 사용)
+  fetch("/api/user")
+    .then((res) => res.json())
+    .then((user) => {
+      document.getElementById("userInfo").innerHTML = `
+                <img src="${user.thumbnail_image}" alt="프로필" >
+                ${user.name}
+                `;
+    })
+    .catch(() => {
+      document.getElementById("userInfo").textContent =
+        "로그인 정보를 가져오지 못했습니다.";
+    });
+</script>
