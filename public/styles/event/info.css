@@ -1,0 +1,133 @@
+.container {
+  position: fixed; /* 뷰포트를 기준으로 고정 위치 */
+  top: 50%; /* 위에서 50% 지점 */
+  left: 50%; /* 왼쪽에서 50% 지점 */
+  transform: translate(-50%, -50%); /* 자신의 절반 크기만큼 당겨서 완전 중앙 정렬 */
+  background: #ffffff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 500px;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  color: #333;
+}
+
+form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+/* inline label for checkbox and color to align with text */
+.inline-field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  color: #555;
+}
+
+input[type="text"],
+input[type="datetime-local"],
+select,
+textarea {
+  background: #d6d6d6;
+  padding: 2px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-top: 0.3rem;
+}
+
+input[type="text"] {
+  font-size: 20px;
+}
+
+input[type="datetime-local"],
+select,
+textarea {
+  font-size: 12px;
+}
+
+input[type="color"] {
+  height: 30px;
+  width: 30px;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.error-message {
+  color: #e74c3c;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.close-modal-container {
+  display: flex;
+  justify-content: flex-end;
+  gap: 20px;
+}
+
+.close-modal {
+  background: #e74c3c;
+  flex: none;
+  margin-left: auto;
+}
+
+.button-container {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+}
+
+button {
+  flex: 1;
+  padding: 0.8rem;
+  border: none;
+  border-radius: 8px;
+  background-color: #5c93f5;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+button:hover {
+  filter: brightness(85%);
+}
+
+.participants-container {
+  padding-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+
+.participant {
+  background-color: #d6d6d6;
+  border-radius: 6px;
+  padding: 6px 6px 6px 6px;
+  font-size: 14px;
+}
+
+.hidden {
+  display: none;
+}

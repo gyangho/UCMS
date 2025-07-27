@@ -1,0 +1,95 @@
+<!-- views/event/info.ejs -->
+
+<link rel="stylesheet" href="../styles/event/info.css" />
+<div class="container">
+  <% if (error) { %>
+  <p class="error-message">
+    <%= error %>
+  </p>
+  <% } %>
+
+  <div class="values hidden" data-participants=<%-JSON.stringify(participants)%> data-current-kakao-id=<%=currentKakaoId%> data-session-authority=<%=sessionAuthority%> data-current-event=<%-JSON.stringify(currentEvent)%>></div>
+
+  <form method="POST" action="/event/submit?id=<%=currentEvent.id%>">
+    <label>
+      <input type="text" name="title" value="<%= currentEvent.title || '' %>" required disabled />
+    </label>
+
+    <label>
+      <textarea name="description" disabled><%= currentEvent.description || '' %></textarea>
+    </label>
+
+    <div>
+      <label class="inline-field">
+        시작 시각
+        <input type="datetime-local" name="start" value="<%= currentEvent.start || '' %>" required disabled />
+      </label>
+      <label class="inline-field">
+        종료 시각
+        <input type="datetime-local" name="end" value="<%= currentEvent.end || '' %>" required disabled />
+      </label>
+    </div>
+
+    <label class="inline-field">
+      참가자 모집 여부
+      <input type="checkbox" name="isrecruiting" <%=currentEvent.ismultiple ? 'checked' : '' %> disabled />
+    </label>
+
+    <% if (currentEvent.ismultiple) { %>
+    <div id="recruit-time">
+      <label class="inline-field">
+        모집 시작 시각
+        <input type="datetime-local" name="recruit_start" value="<%= currentEvent.recruit_start || '' %>" disabled />
+      </label>
+      <label class="inline-field">
+        모집 종료 시각
+        <input type="datetime-local" name="recruit_end" value="<%= currentEvent.recruit_end || '' %>" disabled />
+      </label>
+    </div>
+    <% } %>
+
+    <label class="inline-field">
+      색
+      <input type="color" name="color" value="<%= currentEvent.color || '#43ff7b' %>" disabled />
+    </label>
+
+    <label class="inline-field">
+      공개범위
+      <select name="authority" required disabled>
+        <% const authorityMap=['일반','부원','임원진','부회장','회장','admin']; %>
+        <% authorityMap.forEach((auth, idx)=> { %>
+        <% if (idx < sessionAuthority) { %>
+        <option value="<%= auth %>" <%=currentEvent.authority===auth ? 'selected' : '' %>><%= auth %>
+        </option>
+        <% } %>
+        <% }); %>
+      </select>
+    </label>
+
+    <div class="button-container">
+      <button type="button" class="participate hidden" style="background-color: #2f7233;">참가</button>
+      <button type="button" class="cancel hidden" style="background-color: #ff8b8b;">참가 취소</button>
+      <button type="button" class="delete hidden" style="background-color: #ff2c2c;">일정 삭제</button>
+      <button type="button" class="edit hidden">수정</button>
+      <button type="button" class="editcancel hidden" style="background-color: #ff8b8b;">취소</button>
+      <button type="submit" class="post hidden">등록</button>
+    </div>
+  </form>
+
+  <div class="participants-container">
+    <div style="width: 100%; font-weight: bold; margin-bottom: 8px;">참가자 목록</div>
+    <% if (participants && participants.length) { %>
+    <% participants.forEach(participant=> { %>
+    <div class="participant">
+      <%= participant.name %>
+    </div>
+    <% }); %>
+    <% } else { %>
+    <p>참가자가 없습니다.</p>
+    <% } %>
+  </div>
+  <div class="close-modal-container">
+    <button class="close-modal">닫기</button>
+  </div>
+
+</div>

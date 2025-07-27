@@ -1,0 +1,353 @@
+<style>
+  body {
+    font-family: "Noto Sans KR", sans-serif;
+  }
+
+  .calendar-container {
+    max-width: 100%;
+    margin: 0 auto;
+    background: #2c2c2e;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: #3a3a3c;
+    color: #fff;
+    height: 40px;
+  }
+
+  .calendar-header .nav-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .calendar-header h2 {
+    margin: 0;
+    font-weight: 500;
+    font-size: 18px;
+  }
+
+  table.calendar {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    color: #fff;
+  }
+
+  table.calendar th,
+  table.calendar td {
+    padding: 8px;
+    position: relative;
+    font-size: 12px;
+    vertical-align: top;
+  }
+
+  table.calendar th {
+    text-align: center;
+    color: #aaa;
+    font-weight: 400;
+    padding-bottom: 10px;
+  }
+
+  table.calendar td {
+    height: 70px;
+    text-align: left;
+    cursor: pointer;
+    border-top: 1px solid #3a3a3c;
+    padding: 1px;
+  }
+
+  table.calendar td:hover {
+    background: #3a3a3c;
+  }
+
+  .date-number {
+    padding-left: 6px;
+  }
+
+  .selected-day {
+    background: #3a3a3c;
+  }
+
+  .event-bar {
+    z-index: 1;
+    color: #000000;
+    position: relative;
+    bottom: 4px;
+    height: 16px;
+    padding: 2px;
+    font-size: 90%;
+    display: block;
+    align-items: center;
+    white-space: nowrap;
+    overflow: hidden;
+    margin: 2px 0;
+    box-sizing: border-box;
+    pointer-events: none;
+  }
+
+  .event-bar.single {
+    z-index: 2;
+    border-radius: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+  }
+
+  .event-bar.start {
+    z-index: 2;
+    left: 4px;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+  }
+
+  .events-panel {
+    padding: 16px;
+    background: #2c2c2e;
+    border-top: 1px solid #3a3a3c;
+  }
+
+  .event-item {
+    background: #3a3a3c;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .event-item:hover {
+    background: #5f5f63;
+  }
+
+  .event-item .date {
+    display: block;
+    font-size: 8px;
+  }
+
+  .event-item .title {
+    display: block;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  .no-events {
+    color: #888;
+    font-size: 12px;
+  }
+</style>
+
+<div class="calendar-container">
+  <div class="calendar-header">
+    <button class="nav-btn" id="prevBtn">◀</button>
+    <h2 id="monthYear"></h2>
+    <button class="nav-btn" id="nextBtn">▶</button>
+  </div>
+  <table class="calendar">
+    <thead>
+      <tr>
+        <th style="color: red">일</th>
+        <th>월</th>
+        <th>화</th>
+        <th>수</th>
+        <th>목</th>
+        <th>금</th>
+        <th style="color: rgb(113, 113, 255)">토</th>
+      </tr>
+    </thead>
+    <tbody id="calendarBody"></tbody>
+  </table>
+  <div class="events-panel">
+    <div id="eventsList">
+      <p class="no-events">일정이 없습니다.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 예시 이벤트 데이터 (id 포함)
+  const events = <%- JSON.stringify(calendar_events) %>
+    .map(ev => ({
+      id: ev.id,
+      title: ev.title,
+      start: new Date(ev.start).toISOString().slice(0, 10),
+      end: new Date(ev.end).toISOString().slice(0, 10),
+      IsMultipleDays: ev.ismultiple,
+      color: ev.color
+    }));
+
+  const monthYear = document.getElementById("monthYear");
+  const calendarBody = document.getElementById("calendarBody");
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const eventsList = document.getElementById("eventsList");
+
+  let today = new Date();
+  let curYear = today.getFullYear();
+  let curMonth = today.getMonth();
+
+  function formatDate(y, m, d) {
+    const mm = String(m + 1).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    return `${y}-${mm}-${dd}`;
+  }
+
+  function clearSelection() {
+    const prev = document.querySelector(".selected-day");
+    if (prev) prev.classList.remove("selected-day");
+  }
+
+  function selectCell(cell, dateKey) {
+    clearSelection();
+    cell.classList.add("selected-day");
+    showEvents(dateKey);
+  }
+
+  function showEvents(dateKey) {
+    eventsList.innerHTML = "";
+    const dayEvs = events.filter((ev) => ev.start <= dateKey && dateKey <= ev.end);
+    if (!dayEvs.length) {
+      eventsList.innerHTML = '<p class="no-events">일정이 없습니다.</p>';
+      return;
+    }
+    dayEvs.forEach((ev) => {
+      const div = document.createElement("div");
+      div.className = "event-item";
+      div.dataset.eventId = ev.id;
+      div.innerHTML = `
+            <span class="date">${
+              ev.start === ev.end ? ev.start : ev.start + "~" + ev.end
+            }</span>
+            <span class="title">${ev.title}</span>
+          `;
+      eventsList.appendChild(div);
+    });
+  }
+
+  function renderCalendar(year, month) {
+    monthYear.textContent = `${year}. ${month + 1}`;
+    calendarBody.innerHTML = "";
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const lastDate = new Date(year, month + 1, 0).getDate();
+    const todayKey = formatDate(today.getFullYear(), today.getMonth(), today.getDate());
+    let date = 1;
+
+    for (let r = 0; r < 6; r++) {
+      const tr = document.createElement("tr");
+      for (let c = 0; c < 7; c++) {
+        const td = document.createElement("td");
+        // 빈 칸
+        if ((r === 0 && c < firstDay) || date > lastDate) {
+          tr.appendChild(td);
+          continue;
+        }
+
+        const dateKey = formatDate(year, month, date);
+        const dateObj = new Date(dateKey);
+
+        // 날짜 번호
+        const dn = document.createElement("div");
+        dn.className = "date-number";
+        dn.textContent = date;
+        td.appendChild(dn);
+
+        // 다중일정: 주 단위 분할 세그먼트
+        events
+          .filter((ev) => ev.IsMultipleDays && ev.start <= dateKey && dateKey <= ev.end)
+          .forEach((ev) => {
+            // 세그먼트 시작: 이벤트 시작일 or 일요일
+            const isSegStart = dateKey === ev.start || dateObj.getDay() === 0 || dateObj.getDate() === 1;
+            if (!isSegStart) {
+              const bar = document.createElement("div");
+              bar.className = "event-bar";
+              td.appendChild(bar);
+              return;
+            }
+
+            // 이번 주 토요일 날짜 계산
+            const daysToSat = 6 - dateObj.getDay();
+            const weekEnd = new Date(dateObj);
+            weekEnd.setDate(dateObj.getDate() + daysToSat);
+
+            // 실제 끝 = 이벤트 종료일 vs 주말 중 빠른 쪽
+            const evEnd = new Date(ev.end);
+            const actualEnd = evEnd < weekEnd ? evEnd : weekEnd;
+
+            // 세그먼트 길이 (일수)
+            const segDays = (actualEnd - dateObj) / (1000 * 60 * 60 * 24) + 1;
+
+            // 바 생성
+            const bar = document.createElement("div");
+            bar.className = "event-bar start";
+            bar.textContent = ev.title;
+            bar.style.width = `${segDays * 100}%`;
+            bar.style.background = ev.color;
+            if (actualEnd.getTime() === evEnd.getTime()) {
+              bar.style.borderTopRightRadius = "4px";
+              bar.style.borderBottomRightRadius = "4px";
+            }
+            if (!(dateKey === ev.start)) {
+              bar.classList.remove("start");
+            }
+            td.appendChild(bar);
+          });
+
+        // 단일일정
+        events
+          .filter((ev) => !ev.IsMultipleDays && ev.start === dateKey)
+          .forEach((ev) => {
+            const bar = document.createElement("div");
+            bar.className = "event-bar single";
+            bar.textContent = ev.title;
+            bar.style.background = ev.color;
+            td.appendChild(bar);
+          });
+
+        // 셀 클릭으로 상세 패널
+        td.addEventListener("click", () => selectCell(td, dateKey));
+        if (dateKey === todayKey) selectCell(td, dateKey);
+
+        tr.appendChild(td);
+        date++;
+      }
+      calendarBody.appendChild(tr);
+    }
+
+    // 마지막 빈 행 제거
+    const trs = calendarBody.querySelectorAll("tr");
+    const last = trs[trs.length - 1];
+    if ([...last.children].every((td) => !td.textContent.trim())) {
+      last.remove();
+    }
+  }
+
+  prevBtn.addEventListener("click", () => {
+    curMonth--;
+    if (curMonth < 0) {
+      curMonth = 11;
+      curYear--;
+    }
+    clearSelection();
+    renderCalendar(curYear, curMonth);
+  });
+  nextBtn.addEventListener("click", () => {
+    curMonth++;
+    if (curMonth > 11) {
+      curMonth = 0;
+      curYear++;
+    }
+    clearSelection();
+    renderCalendar(curYear, curMonth);
+  });
+
+  renderCalendar(curYear, curMonth);
+</script>

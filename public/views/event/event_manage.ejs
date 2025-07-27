@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UCMS</title>
+  <link rel="stylesheet" href="../styles/dashboard.css" />
+</head>
+
+<%- include('../header') %>
+
+<body>
+<div class="event-container">
+  <div class="myevents-container">
+    <%- include('./myevents',{myEvents: myEvents, comment:"전체 일정"})%>
+  </div>
+</div>
+</body>
+
+<div id="modal-overlay" class="hidden">
+</div>
+
+<script type="module">
+  import {
+    initEventInfoModal
+  } from '../js/events/info.js';
+  document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('modal-overlay');
+    // 일정들이 들어가는 최상위 컨테이너
+    const eventContainer = document.querySelector('.event-container');
+
+    eventContainer.addEventListener('click', async (e) => {
+      // 클릭된 요소 또는 조상 중 .event-card/.event-item 찾기
+      const card = e.target.closest('.event-card, .event-item');
+      if (!card) return; // 해당 클래스가 아니면 무시
+
+      const eventId = card.dataset.eventId;
+      try {
+        const resp = await fetch(`/event/info?id=${eventId}`);
+        if (!resp.ok) throw new Error('서버 응답 에러');
+        const html = await resp.text();
+
+        // ① HTML 삽입
+        overlay.innerHTML = html;
+        overlay.classList.remove('hidden');
+
+
+        initEventInfoModal();
+
+      } catch (err) {
+        console.error(err);
+        alert('모달을 불러오는 데 실패했습니다.');
+      }
+    });
+  });
+</script>
