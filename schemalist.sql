@@ -49,12 +49,51 @@ CREATE TABLE recruit_responses (
 );
 
 CREATE TABLE events (
-  id            BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  title         VARCHAR(255) NOT NULL COMMENT '일정 제목',
-  description   TEXT         NULL COMMENT '세부 설명',
-  start_time    DATETIME     NOT NULL COMMENT '시작 시각',
-  end_time      DATETIME     NOT NULL COMMENT '종료 시각',
-  created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
-                   ON UPDATE CURRENT_TIMESTAMP
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL COMMENT '일정 제목',
+  description TEXT NULL COMMENT '세부 설명',
+  start DATETIME NOT NULL COMMENT '시작 시각',
+  end DATETIME NOT NULL COMMENT '종료 시각',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                   ON UPDATE CURRENT_TIMESTAMP,
+  author_kakao_id BIGINT UNSIGNED NOT NULL,
+  updater_id BIGINT UNSIGNED NOT NULL,
+  color CHAR(10) NOT NULL DEFAULT '#43ff7bff',
+  ismultiple BOOLEAN NOT NULL
+  authority ENUM('일반','부원','임원진','부회장','회장','admin') NOT NULL DEFAULT '일반';
+  isRecruiting BOOLEAN DEFAULT false,
+  recruit_start DATETIME,
+  recruit_end DATETIME
+);
+
+ALTER TABLE events
+  ADD COLUMN color CHAR(10) NOT NULL
+    DEFAULT '#43ff7bff'
+    COMMENT '일정 색상 (HEX 코드)';
+
+ALTER TABLE events
+  ADD COLUMN ismultiple BOOLEAN NOT NULL
+    DEFAULT false;
+
+ALTER TABLE events
+  ADD COLUMN authority ENUM('일반','부원','임원진','부회장','회장','admin') NOT NULL DEFAULT '일반';
+
+ALTER TABLE events
+CHANGE COLUMN start_time start DATETIME NOT NULL COMMENT '시작 시각',
+CHANGE COLUMN end_time end DATETIME NOT NULL COMMENT '종료 시각';
+
+ALTER TABLE events
+ADD COLUMN isRecruiting BOOLEAN DEFAULT false,
+ADD COLUMN recruit_start DATETIME,
+ADD COLUMN recruit_end DATETIME;
+
+CREATE TABLE event_participants
+(
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  event_id BIGINT NOT NULL COMMENT 'events.id 참조',
+  kakao_id BIGINT UNSIGNED NOT NULL COMMENT 'users.kakao_id 참조',
+  UNIQUE KEY uk_event_user (event_id, kakao_id),
+  FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (kakao_id) REFERENCES users(kakao_id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
