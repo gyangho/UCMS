@@ -1,23 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const path = require("path");
-const { google } = require("googleapis");
 
 const db = require("../db");
 
 // ── 1. Google API 인증 (Service Account) ──
-const KEYFILEPATH = path.join(__dirname, "../keys/ucms-466410-293c3c8d9c97.json");
-// 읽기 전용 응답 스코프
-const SCOPES = [
-  "https://www.googleapis.com/auth/forms.responses.readonly",
-  "https://www.googleapis.com/auth/forms.body.readonly",
-];
-// JWT 클라이언트 생성
-const auth = new google.auth.GoogleAuth({
-  keyFile: KEYFILEPATH,
-  scopes: SCOPES,
-});
-const forms = google.forms({ version: "v1", auth });
 
 let questionMap = {};
 
@@ -53,7 +40,6 @@ router.get("/responses", async (req, res, next) => {
   const dataQuery = `SELECT answers_json FROM recruit_responses ${whereClause} ORDER BY id LIMIT ? OFFSET ?`;
   try {
     const [countRows] = await db.query(countQuery, search && column ? [searchParam] : []);
-    console.log(countRows);
 
     const total = countRows[0].count;
 

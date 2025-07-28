@@ -5,17 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>동아리 부원 명단</title>
     <link rel="stylesheet" href="../styles/membermanage.css" />
-    <link rel="stylesheet" href="../styles/header.css" />
   </head>
   <body>
-    <header>
-      <img src="../images/small-logo.png" alt="로고" class="small-logo" />
-      <div class="header-right">
-        <div class="user-info" id="userInfo">로그인 정보 불러오는 중...</div>
-        <a href="/auth/logout" class="logout-btn">로그아웃</a>
-      </div>
-    </header>
-
+    <%- include('header') %>
     <!--검색 내역 유지를 위한 변수 저장-->
     <script>
       const currentSearch = "<%= search || '' %>";
@@ -222,6 +214,5 @@
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="../js/membermanage.js"></script>
-    <script src="../js/userinfo.js"></script>
   </body>
 </html>
