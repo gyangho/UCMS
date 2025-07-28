@@ -1,0 +1,87 @@
+<!-- views/event_list.ejs -->
+<style>
+  .list-container {
+    border-radius: 6px;
+    padding: 8px;
+    overflow-y: auto;
+    /* 내용이 넘치면 스크롤 */
+    box-sizing: border-box;
+  }
+
+  .list-container h2 {
+    margin: 4px 0 8px 2px;
+    font-size: 16px;
+    border-bottom: 1px solid #a7a7a7;
+    padding-bottom: 4px;
+  }
+
+  .event-card {
+    background: #ffffff;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    padding: 10px;
+    margin-bottom: 10px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: center;
+    max-width: 100%;
+    cursor: pointer;
+  }
+
+  .event-card:hover {
+    background-color: #e0e0e0;
+  }
+
+  .event-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .event-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    margin: 0;
+  }
+
+  .event-datetime {
+    font-size: 11px;
+    color: #666;
+    margin: 0;
+  }
+
+  .no-events {
+    text-align: center;
+    font-size: 0.95rem;
+    color: #777;
+    margin-top: 1rem;
+  }
+</style>
+
+<!-- 내가 참가한 일정 -->
+<div class="list-container">
+  <h2><%=comment%></h2>
+  <% const events = Array.isArray(myEvents) ? myEvents : []; %>
+  <% if (events.length > 0) { %>
+  <% events.forEach(function(event) { %>
+  <div class="event-card" style="border-left: 6px solid <%= event.color %>;" data-event-id="<%= event.id %>">
+    <div class="event-info">
+      <p class="event-title"><%= event.title %></p>
+      <p class="event-datetime">
+        <% if (event.ismultiple) { %>
+        <%= event.start.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit', weekday: 'short' }).replace(/\./g, '').replace(/ /g, '. ') + '.' %>
+        ~
+        <%= event.end.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit', weekday: 'short' }).replace(/\./g, '').replace(/ /g, '. ') + '.' %>
+        <% } else { %>
+        <%= event.start.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit', weekday: 'short' }).replace(/\./g, '').replace(/ /g, '. ') + '.' %>
+        <% } %>
+      </p>
+    </div>
+  </div>
+  <% }) %>
+  <% } else { %>
+  <p class="no-events">일정이 없습니다.</p>
+  <% } %>
+</div>
