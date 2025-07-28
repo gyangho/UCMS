@@ -133,10 +133,8 @@ router.get("/profile", async function (req, res, next) {
       `SELECT authority + 0 AS authority FROM Members WHERE name =? AND phone = ?`,
       [user.name, user.phone]
     );
-
-    console.log(row);
     if (row.length === 0) {
-      req.session.authority = "0";
+      req.session.authority = 0;
     } else {
       req.session.authority = row[0].authority;
     }

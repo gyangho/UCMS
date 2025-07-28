@@ -13,7 +13,6 @@ router.get("/", async (req, res, next) => {
   const dataQuery = `SELECT * FROM Members ${whereClause} ORDER BY name LIMIT ? OFFSET ?`;
   try {
     const [countRows] = await db.query(countQuery, search && column ? [searchParam] : []);
-    console.log(countRows);
 
     const total = countRows[0].count;
 
@@ -63,12 +62,13 @@ router.post("/add", async (req, res, next) => {
 
 //부원 수정
 router.post("/edit/:id", async (req, res, next) => {
-  const { name, major, phone, gender, generation } = req.body;
+  const { name, major, phone, gender, generation, authority } = req.body;
   const id = req.params.id;
+  console.log(req.body);
   try {
     await db.query(
-      "UPDATE Members SET name = ?, major = ?, phone = ?, gender = ?, generation = ? WHERE student_id = ?",
-      [name, major, phone, gender, generation, id]
+      "UPDATE Members SET name = ?, major = ?, phone = ?, gender = ?, generation = ?, authority = ? WHERE student_id = ?",
+      [name, major, phone, gender, generation, authority, id]
     );
   } catch (err) {
     next(err);
