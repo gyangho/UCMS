@@ -1,6 +1,7 @@
 #personal
 *.txt
 keys/
+test.json
 
 # Logs
 logs

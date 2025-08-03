@@ -8,9 +8,9 @@
   </p>
   <% } %>
 
-  <div class="values hidden" data-participants=<%-JSON.stringify(participants)%> data-current-kakao-id=<%=currentKakaoId%> data-session-authority=<%=sessionAuthority%> data-current-event=<%-JSON.stringify(currentEvent)%>></div>
+  <div class="values hidden" data-participants=<%-JSON.stringify(participants)%> data-current-kakao-id=<%=currentKakaoId%> data-session-authority='<%=sessionAuthority%>' data-current-event=' <%-JSON.stringify(currentEvent)%>'></div>
 
-  <form method="POST" action="/event/submit?id=<%=currentEvent.id%>">
+  <form id="eventForm" method="POST" action="/event/submit?id=<%=currentEvent.id%>">
     <label>
       <input type="text" name="title" value="<%= currentEvent.title || '' %>" required disabled />
     </label>
