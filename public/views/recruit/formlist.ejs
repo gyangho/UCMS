@@ -1,0 +1,115 @@
+<style>
+  .modal-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+    z-index: 1001;
+    /* 오버레이 위로 뜨도록 */
+  }
+
+  h1 {
+    font-size: 24px;
+    margin-bottom: 1rem;
+    text-align: center;
+    color: #333;
+  }
+
+  form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9rem;
+    color: #555;
+  }
+
+  /* inline label for checkbox and color to align with text */
+  .inline-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    color: #555;
+  }
+
+  input[type="text"],
+  select {
+    background: #d6d6d6;
+    padding: 2px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-top: 0.3rem;
+    font-size: 14px;
+  }
+
+  .error-message {
+    color: #e74c3c;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+
+  .close-modal {
+    background: #e74c3c;
+    flex: none;
+    margin-left: auto;
+  }
+
+  .button-container {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+  }
+
+  .modal-btn {
+    flex: 1;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 8px;
+    background-color: #5c93f5;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  button:hover {
+    filter: brightness(85%);
+  }
+
+  .hidden {
+    display: none;
+  }
+</style>
+
+<div class="modal-container">
+  <form id="formchange" method="POST" action="/recruit/formlist">
+    <label>기존 폼 선택
+      <select name="URLSelect">
+        <option value="" selected></option>
+        <% forms.forEach((form)=>{%>
+        <option value="<%=form.id%>"><%=form.title%></option>
+        <%})%>
+      </select>
+    </label>
+    <div class="divider"></div>
+    <label>새로운 폼 추가
+      <input type="text" name="newURL" value='' placeholder="여기에 구글 폼 주소(편집 화면, 응답자 주소 x)를 입력해주세요">
+    </label>
+    <div class="button-container">
+      <button class="modal-btn submit" type="submit">확인</button>
+      <button class="modal-btn close-modal" style="background-color: #e74c3c;">닫기</button>
+    </div>
+  </form>
+</div>

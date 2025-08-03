@@ -127,7 +127,7 @@ router.get("/profile", async function (req, res, next) {
   `;
     const values = Object.values(user);
 
-    await db.query(query, values);
+    await db.execute(query, values);
 
     const [row] = await db.query(
       `SELECT authority + 0 AS authority FROM Members WHERE name =? AND phone = ?`,
@@ -139,6 +139,7 @@ router.get("/profile", async function (req, res, next) {
       req.session.authority = row[0].authority;
     }
     req.session.save();
+    console.log("AUTHORITY SET COMPLETE");
   } catch (err) {
     return next(err);
   }

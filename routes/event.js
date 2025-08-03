@@ -26,6 +26,7 @@ router.get("/add", (req, res) => {
 
 router.post("/submit", async (req, res, next) => {
   try {
+    console.log(req.body);
     const {
       title,
       description,
@@ -49,7 +50,7 @@ router.post("/submit", async (req, res, next) => {
     }
     let sql = "";
     if (req.query.id) {
-      console.log("[UPDATE]\n" + req.body + "[UPDATE]");
+      console.log("[UPDATE]\n" + JSON.stringify(req.body) + "[UPDATE]");
       sql = `
       UPDATE events
       SET
@@ -84,7 +85,7 @@ router.post("/submit", async (req, res, next) => {
         req.query.id,
       ]);
     } else {
-      console.log("[INSERT]\n" + req.body + "[INSERT]");
+      console.log("[INSERT]\n" + JSON.stringify(req.body) + "[INSERT]");
       sql = `
       UPDATE events SET 
       (
@@ -108,7 +109,8 @@ router.post("/submit", async (req, res, next) => {
         authority,
       ]);
     }
-    res.send("이벤트가 성공적으로 등록되었습니다.");
+    res.status(200);
+    res.redirect("/dashboard");
   } catch (err) {
     console.error(err);
     res.render("event_form", { error: "서버 오류가 발생했습니다.", data: req.body });
@@ -263,11 +265,13 @@ router.get("/info", async (req, res, next) => {
   const participantsQueryResult = await db.query(participantsQuery, [id]);
   const [participants] = participantsQueryResult;
 
+  console.log(JSON.stringify(currentEvent));
+
   res.render("event/info", {
     error: null,
     currentEvent,
     data: {},
-    sessionAuthority: req.session.authority,
+    sessionAuthority: req.session.authority || "",
     currentKakaoId: req.session.kakao_id,
     participants,
   });

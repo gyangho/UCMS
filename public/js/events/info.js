@@ -6,11 +6,17 @@ export function initEventInfoModal() {
   const currentEvent = JSON.parse(valueDiv.currentEvent);
   const eventId = currentEvent.id;
 
-  const recruitCheckbox = document.querySelector('input[name="isrecruiting"]');
-  const recruitTimeDiv = document.getElementById("recruit-time");
-  const recruitStartInput = recruitTimeDiv.querySelector('input[name="recruit_start"]');
-  const recruitEndInput = recruitTimeDiv.querySelector('input[name="recruit_end"]');
+  let isChanged = false;
 
+  const recruitCheckbox = document.querySelector('input[name="isrecruiting"]');
+  let recruitTimeDiv = "";
+  let recruitStartInput = "";
+  let recruitEndInput = "";
+  if (currentEvent.isRecruiting) {
+    recruitTimeDiv = document.getElementById("recruit-time");
+    recruitStartInput = recruitTimeDiv.querySelector('input[name="recruit_start"]');
+    recruitEndInput = recruitTimeDiv.querySelector('input[name="recruit_end"]');
+  }
   const participateButton = document.querySelector(".participate");
   const cancleButton = document.querySelector(".cancel");
   const editButton = document.querySelector(".edit");
@@ -24,8 +30,6 @@ export function initEventInfoModal() {
   const today = new Date();
   const recruit_start = new Date(currentEvent.recruit_start);
   const recruit_end = new Date(currentEvent.recruit_end);
-
-  console.log(typeof recruit_start + recruit_start);
 
   if (currentEvent.isRecruiting && recruit_start < today && recruit_end > today) {
     if (!participants.some((p) => `${p.kakao_id}` === currentKakaoId)) {
@@ -44,7 +48,11 @@ export function initEventInfoModal() {
 
   // 닫기 버튼
   document.querySelector(".close-modal").addEventListener("click", () => {
-    window.location.reload();
+    if (isChanged) window.location.reload();
+    else {
+      overlay.classList.add("hidden");
+      overlay.innerHTML = "";
+    }
   });
 
   recruitCheckbox.addEventListener("change", function (e) {
@@ -64,6 +72,7 @@ export function initEventInfoModal() {
     if (resp.ok) {
       cancleButton.classList.remove("hidden");
       participateButton.classList.add("hidden");
+      isChanged = true;
     }
   });
 
@@ -72,6 +81,7 @@ export function initEventInfoModal() {
     if (resp.ok) {
       cancleButton.classList.add("hidden");
       participateButton.classList.remove("hidden");
+      isChanged = true;
     }
   });
 

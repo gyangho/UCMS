@@ -40,14 +40,6 @@ CREATE TABLE `purchases` (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE recruit_responses (
-  id            INT AUTO_INCREMENT PRIMARY KEY,
-  response_id   VARCHAR(100) NOT NULL UNIQUE,
-  form_id       VARCHAR(100) NOT NULL,
-  answers_json  JSON NOT NULL,
-  synced_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
 CREATE TABLE events (
   id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(255) NOT NULL COMMENT '일정 제목',
@@ -60,8 +52,8 @@ CREATE TABLE events (
   author_kakao_id BIGINT UNSIGNED NOT NULL,
   updater_id BIGINT UNSIGNED NOT NULL,
   color CHAR(10) NOT NULL DEFAULT '#43ff7bff',
-  ismultiple BOOLEAN NOT NULL
-  authority ENUM('일반','부원','임원진','부회장','회장','admin') NOT NULL DEFAULT '일반';
+  ismultiple BOOLEAN NOT NULL,
+  authority ENUM('일반','부원','임원진','부회장','회장','admin') NOT NULL DEFAULT '일반',
   isRecruiting BOOLEAN DEFAULT false,
   recruit_start DATETIME,
   recruit_end DATETIME
@@ -97,3 +89,57 @@ CREATE TABLE event_participants
   FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (kakao_id) REFERENCES users(kakao_id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
+
+CREATE TABLE formlist
+(
+  id VARCHAR(255) NOT NULL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  form_type ENUM('신규모집','활동결과','기타') NOT NULL
+);
+
+INSERT INTO members (student_id,name,major,phone,gender,generation,authority)
+ VALUES("20192854","이경호","소프트웨어학부","010-6406-1150","남자",3,6);
+
+CREATE TABLE form_responses (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  response_id   VARCHAR(100) NOT NULL UNIQUE,
+  form_id       VARCHAR(100) NOT NULL,
+  question_id   VARCHAR(100) NOT NULL,
+  answer        TEXT,
+  synced_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE form_questions
+(
+  form_id VARCHAR(100) NOT NULL,
+  question_id VARCHAR(100) NOT NULL,
+  question VARCHAR(255) NOT NULL,
+  PRIMARY KEY (form_id, question_id),
+  FOREIGN KEY (form_id) REFERENCES formlist(id) ON DELETE CASCADE ON UPDATE CASCADE
+  synced_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+)
+
+CREATE TABLE form_questions
+(
+  form_id VARCHAR(100) NOT NULL,
+  question_id VARCHAR(100) NOT NULL,
+  question VARCHAR(255) NOT NULL,
+  PRIMARY KEY (form_id, question_id),
+  FOREIGN KEY (form_id) REFERENCES formlist(id) ON DELETE CASCADE ON UPDATE CASCADE
+  synced_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+)
+
+CREATE TABLE recruiting_members
+(
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  response_id VARCHAR(100) NOT NULL UNIQUE,
+  student_id VARCHAR(20),
+  name VARCHAR(50),
+  major VARCHAR(100),
+  phone VARCHAR(20),
+  gender ENUM('남자', '여자'),
+  synced_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+ALTER TABLE recruiting_members
+ADD COLUMN rating ENUM('대기','불합격','느별','느괜','느좋','합격') NOT NULL DEFAULT '대기';

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UCMS</title>
+  <link rel="stylesheet" href="../../styles/recruit/recruit_responses.css" />
+</head>
+
+<%-include('../header.ejs')%>
+
+<body>
+
+<!--검색 내역 유지를 위한 변수 저장-->
+<script>
+  const currentSearch = "<%= search || '' %>";
+  const currentColumn = "<%= column || '' %>";
+
+  // sessionStorage에서 currentFormId 확인 및 URL에 추가
+  window.addEventListener('DOMContentLoaded', function() {
+    const currentFormId = sessionStorage.getItem('currentFormID');
+    if (currentFormId && !window.location.search.includes('currentFormId=')) {
+      const url = new URL(window.location);
+      url.searchParams.set('currentFormId', currentFormId);
+      window.location.href = url.toString();
+    }
+  });
+</script>
+
+<div class="container">
+  <div class="header">
+    <h1>신입부원 응답자 목록</h1>
+    <form method="POST" action="/recruit/sync" class="sync-container">
+      현재 폼 URL<input type="text" name="formURL" value="<%=currentForm.title || '' %>" required disabled />
+      <input type="text" name="formId" class="hidden" value="<%=currentForm.formId%>">
+      <button type="button" id="URLChangeBtn" class="btn-url-change">변경</button>
+      <button type="submit" id="syncBtn" class="btn-sync" title="동기화">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon-sync" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 2v6h-6" />
+          <path d="M3 22v-6h6" />
+          <path d="M3.51 9a9 9 0 0114.14-3.36L21 8" />
+          <path d="M20.49 15a9 9 0 01-14.14 3.36L3 16" />
+        </svg>
+      </button>
+    </form>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <!--부원 목록 테이블 헤더-->
+          <th data-column="student_id">
+            학번 <span class="search-toggle">🔍</span>
+            <!--검색 창-->
+            <div class="search-input-container hidden" id="student_id">
+              <input type="text" class="search-input" placeholder="학번" size="8" maxlength="8" />
+              <button class="icon-btn close-search">❌</button>
+            </div>
+          </th>
+          <th data-column="name">
+            이름 <span class="search-toggle">🔍</span>
+            <!--검색 창-->
+            <div class="search-input-container hidden" id="name">
+              <input type="text" class="search-input" placeholder="이름" size="5" maxlength="8" />
+              <button class="icon-btn close-search">❌</button>
+            </div>
+          </th>
+          <th data-column="major">
+            학과(부) <span class="search-toggle">🔍</span>
+            <!--검색 창-->
+            <div class="search-input-container hidden" id="major">
+              <input type="text" class="search-input" placeholder="학과(부)" size="8" maxlength="10" />
+              <button class="icon-btn close-search">❌</button>
+            </div>
+          </th>
+          <th data-column="phone">
+            전화번호 <span class="search-toggle">🔍</span>
+            <!--검색 창-->
+            <div class="search-input-container hidden" id="phone">
+              <input type="text" class="search-input" placeholder="전화번호" size="10" maxlength="16" />
+              <button class="icon-btn close-search">❌</button>
+            </div>
+          </th>
+          <th data-column="gender">
+            성별 <span class="search-toggle">🔍</span>
+            <!--검색 창-->
+            <div class="search-input-container hidden" id="gender">
+              <selelct class="search-input">
+                <option value="" disabled selected>성별</option>
+                <option value="남자">남자</option>
+                <option value="여자">여자</option>
+              </selelct>
+              <button class="icon-btn close-search">❌</button>
+            </div>
+          </th>
+          <th data-column="rating">
+            평가 <span class="search-toggle">🔍</span>
+            <!--검색 창-->
+            <div class="search-input-container hidden" id="rating">
+              <select class="search-input">
+                <option value="" disabled selected>평가</option>
+                <option value="대기">대기</option>
+                <option value="불합격">불합격</option>
+                <option value="느별">느별</option>
+                <option value="느괜">느괜</option>
+                <option value="느좋">느좋</option>
+                <option value="합격">합격</option>
+              </select>
+              <button class="icon-btn close-search">❌</button>
+            </div>
+          </th>
+        </tr>
+      </thead>
+      <!--응답 목록 데이터-->
+      <tbody>
+        <% recruitingMembers.forEach(m => { %>
+        <tr>
+          <td style="white-space: nowrap"><%= m.student_id %></td>
+          <td style="white-space: nowrap"><%= m.name %></td>
+          <td><%= m.major %></td>
+          <td><%= m.phone %></td>
+          <td><%= m.gender %></td>
+          <td>
+            <select class="rating-select" data-response-id="<%= m.response_id %>" data-current-rating="<%= m.rating %>">
+              <option value="대기" <%= m.rating === '대기' ? 'selected' : '' %>>대기</option>
+              <option value="불합격" <%= m.rating === '불합격' ? 'selected' : '' %>>불합격</option>
+              <option value="느별" <%= m.rating === '느별' ? 'selected' : '' %>>느별</option>
+              <option value="느괜" <%= m.rating === '느괜' ? 'selected' : '' %>>느괜</option>
+              <option value="느좋" <%= m.rating === '느좋' ? 'selected' : '' %>>느좋</option>
+              <option value="합격" <%= m.rating === '합격' ? 'selected' : '' %>>합격</option>
+            </select>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <!--페이지 분리-->
+  <div class="pagination">
+    <% for (let i = 1; i <= totalPages; i++) { %>
+    <a href="/recruit/responses?page=<%= i %>&limit=<%= limit %>&column=<%= column %>&search=<%= search %>" class="page-item <%= currentPage === i ? 'active' : '' %>"><%= i %></a>
+    <% } %>
+  </div>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module" src="../../js/recruit/recruit_response.js"></script>
+
+<script>
+  // 평가 select 변경 시 DB 업데이트
+  document.addEventListener('DOMContentLoaded', function() {
+    const ratingSelects = document.querySelectorAll('.rating-select');
+
+    ratingSelects.forEach(select => {
+      select.addEventListener('change', async function() {
+        const responseId = this.getAttribute('data-response-id');
+        const newRating = this.value;
+        const currentRating = this.getAttribute('data-current-rating');
+
+        // 현재 값과 같으면 업데이트하지 않음
+        if (newRating === currentRating) {
+          return;
+        }
+
+        try {
+          const response = await fetch('/recruit/update-rating', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              response_id: responseId,
+              rating: newRating
+            })
+          });
+
+          if (response.ok) {
+            // 성공 시 현재 값 업데이트
+            this.setAttribute('data-current-rating', newRating);
+            console.log('평가 업데이트 성공:', newRating);
+          } else {
+            // 실패 시 원래 값으로 되돌리기
+            this.value = currentRating;
+            console.error('평가 업데이트 실패');
+          }
+        } catch (error) {
+          // 에러 시 원래 값으로 되돌리기
+          this.value = currentRating;
+          console.error('평가 업데이트 중 오류:', error);
+        }
+      });
+    });
+  });
+</script>
+
+</body>
+
+<div id="modal-overlay" class="hidden">
+</div>
+
+</html>

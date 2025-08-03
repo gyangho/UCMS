@@ -30,13 +30,113 @@ body {
   margin-bottom: 20px;
 }
 
+.sync-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 .header h1 {
   font-size: 24px;
   font-weight: 700;
   color: #111827;
 }
 
-.btn {
+input[type="text"],
+select {
+  background: #d6d6d6;
+  padding: 2px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-top: 0.3rem;
+  font-size: 14px;
+}
+
+/* 평가 select 스타일 */
+.rating-select {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  text-align: center;
+}
+
+.rating-select:hover {
+  border-color: #9ca3af;
+}
+
+.rating-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 평가 값별 배경색 */
+.rating-select[data-current-rating="대기"] {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.rating-select[data-current-rating="불합격"] {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.rating-select[data-current-rating="느별"] {
+  background-color: #fffbeb;
+  color: #d97706;
+}
+
+.rating-select[data-current-rating="느괜"] {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+.rating-select[data-current-rating="느좋"] {
+  background-color: #f7fdf0;
+  color: #64a316;
+}
+
+.rating-select[data-current-rating="합격"] {
+  background-color: #f0fdf4;
+  color: #047857;
+}
+
+/* 드롭다운 옵션 색상 */
+.rating-select option[value="대기"] {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.rating-select option[value="불합격"] {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.rating-select option[value="느별"] {
+  background-color: #fffbeb;
+  color: #d97706;
+}
+
+.rating-select option[value="느괜"] {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+.rating-select option[value="느좋"] {
+  background-color: #f7fdf0;
+  color: #64a316;
+}
+
+.rating-select option[value="합격"] {
+  background-color: #f0fdf4;
+  color: #047857;
+}
+
+button {
   padding: 8px 8px;
   border-radius: 8px;
   border: none;
@@ -44,13 +144,8 @@ body {
   transition: background 0.2s ease;
 }
 
-.btn-primary {
-  background-color: #10b981;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #059669;
+button:hover {
+  filter: brightness(85%);
 }
 
 .btn-sync {
@@ -64,9 +159,6 @@ body {
 .btn-sync:disabled {
   cursor: not-allowed;
   opacity: 0.5;
-}
-.btn-sync:hover {
-  background-color: #7f97c7;
 }
 
 .icon-sync {
@@ -98,10 +190,6 @@ body {
 .btn-close {
   background-color: #ef444499;
   color: #374151;
-}
-
-.btn-close:hover {
-  background-color: #ef4444;
 }
 
 .table-wrap {
@@ -182,46 +270,6 @@ tbody tr:hover {
   color: white;
 }
 
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.3);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal.hidden {
-  display: none;
-}
-
-.modal-close {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.modal-content {
-  background: white;
-  padding: 24px;
-  border-radius: 12px;
-  width: 100%;
-  max-height: 80%;
-  max-width: 1100px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  overflow-x: auto;
-}
-
-.modal-content h2 {
-  margin-bottom: 16px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
 /* 추가 모달 내 입력 헤더 */
 .row.header-row {
   display: flex;
@@ -263,12 +311,6 @@ tbody tr:hover {
   border-radius: 8px;
 }
 
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
 .search-input-container {
   align-items: center;
 }
@@ -291,6 +333,29 @@ tbody tr:hover {
   cursor: pointer;
   color: #6b7280;
   margin-left: 4px;
+}
+
+/* overlay */
+#modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  justify-content: center; /* 가운데 정렬 */
+  align-items: center;
+  z-index: 1000;
+}
+/* 대화상자 */
+#modal-overlay .modal-dialog {
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* 숨김 처리용 */

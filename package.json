@@ -19,6 +19,7 @@
     "express": "^5.1.0",
     "express-mysql-session": "^3.0.3",
     "express-session": "^1.18.1",
+    "googleapis": "^154.0.0",
     "memorystore": "^1.6.7",
     "mysql": "^2.18.1",
     "mysql2": "^3.14.1",
