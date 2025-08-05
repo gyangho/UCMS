@@ -1,7 +1,10 @@
 #personal
+.vscode/
 *.txt
 keys/
-test.json
+documents/
+docs/
+nginx-1.28.0/
 
 # Logs
 logs

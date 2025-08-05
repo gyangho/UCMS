@@ -5,7 +5,10 @@
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon ./main.js"
+    "dev": "nodemon ./main.js",
+    "sharedb": "nodemon ./sharedb-server.js",
+    "start": "concurrently \"npm run dev\" \"npm run sharedb\"",
+    "dev:all": "concurrently \"nodemon ./main.js\" \"nodemon ./sharedb-server.js\""
   },
   "author": "",
   "license": "ISC",
@@ -23,9 +26,13 @@
     "memorystore": "^1.6.7",
     "mysql": "^2.18.1",
     "mysql2": "^3.14.1",
-    "pos": "file:"
+    "pos": "file:",
+    "sharedb": "^5.2.2",
+    "sharedb-mysql": "^1.0.5",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "nodemon": "^3.1.10"
   }
 }

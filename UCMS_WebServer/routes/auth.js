@@ -3,6 +3,8 @@ const router = express.Router();
 const qs = require("qs");
 const axios = require("axios");
 const db = require("../db");
+/* Google OAuth2 callback */
+const { saveOAuthTokens } = require("../extern_apis/googleapis");
 
 const client_id = process.env.KAKAO_REST_KEY;
 const client_secret = process.env.KAKAO_CLIENT_SECRET;
@@ -176,6 +178,17 @@ router.get("/unlink", async function (req, res) {
   const rtn = await call("POST", uri, null, header); // 카카오 API에 연결 끊기 요청 전송
   req.session.destroy(); // 세션 삭제 (연결 해제 처리)
   res.send(rtn); // 응답 결과 클라이언트에 반환
+});
+
+router.get("/oauth2callback", async (req, res, next) => {
+  try {
+    const { code } = req.query;
+    if (!code) return res.status(400).send("no code");
+    await saveOAuthTokens(code);
+    res.send("Google Drive 권한 연결 완료! 서버 콘솔을 확인하세요.");
+  } catch (e) {
+    next(e);
+  }
 });
 
 module.exports = router;
