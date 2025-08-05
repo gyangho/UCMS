@@ -116,7 +116,7 @@
       <!--응답 목록 데이터-->
       <tbody>
         <% recruitingMembers.forEach(m => { %>
-        <tr>
+        <tr class="response-row" data-response-id="<%= m.response_id %>" style="cursor: pointer;">
           <td style="white-space: nowrap"><%= m.student_id %></td>
           <td style="white-space: nowrap"><%= m.name %></td>
           <td><%= m.major %></td>
@@ -190,6 +190,21 @@
           this.value = currentRating;
           console.error('평가 업데이트 중 오류:', error);
         }
+      });
+    });
+
+    // 행 클릭 이벤트
+    const responseRows = document.querySelectorAll('.response-row');
+    responseRows.forEach(row => {
+      row.addEventListener('click', function(e) {
+        // select 클릭 시에는 상세 페이지로 이동하지 않음
+        if (e.target.classList.contains('rating-select')) {
+          return;
+        }
+
+        const responseId = this.getAttribute('data-response-id');
+        const detailUrl = `/recruit/detail/${responseId}`;
+        window.open(detailUrl, '_blank');
       });
     });
   });

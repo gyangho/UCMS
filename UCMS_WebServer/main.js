@@ -2,13 +2,14 @@
 // ujujikik7uu
 // 2025.07.08 장지수
 
-require("dotenv-expand").expand(require("dotenv").config());
+require("dotenv-expand").expand(require("dotenv").config({ path: "../keys/.env" }));
 
 const express = require("express");
 const session = require("express-session");
 const mySQLSessionStore = require("express-mysql-session")(session);
 const bodyParser = require("body-parser");
 const path = require("path");
+const { ensureOAuthTokens } = require("./extern_apis/googleapis");
 
 const db = require("./db");
 const defaultRouter = require("./routes/router");
@@ -18,6 +19,7 @@ const memberRouter = require("./routes/member");
 const botRouter = require("./routes/bot");
 const recruitRouter = require("./routes/recruit");
 const eventRouter = require("./routes/event");
+const driveRouter = require("./routes/drive");
 
 const app = express();
 const DOMAIN = process.env.DOMAIN;
@@ -67,6 +69,7 @@ app.use("/member", memberRouter);
 app.use("/bot", botRouter);
 app.use("/recruit", recruitRouter);
 app.use("/event", eventRouter);
+app.use("/drive", driveRouter);
 
 app.use((err, req, res, next) => {
   if (err.status === 401 || err.code) {
@@ -90,7 +93,10 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on \"${DOMAIN}\"`);
+  console.log(`Server is running on \"${DOMAIN}:${PORT}\"`);
+  (async () => {
+    await ensureOAuthTokens(); // 없으면 콘솔에 URL 출력
+  })();
 });
 
 async function requireValidSession(req, res, next) {
