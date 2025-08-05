@@ -3,19 +3,7 @@ const router = express.Router();
 const path = require("path");
 
 const db = require("../db");
-const { google } = require("googleapis");
-
-// ── 1. Google API 인증 (Service Account) ──
-const auth = new google.auth.GoogleAuth({
-  keyFile: path.join(__dirname, "../keys/ucms-466410-b5ec552f2e06.json"),
-  scopes: [
-    "https://www.googleapis.com/auth/forms.body.readonly",
-    "https://www.googleapis.com/auth/forms.responses.readonly",
-  ],
-});
-
-// 3) Forms API 클라이언트 초기화
-const forms = google.forms({ version: "v1", auth });
+const { forms, drive, extractFormIdFromURL } = require("../extern_apis/googleapis");
 
 let questionMap = {};
 
@@ -180,6 +168,38 @@ router.post("/update-rating", async (req, res, next) => {
   }
 });
 
+// 응답 상세 페이지
+router.get("/detail/:responseId", async (req, res, next) => {
+  try {
+    const { responseId } = req.params;
+
+    // 지원자 정보 가져오기
+    const [memberInfo] = await db.execute(
+      "SELECT * FROM recruiting_members WHERE response_id = ?",
+      [responseId]
+    );
+
+    // 응답 데이터 가져오기
+    const [responses] = await db.execute(
+      `SELECT fq.question, fr.answer 
+       FROM form_responses fr 
+       JOIN form_questions fq ON fr.form_id = fq.form_id AND fr.question_id = fq.question_id 
+       WHERE fr.response_id = ? 
+       ORDER BY fq.question_id`,
+      [responseId]
+    );
+
+    res.render("recruit/detail", {
+      responseId,
+      memberInfo: memberInfo[0] || null,
+      responses: responses || [],
+    });
+  } catch (err) {
+    console.error("상세 페이지 로드 실패:", err);
+    res.status(500).send("상세 페이지를 불러올 수 없습니다.");
+  }
+});
+
 async function syncResponses(formId) {
   // 폼 구조 최신화
   const questionMap = await loadFormStructure(formId);
@@ -334,37 +354,6 @@ async function loadFormStructure(formId) {
     return questionMap;
   } catch (err) {
     throw (new Error("폼 구조 가져오기 실패").code = "FormStructureLoadError");
-  }
-}
-
-function extractFormIdFromURL(url) {
-  if (!url || typeof url !== "string") {
-    console.error("유효하지 않은 URL:", url);
-    return null;
-  }
-
-  try {
-    // URL 객체로 파싱
-    const parsed = new URL(url);
-    console.log("파싱된 URL:", parsed.toString());
-
-    // pathname 예: "/forms/d/1DPy4uKgSYTF6dfMhN1NqDi-nBIfvEi6Y_gI_RcHFNh4/edit"
-    const pathSegments = parsed.pathname.split("/");
-    console.log("pathSegments:", pathSegments);
-
-    // ['','forms','d','<FORM_ID>','edit']
-    const dIndex = pathSegments.indexOf("d");
-    if (dIndex !== -1 && pathSegments.length > dIndex + 1) {
-      const formId = pathSegments[dIndex + 1];
-      console.log("추출된 폼 ID:", formId);
-      return formId;
-    }
-
-    console.error("URL에서 폼 ID를 찾을 수 없습니다:", url);
-    return null;
-  } catch (e) {
-    console.error("URL 파싱 실패:", e.message);
-    return null;
   }
 }
 

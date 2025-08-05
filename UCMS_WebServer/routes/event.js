@@ -6,7 +6,7 @@ const holiday = require("../extern_apis/holidays");
 router.get("/", async (req, res, next) => {
   const authority = req.session.authority;
   const query = `SELECT id, title, start, end, color, ismultiple from events
-  where authority < ? AND author_kakao_id != 0 ORDER BY start`;
+  where authority < ? AND author_kakao_id != 0 ORDER BY start DESC`;
 
   try {
     const [events] = await db.query(query, [authority]);

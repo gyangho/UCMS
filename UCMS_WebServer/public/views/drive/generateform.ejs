@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UCMS</title>
+  <%-include('../header.ejs')%>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: #f9fafb;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 20px auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      color: #111827;
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      color: #6b7280;
+      font-size: 16px;
+    }
+
+    .form-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f9fafb;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 15px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.2s ease;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: #10b981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #059669;
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #4b5563;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    /* 로딩 상태 스타일 */
+    .btn-loading {
+      position: relative;
+      pointer-events: none;
+    }
+
+    .btn-loading::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 20px;
+      height: 20px;
+      margin: -10px 0 0 -10px;
+      border: 2px solid transparent;
+      border-top: 2px solid white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .template-list {
+      margin-top: 15px;
+    }
+
+    .template-item {
+      padding: 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      background: white;
+    }
+
+    .template-title {
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 5px;
+    }
+
+    .template-url {
+      color: #6b7280;
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    /* 모달 스타일 */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+      background-color: white;
+      margin: 10% auto;
+      padding: 30px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      position: relative;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .close {
+      color: #aaa;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .close:hover {
+      color: #000;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .alert {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .alert-success {
+      background: #f0fdf4;
+      color: #047857;
+      border: 1px solid #bbf7d0;
+    }
+
+    .alert-error {
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Google 폼 생성</h1>
+    <p>템플릿을 선택하여 새로운 Google 폼을 생성하거나 새로운 템플릿을 추가하세요.</p>
+  </div>
+
+  <!-- 폼 생성 섹션 -->
+  <div class="form-section">
+    <div class="section-title">폼 생성</div>
+
+    <div class="form-group">
+      <label for="template-select">폼 템플릿 선택</label>
+      <select id="template-select" class="form-control">
+        <option value="">템플릿을 선택하세요</option>
+        <% templates.forEach(template => { %>
+        <option value="<%= template.id %>"><%= template.title %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="user-email">편집자 이메일 주소</label>
+      <input type="email" id="user-email" class="form-control" placeholder="example@gmail.com">
+    </div>
+
+    <button id="create-form-btn" class="btn btn-primary">폼 생성</button>
+  </div>
+
+  <!-- 템플릿 추가 섹션 -->
+  <div class="form-section">
+    <div class="section-title">템플릿 관리</div>
+
+    <button id="add-template-btn" class="btn btn-secondary">양식 추가</button>
+
+    <div class="template-list">
+      <% templates.forEach(template => { %>
+      <div class="template-item">
+        <div class="template-title"><%= template.title %></div>
+        <div class="template-url"><%= template.form_url %></div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <!-- 알림 메시지 -->
+  <div id="alert-container"></div>
+</div>
+
+<!-- 템플릿 추가 모달 -->
+<div id="template-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">새 템플릿 추가</h3>
+      <span class="close">&times;</span>
+    </div>
+
+    <form id="template-form">
+      <div class="form-group">
+        <label for="template-title">템플릿 이름</label>
+        <input type="text" id="template-title" class="form-control" placeholder="템플릿 이름을 입력하세요" required>
+      </div>
+
+      <div class="form-group">
+        <label for="template-url">Google 폼 URL</label>
+        <input type="url" id="template-url" class="form-control" placeholder="https://forms.google.com/..." required>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancel-btn">닫기</button>
+        <button type="submit" class="btn btn-primary">추가</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // 모달 관련 요소들
+  const modal = document.getElementById('template-modal');
+  const addTemplateBtn = document.getElementById('add-template-btn');
+  const closeBtn = document.querySelector('.close');
+  const cancelBtn = document.getElementById('cancel-btn');
+  const templateForm = document.getElementById('template-form');
+
+  // 폼 생성 관련 요소들
+  const templateSelect = document.getElementById('template-select');
+  const userEmail = document.getElementById('user-email');
+  const createFormBtn = document.getElementById('create-form-btn');
+
+  // 모달 열기
+  addTemplateBtn.onclick = function() {
+    modal.style.display = 'block';
+  }
+
+  // 모달 닫기
+  function closeModal() {
+    modal.style.display = 'none';
+    templateForm.reset();
+  }
+
+  closeBtn.onclick = closeModal;
+  cancelBtn.onclick = closeModal;
+
+  // 모달 외부 클릭 시 닫기
+  window.onclick = function(event) {
+    if (event.target == modal) {
+      closeModal();
+    }
+  }
+
+  // 알림 메시지 표시 함수
+  function showAlert(message, type = 'success') {
+    const alertContainer = document.getElementById('alert-container');
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type}`;
+    alert.textContent = message;
+
+    alertContainer.appendChild(alert);
+
+    // 5초 후 자동 제거
+    setTimeout(() => {
+      alert.remove();
+    }, 5000);
+  }
+
+  // 템플릿 추가 폼 제출
+  templateForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const title = document.getElementById('template-title').value;
+    const formUrl = document.getElementById('template-url').value;
+
+    // 로딩 상태 시작
+    const submitBtn = templateForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = '추가 중...';
+    submitBtn.classList.add('btn-loading');
+    submitBtn.disabled = true;
+
+    try {
+      const response = await fetch('/drive/add-template', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: title,
+          form_url: formUrl
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showAlert(data.message, 'success');
+        closeModal();
+        // 페이지 새로고침하여 새로운 템플릿 표시
+        setTimeout(() => {
+          location.reload();
+        }, 1000);
+      } else {
+        showAlert(data.error, 'error');
+      }
+    } catch (error) {
+      console.error('템플릿 추가 실패:', error);
+      showAlert('템플릿 추가 중 오류가 발생했습니다.', 'error');
+    } finally {
+      // 로딩 상태 종료
+      submitBtn.textContent = originalText;
+      submitBtn.classList.remove('btn-loading');
+      submitBtn.disabled = false;
+    }
+  });
+
+  // 폼 생성 버튼 클릭
+  createFormBtn.addEventListener('click', async function() {
+    const templateId = templateSelect.value;
+    const email = userEmail.value;
+
+    if (!templateId) {
+      showAlert('템플릿을 선택해주세요.', 'error');
+      return;
+    }
+
+    if (!email) {
+      showAlert('이메일 주소를 입력해주세요.', 'error');
+      return;
+    }
+
+    // 로딩 상태 시작
+    const originalText = createFormBtn.textContent;
+    createFormBtn.textContent = '폼 생성 중...';
+    createFormBtn.classList.add('btn-loading');
+    createFormBtn.disabled = true;
+
+    try {
+      const response = await fetch('/drive/create-form', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          template_id: templateId,
+          user_email: email
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showAlert(data.message, 'success');
+        // 생성된 폼 URL이 있다면 표시
+        if (data.form_url) {
+          showAlert(`생성된 폼 URL: ${data.form_url}`, 'success');
+        }
+      } else {
+        showAlert(data.error, 'error');
+      }
+    } catch (error) {
+      console.error('폼 생성 실패:', error);
+      showAlert('폼 생성 중 오류가 발생했습니다.', 'error');
+    } finally {
+      // 로딩 상태 종료
+      createFormBtn.textContent = originalText;
+      createFormBtn.classList.remove('btn-loading');
+      createFormBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+
+</html>
