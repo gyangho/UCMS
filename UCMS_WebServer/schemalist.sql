@@ -2,7 +2,7 @@ CREATE TABLE Members (
   student_id VARCHAR(20) PRIMARY KEY,
   name VARCHAR(50) NOT NULL,
   major VARCHAR(20) NOT NULL,
-  phone VARCHAR(20) NOT NULL,
+  phone VARCHAR(20) NOT NULL UNIQUE,
   gender ENUM('남자', '여자') NOT NULL,
   generation INT NOT NULL,
   authority ENUM('일반','부원','임원진','부회장','회장','admin') NOT NULL DEFAULT '일반'
@@ -12,17 +12,15 @@ CREATE TABLE Members (
 CREATE TABLE `Users` (
   `kakao_id` BIGINT UNSIGNED NOT NULL COMMENT '카카오 사용자 고유 ID',
   `name` VARCHAR(50) NOT NULL COMMENT '사용자 이름',
-  `email` VARCHAR(100) NOT NULL COMMENT '이메일 주소',
+  `email` VARCHAR(100) NOT NULL UNIQUE COMMENT '이메일 주소',
   `profile_image` VARCHAR(255) DEFAULT NULL COMMENT '프로필 이미지 URL',
   `thumbnail_image` VARCHAR(255) DEFAULT NULL COMMENT '썸네일 이미지 URL',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '레코드 생성 시각',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '레코드 수정 시각',
-  `phone` VARCHAR(20) NOT NULL,
+  `phone` VARCHAR(20) NOT NULL UNIQUE,
   `gender` ENUM('남자', '여자') NOT NULL,
-
-  PRIMARY KEY (`kakao_id`),
-  UNIQUE KEY `uq_users_email` (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  PRIMARY KEY (`kakao_id`)
+);
 
 CREATE TABLE `purchases` (
   `id` INT NOT NULL AUTO_INCREMENT,
@@ -36,9 +34,7 @@ CREATE TABLE `purchases` (
   `total_price` DECIMAL(10,2) NOT NULL,
   `purchase_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_unicode_ci;
+)
 
 CREATE TABLE events (
   id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -59,27 +55,6 @@ CREATE TABLE events (
   recruit_end DATETIME
 );
 
-ALTER TABLE events
-  ADD COLUMN color CHAR(10) NOT NULL
-    DEFAULT '#43ff7bff'
-    COMMENT '일정 색상 (HEX 코드)';
-
-ALTER TABLE events
-  ADD COLUMN ismultiple BOOLEAN NOT NULL
-    DEFAULT false;
-
-ALTER TABLE events
-  ADD COLUMN authority ENUM('일반','부원','임원진','부회장','회장','admin') NOT NULL DEFAULT '일반';
-
-ALTER TABLE events
-CHANGE COLUMN start_time start DATETIME NOT NULL COMMENT '시작 시각',
-CHANGE COLUMN end_time end DATETIME NOT NULL COMMENT '종료 시각';
-
-ALTER TABLE events
-ADD COLUMN isRecruiting BOOLEAN DEFAULT false,
-ADD COLUMN recruit_start DATETIME,
-ADD COLUMN recruit_end DATETIME;
-
 CREATE TABLE event_participants
 (
   id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -87,62 +62,55 @@ CREATE TABLE event_participants
   kakao_id BIGINT UNSIGNED NOT NULL COMMENT 'users.kakao_id 참조',
   UNIQUE KEY uk_event_user (event_id, kakao_id),
   FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  FOREIGN KEY (kakao_id) REFERENCES users(kakao_id) ON DELETE RESTRICT ON UPDATE CASCADE
+  FOREIGN KEY (kakao_id) REFERENCES users(kakao_id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE formlist
 (
   id VARCHAR(255) NOT NULL PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
-  form_type ENUM('신규모집','활동결과','기타') NOT NULL
+  form_type ENUM('신규모집','활동결과','기타') NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 INSERT INTO members (student_id,name,major,phone,gender,generation,authority)
  VALUES("20192854","이경호","소프트웨어학부","010-6406-1150","남자",3,6);
 
 CREATE TABLE form_responses (
-  id            INT AUTO_INCREMENT PRIMARY KEY,
-  response_id   VARCHAR(100) NOT NULL UNIQUE,
+  response_id   VARCHAR(100) NOT NULL,
   form_id       VARCHAR(100) NOT NULL,
   question_id   VARCHAR(100) NOT NULL,
   answer        TEXT,
-  synced_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  synced_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (response_id, form_id, question_id),
+  FOREIGN KEY (form_id) REFERENCES formlist(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE form_questions
 (
+  idx INT AUTO_INCREMENT UNIQUE KEY,
   form_id VARCHAR(100) NOT NULL,
   question_id VARCHAR(100) NOT NULL,
   question VARCHAR(255) NOT NULL,
+  synced_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (form_id, question_id),
   FOREIGN KEY (form_id) REFERENCES formlist(id) ON DELETE CASCADE ON UPDATE CASCADE
-  synced_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-)
-
-CREATE TABLE form_questions
-(
-  form_id VARCHAR(100) NOT NULL,
-  question_id VARCHAR(100) NOT NULL,
-  question VARCHAR(255) NOT NULL,
-  PRIMARY KEY (form_id, question_id),
-  FOREIGN KEY (form_id) REFERENCES formlist(id) ON DELETE CASCADE ON UPDATE CASCADE
-  synced_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 )
 
 CREATE TABLE recruiting_members
 (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  form_id VARCHAR(100) NOT NULL,
   response_id VARCHAR(100) NOT NULL UNIQUE,
   student_id VARCHAR(20),
   name VARCHAR(50),
   major VARCHAR(100),
   phone VARCHAR(20),
   gender ENUM('남자', '여자'),
-  synced_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  synced_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  rating ENUM('대기','불합격','느별','느괜','느좋','합격') NOT NULL DEFAULT '대기'
+  FOREIGN KEY (form_id) REFERENCES formlist(id) ON DELETE CASCADE ON UPDATE CASCADE;
 );
-
-ALTER TABLE recruiting_members
-ADD COLUMN rating ENUM('대기','불합격','느별','느괜','느좋','합격') NOT NULL DEFAULT '대기';
 
 -- 평가 노트 저장 테이블
 CREATE TABLE evaluation_notes (
@@ -154,9 +122,59 @@ CREATE TABLE evaluation_notes (
 );
 
 CREATE TABLE form_templates (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id INT AUTO_INCREMENT UNIQUE KEY,
   title VARCHAR(255) NOT NULL,
-  form_url VARCHAR(500) NOT NULL,
+  form_url VARCHAR(500) NOT NULL PRIMARY KEY,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 면접 계획 관련 테이블들
+
+-- 면접 계획 메인 테이블
+CREATE TABLE interview_plans (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  form_id VARCHAR(100) NOT NULL,
+  title VARCHAR(255) NOT NULL COMMENT '면접 계획 제목',
+  status ENUM('draft', 'active', 'completed', 'cancelled') NOT NULL DEFAULT 'draft' COMMENT '면접 계획 상태',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_by VARCHAR(20) NOT NULL COMMENT '면접 계획 생성자 (members.name 참조)',
+  updated_by VARCHAR(20) NOT NULL COMMENT '면접 계획 수정자 (members.name 참조)' DEFAULT created_by,
+  FOREIGN KEY (form_id) REFERENCES formlist(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- 면접 날짜 테이블
+CREATE TABLE interview_dates (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  plan_id INT NOT NULL COMMENT 'interview_plans.id 참조',
+  interview_date VARCHAR(20) NOT NULL COMMENT '면접 날짜 (MM/DD(요일) 형식)',
+  question_id VARCHAR(100) NOT NULL COMMENT '해당 날짜의 질문 ID',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (plan_id) REFERENCES interview_plans(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  UNIQUE KEY uk_plan_date (plan_id, interview_date)
+);
+
+-- 면접관 테이블
+CREATE TABLE interview_interviewers (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  plan_id INT NOT NULL COMMENT 'interview_plans.id 참조',
+  interviewer_id VARCHAR(20) NOT NULL COMMENT '면접관 ID (members.student_id 참조)',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (plan_id) REFERENCES interview_plans(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (interviewer_id) REFERENCES members(student_id) ON DELETE CASCADE ON UPDATE CASCADE,
+  UNIQUE KEY uk_plan_interviewer (plan_id, interviewer_id)
+);  
+
+-- 면접관 시간대 테이블
+CREATE TABLE interviewer_time_slots (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  plan_id INT NOT NULL COMMENT 'interview_plans.id 참조',
+  interviewer_id VARCHAR(20) NOT NULL COMMENT '면접관 ID (members.student_id 참조)',
+  interview_date VARCHAR(20) NOT NULL COMMENT '면접 날짜 (MM/DD(요일) 형식)',
+  time_slot VARCHAR(20) NOT NULL COMMENT '시간대 (09:00~10:00, 10:00~11:00 등)',
+  is_available BOOLEAN NOT NULL DEFAULT true COMMENT '해당 시간대 참여 가능 여부',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (plan_id) REFERENCES interview_plans(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (interviewer_id) REFERENCES members(student_id) ON DELETE CASCADE ON UPDATE CASCADE,
+  UNIQUE KEY uk_interviewer_date_time (plan_id, interviewer_id, interview_date, time_slot)
 );

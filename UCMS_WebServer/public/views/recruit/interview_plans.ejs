@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>면접 계획 관리</title>
+    <%- include('../header') %>
+    <link rel="stylesheet" href="/styles/style.css" />
+    <style>
+      body {
+        margin: 0;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 30px auto;
+        padding: 20px;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+      }
+
+      .title {
+        font-size: 2rem;
+        color: #333;
+        margin: 0;
+      }
+
+      .btn {
+        padding: 12px 24px;
+        font-size: 1rem;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+      }
+
+      .btn-primary {
+        background: #667eea;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #5a6fd8;
+      }
+
+      .plans-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 20px;
+      }
+
+      .plan-card {
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 20px;
+        transition: all 0.3s ease;
+      }
+
+      .plan-card:hover {
+        border-color: #667eea;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .plan-title {
+        font-size: 1.3rem;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      .plan-info {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+      }
+
+      .plan-status {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        margin-bottom: 15px;
+      }
+
+      .status-draft {
+        background: #f8f9fa;
+        color: #6c757d;
+      }
+
+      .status-active {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .status-completed {
+        background: #cce5ff;
+        color: #004085;
+      }
+
+      .status-cancelled {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .plan-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+      }
+
+      .btn-small {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+      }
+
+      .btn-secondary {
+        background: #6c757d;
+        color: white;
+      }
+
+      .btn-secondary:hover {
+        background: #5a6268;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+      }
+
+      .empty-state h3 {
+        margin-bottom: 10px;
+        color: #333;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1 class="title">면접 계획 관리</h1>
+        <a href="/recruit/interview/plan" class="btn btn-primary"
+          >새 면접 계획 생성</a
+        >
+      </div>
+
+      <div id="plansContainer">
+        <div class="empty-state">
+          <h3>면접 계획을 불러오는 중...</h3>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      async function loadInterviewPlans() {
+        try {
+          const response = await fetch("/api/interview/plans");
+          const data = await response.json();
+          console.log(data);
+
+          if (data.success) {
+            displayPlans(data.plans);
+          } else {
+            throw new Error(data.error);
+          }
+        } catch (error) {
+          console.error("면접 계획 로드 실패:", error);
+          document.getElementById("plansContainer").innerHTML = `
+        <div class="empty-state">
+          <h3>면접 계획을 불러올 수 없습니다.</h3>
+          <p>${error}</p>
+        </div>
+      `;
+        }
+      }
+
+      function displayPlans(plans) {
+        const container = document.getElementById("plansContainer");
+
+        if (plans.length === 0) {
+          container.innerHTML = `
+        <div class="empty-state">
+          <h3>아직 면접 계획이 없습니다.</h3>
+          <p>새로운 면접 계획을 생성해보세요.</p>
+        </div>
+      `;
+          return;
+        }
+
+        const plansHtml = plans
+          .map(
+            (plan) => `
+      <div class="plan-card">
+        <div class="plan-title">${plan.title}</div>
+                 <div class="plan-info">
+           <div style="cursor: pointer; text-decoration: underline;" onclick="window.open('https://docs.google.com/forms/d/${
+             plan.form_id
+           }/edit', '_blank')">폼: ${plan.form_id}</div>
+           <div>최종 수정일: ${new Date(plan.updated_at).toLocaleDateString(
+             "ko-KR"
+           )}</div>
+           <div>최초 생성자: ${plan.created_by}</div>
+           <div>최종 수정자: ${plan.updated_by}</div>
+         </div>
+        <div class="plan-status status-${plan.status}">
+          ${getStatusText(plan.status)}
+        </div>
+        <div class="plan-actions">
+          <button class="btn btn-small btn-secondary" onclick="viewPlan(${
+            plan.id
+          })">
+            상세보기
+          </button>
+          <button class="btn btn-small btn-primary" onclick="editPlan(${
+            plan.id
+          })">
+            편집
+          </button>
+        </div>
+      </div>
+    `
+          )
+          .join("");
+
+        container.innerHTML = `
+      <div class="plans-grid">
+        ${plansHtml}
+      </div>
+    `;
+      }
+
+      function getStatusText(status) {
+        const statusMap = {
+          draft: "초안",
+          active: "진행중",
+          completed: "완료",
+          cancelled: "취소됨",
+        };
+        return statusMap[status] || status;
+      }
+
+      function viewPlan(planId) {
+        window.location.href = `/recruit/interview/plans/${planId}`;
+      }
+
+      function editPlan(planId) {
+        window.location.href = `/recruit/interview/plan/selectform?planId=${planId}`;
+      }
+
+      // 페이지 로드 시 면접 계획 로드
+      document.addEventListener("DOMContentLoaded", loadInterviewPlans);
+    </script>
+  </body>
+</html>

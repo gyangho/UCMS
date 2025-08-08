@@ -37,6 +37,9 @@ router.post("/add-template", async (req, res, next) => {
     const insertSql = `
       INSERT INTO form_templates (title, form_url, created_at) 
       VALUES (?, ?, NOW())
+      ON DUPLICATE KEY UPDATE 
+        title = VALUES(title),
+        form_url = VALUES(form_url)
     `;
 
     await db.execute(insertSql, [title, form_url]);
@@ -97,6 +100,16 @@ router.post("/create-form", async (req, res, next) => {
         type: "user",
         emailAddress: user_email,
       },
+    });
+
+    await drive.permissions.create({
+      fileId: newFormId,
+      requestBody: {
+        role: "writer",
+        type: "user",
+        emailAddress: "ucms-google-api@ucms-466410.iam.gserviceaccount.com",
+      },
+      sendNotificationEmail: false,
     });
 
     console.log(
