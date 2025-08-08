@@ -2,7 +2,9 @@
 // ujujikik7uu
 // 2025.07.08 장지수
 
-require("dotenv-expand").expand(require("dotenv").config({ path: "../keys/.env" }));
+require("dotenv-expand").expand(
+  require("dotenv").config({ path: "../keys/.env" })
+);
 
 const express = require("express");
 const session = require("express-session");
@@ -11,7 +13,7 @@ const bodyParser = require("body-parser");
 const path = require("path");
 const { ensureOAuthTokens } = require("./extern_apis/googleapis");
 
-const db = require("./db");
+const db = require("./models"); // MVC 구조에 맞게 모델 디렉토리 사용
 const defaultRouter = require("./routes/router");
 const apiRouter = require("./routes/api");
 const authRouter = require("./routes/auth");
@@ -32,10 +34,13 @@ const sessionStore = new mySQLSessionStore(
   },
   db
 );
+
 // 0. 개발자도구 무시
 app.use(ignoreChromeDevTools);
+
 // 1. 로그 찍기 - 모든 요청 로깅
 app.use(logger);
+
 /* 2. body-parser (json, form 데이터 파싱) */
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());

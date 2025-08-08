@@ -203,7 +203,7 @@
         }
 
         const responseId = this.getAttribute('data-response-id');
-        const detailUrl = `/recruit/detail/${responseId}`;
+        const detailUrl = `/recruit/detail?responseId=${responseId}&formId=${sessionStorage.getItem('currentFormID')}`;
         window.open(detailUrl, '_blank');
       });
     });

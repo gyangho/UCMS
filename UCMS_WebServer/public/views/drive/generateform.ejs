@@ -261,6 +261,10 @@
 
 <body>
 <div class="container">
+
+  <!-- 알림 메시지 -->
+  <div id="alert-container"></div>
+
   <div class="header">
     <h1>Google 폼 생성</h1>
     <p>템플릿을 선택하여 새로운 Google 폼을 생성하거나 새로운 템플릿을 추가하세요.</p>
@@ -303,9 +307,6 @@
       <% }) %>
     </div>
   </div>
-
-  <!-- 알림 메시지 -->
-  <div id="alert-container"></div>
 </div>
 
 <!-- 템플릿 추가 모달 -->
@@ -381,7 +382,7 @@
     // 5초 후 자동 제거
     setTimeout(() => {
       alert.remove();
-    }, 5000);
+    }, 10000);
   }
 
   // 템플릿 추가 폼 제출
