@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>면접관 추가 - 면접 타임테이블 생성</title>
+  <link rel="stylesheet" href="/styles/style.css">
+  <style>
+    body {
+      margin: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 30px auto;
+      padding: 20px;
+    }
+
+    .title {
+      font-size: 2rem;
+      color: #333;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .search-container {
+      margin-bottom: 30px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 25px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.3s ease;
+    }
+
+    .search-input:focus {
+      border-color: #667eea;
+    }
+
+    .members-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .member-card {
+      background: white;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 15px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .member-card:hover {
+      border-color: #667eea;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .member-card.selected {
+      border-color: #667eea;
+      background: #f8f9ff;
+    }
+
+    .member-avatar {
+      width: 40px;
+      height: 40px;
+      background: #667eea;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+
+    .member-avatar img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .member-info {
+      flex: 1;
+    }
+
+    .member-name {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 5px;
+    }
+
+    .member-authority {
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    .selected-interviewers {
+      background: #f8f9ff;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+
+    .selected-interviewers h3 {
+      margin-bottom: 15px;
+      color: #333;
+    }
+
+    .selected-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .selected-tag {
+      background: #667eea;
+      color: white;
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .remove-btn {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 0;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-container {
+      text-align: center;
+    }
+
+    .btn {
+      padding: 12px 30px;
+      font-size: 1.1rem;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 0 10px;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5a6fd8;
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .no-results {
+      text-align: center;
+      color: #666;
+      padding: 40px;
+      font-style: italic;
+    }
+  </style>
+</head>
+
+<body>
+<%- include('../header') %>
+
+<div class="container">
+  <h1 class="title">면접관 추가</h1>
+
+  <div class="search-container">
+    <input type="text" class="search-input" id="searchInput" placeholder="면접관 이름을 검색하세요..." oninput="filterMembers()">
+  </div>
+
+  <div class="selected-interviewers" id="selectedinterviewers" style="display: none;">
+    <h3>선택된 면접관</h3>
+    <div class="selected-list" id="selectedList"></div>
+  </div>
+
+  <div class="members-grid" id="membersGrid">
+    <% members.forEach(function(member) { %>
+    <div class="member-card" id="<%= member.student_id %>" onclick="toggleMember('<%= member.student_id %>', '<%= member.name %>', '<%= member.authority %>')" data-name="<%= member.name.toLowerCase() %>">
+      <div class="member-avatar"><img src="<%= member.thumbnail_image %>" alt="프로필 이미지"></div>
+      <div class="member-info">
+        <div class="member-name">
+          <%= member.name %>
+        </div>
+        <div class="member-authority">
+          <%= member.authority %>
+        </div>
+      </div>
+    </div>
+    <% }); %>
+  </div>
+
+  <div class="no-results" id="noResults" style="display: none;">
+    검색 결과가 없습니다.
+  </div>
+
+  <div class="btn-container">
+    <button class="btn btn-secondary" onclick="goBack()">뒤로 가기</button>
+    <button class="btn btn-primary" id="nextBtn" onclick="proceedToNext()" disabled>다음 단계</button>
+  </div>
+</div>
+
+<script>
+  let selectedMembers = [];
+  let plannedInterviewers = '<%- JSON.stringify(interviewers) %>';
+  plannedInterviewers = JSON.parse(plannedInterviewers);
+  console.log(plannedInterviewers);
+
+  plannedInterviewers.forEach(interviewer => {
+    toggleMember(interviewer, members.find(member => member.student_id === interviewer).name, members.find(member => member.student_id === interviewer).authority);
+  });
+
+  function filterMembers() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const memberCards = document.querySelectorAll('.member-card');
+    let visibleCount = 0;
+
+    memberCards.forEach(card => {
+      const memberName = card.getAttribute('data-name');
+      if (memberName.includes(searchTerm)) {
+        card.style.display = 'flex';
+        visibleCount++;
+      } else {
+        card.style.display = 'none';
+      }
+    });
+
+    document.getElementById('noResults').style.display = visibleCount === 0 ? 'block' : 'none';
+  }
+
+  function toggleMember(id, name, authority) {
+    const memberId = id; // student_id는 문자열이므로 parseInt 제거
+    const index = selectedMembers.findIndex(m => m.id === memberId);
+
+    if (index === -1) {
+      // 추가
+      selectedMembers.push({
+        id: memberId,
+        name,
+        authority
+      });
+      event.currentTarget.classList.add('selected');
+    } else {
+      // 제거
+      selectedMembers.splice(index, 1);
+      event.currentTarget.classList.remove('selected');
+    }
+
+    updateSelectedDisplay();
+    updateNextButton();
+  }
+
+  function updateSelectedDisplay() {
+    const container = document.getElementById('selectedinterviewers');
+    const list = document.getElementById('selectedList');
+
+    if (selectedMembers.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'block';
+    list.innerHTML = '';
+
+    selectedMembers.forEach(member => {
+      const tag = document.createElement('div');
+      tag.className = 'selected-tag';
+      tag.innerHTML = `
+                    ${member.name} (${member.authority})
+                    <button class="remove-btn" onclick="removeMember('${member.id}')">×</button>
+                `;
+      list.appendChild(tag);
+    });
+  }
+
+  function removeMember(id) {
+    selectedMembers = selectedMembers.filter(m => m.id !== id);
+
+    // 카드에서 선택 상태 제거
+    document.querySelectorAll('.member-card').forEach(card => {
+      if (card.onclick.toString().includes(`'${id}'`)) {
+        card.classList.remove('selected');
+      }
+    });
+
+    updateSelectedDisplay();
+    updateNextButton();
+  }
+
+  function updateNextButton() {
+    const nextBtn = document.getElementById('nextBtn');
+    nextBtn.disabled = selectedMembers.length === 0;
+  }
+
+  async function proceedToNext() {
+    if (selectedMembers.length === 0) {
+      alert('면접관을 최소 한 명 이상 선택해주세요.');
+      return;
+    }
+
+    try {
+      // URL에서 planId를 가져오기 위해 이전 페이지의 응답을 확인
+      const urlParams = new URLSearchParams(window.location.search);
+      const planId = urlParams.get('planId');
+      const formId = urlParams.get('formId');
+
+      if (!planId || !formId) {
+        alert('면접 계획 정보를 찾을 수 없습니다. 다시 시작해주세요.');
+        window.location.href = '/recruit/interview/plan/selectform?planId=' + planId;
+        return;
+      }
+      console.log(selectedMembers.map(m => m.id));
+      const response = await fetch('/recruit/interview/plan/interviewer/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          interviewers: selectedMembers.map(m => m.id),
+          planId: planId
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // 다음 페이지로 planId와 formId를 전달
+        window.location.href = data.redirect + `?planId=${planId}&formId=${formId}`;
+      } else {
+        alert('오류가 발생했습니다: ' + data.error);
+      }
+    } catch (error) {
+      console.error('다음 단계 진행 실패:', error);
+      alert('다음 단계로 진행할 수 없습니다.');
+    }
+  }
+
+  function goBack() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const planId = urlParams.get('planId');
+    window.location.href = '/recruit/interview/plan/selectform' + (planId ? `?planId=${planId}` : '');
+  }
+</script>
+</body>
+
+</html>

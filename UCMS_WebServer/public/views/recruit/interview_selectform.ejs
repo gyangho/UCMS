@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>폼 선택 - 면접 타임테이블 생성</title>
+    <%- include('../header') %>
+    <link rel="stylesheet" href="/styles/style.css" />
+    <style>
+      body {
+        margin: 0;
+      }
+
+      .container {
+        max-width: 1000px;
+        margin: 30px auto;
+        padding: 20px;
+      }
+
+      .title {
+        font-size: 2rem;
+        color: #333;
+        margin-bottom: 30px;
+        text-align: center;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+
+      .form-card {
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .form-card:hover {
+        border-color: #667eea;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .form-card.selected {
+        border-color: #667eea;
+        background: #f8f9ff;
+      }
+
+      .form-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      .form-url {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 10px;
+        word-break: break-all;
+      }
+
+      .form-date {
+        color: #999;
+        font-size: 0.8rem;
+      }
+
+      .interview-dates {
+        margin-top: 20px;
+        padding: 20px;
+        background: #f8f9ff;
+        border-radius: 10px;
+        border: 1px solid #e0e0e0;
+      }
+
+      .interview-dates h3 {
+        margin-bottom: 15px;
+        color: #333;
+      }
+
+      .date-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .date-tag {
+        background: #667eea;
+        color: white;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+      }
+
+      .btn-container {
+        text-align: center;
+        margin-top: 30px;
+      }
+
+      .btn {
+        padding: 12px 30px;
+        font-size: 1.1rem;
+        border: none;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin: 0 10px;
+      }
+
+      .btn-primary {
+        background: #667eea;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #5a6fd8;
+      }
+
+      .btn-secondary {
+        background: #6c757d;
+        color: white;
+      }
+
+      .btn-secondary:hover {
+        background: #5a6268;
+      }
+
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        margin: 20px 0;
+      }
+
+      .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1 class="title">응답 폼 선택</h1>
+
+      <div class="form-grid">
+        <% forms.forEach(function(form) { %>
+        <div
+          class="form-card"
+          onclick="selectForm('<%= form.id %>')"
+          id="<%= form.id %>"
+        >
+          <div class="form-title"><%= form.title %></div>
+          <div class="form-date">
+            생성일: <%= new Date(form.created_at).toLocaleDateString('ko-KR') %>
+          </div>
+        </div>
+        <% }); %>
+      </div>
+
+      <div class="interview-dates" id="interviewDates" style="display: none">
+        <h3>면접 일정</h3>
+        <div class="date-list" id="dateList"></div>
+      </div>
+
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>면접 일정을 분석하고 있습니다...</p>
+      </div>
+
+      <div class="btn-container">
+        <button class="btn btn-secondary" onclick="goBack()">뒤로 가기</button>
+        <button
+          class="btn btn-primary"
+          id="nextBtn"
+          onclick="proceedToNext()"
+          disabled
+        >
+          다음 단계
+        </button>
+      </div>
+    </div>
+
+    <script>
+      let selectedFormId = "<%= plan_form_id %>";
+      let interviewDates = [];
+
+      if (selectedFormId) {
+        document.querySelectorAll(".form-card").forEach((card) => {
+          if (card.id == selectedFormId) {
+            card.classList.add("selected");
+          }
+          // 면접 날짜 분석 시작
+          analyzeInterviewDates(selectedFormId);
+        });
+      }
+
+      function selectForm(formId) {
+        // 모든 카드에서 선택 상태 제거
+        document.querySelectorAll(".form-card").forEach((card) => {
+          card.classList.remove("selected");
+        });
+
+        // 선택된 카드에 선택 상태 추가
+        event.currentTarget.classList.add("selected");
+
+        selectedFormId = formId;
+
+        analyzeInterviewDates(formId);
+      }
+
+      async function analyzeInterviewDates(formId) {
+        document.getElementById("loading").style.display = "block";
+        document.getElementById("interviewDates").style.display = "none";
+
+        try {
+          const response = await fetch(`/api/forms/${formId}/questions`);
+          const data = await response.json();
+          if (data.success) {
+            // 면접 가능 시간 질문들 찾기
+            const interviewQuestions = data.questions.filter((q) =>
+              q.question.replace(/\s+/g, "").includes("면접가능시간")
+            );
+            console.log(interviewQuestions);
+
+            // 날짜 추출 (MM/DD(요일) 형식)
+            const dates = [];
+            interviewQuestions.forEach((q) => {
+              // 공백 제거
+              const trimmedQuestion = q.question.replace(/\s+/g, "");
+
+              // 날짜 패턴 매칭 (단일/이중 자릿수 모두 지원)
+              const dateMatches = trimmedQuestion.match(
+                /(\d{1,2}\/\d{1,2}\([월화수목금토일]\))/g
+              );
+              if (dateMatches) {
+                // 각 날짜를 표준 형식으로 변환
+                const formattedDates = dateMatches.map((dateStr) => {
+                  // M/D(요일) 형식을 MM/DD(요일) 형식으로 변환
+                  return dateStr.replace(
+                    /(\d{1,2})\/(\d{1,2})(\([월화수목금토일]\))/g,
+                    (match, month, day, weekday) => {
+                      const formattedMonth = month.padStart(2, "0");
+                      const formattedDay = day.padStart(2, "0");
+                      return `${formattedMonth}/${formattedDay}${weekday}`;
+                    }
+                  );
+                });
+                dates.push(...formattedDates);
+              }
+            });
+
+            interviewDates = [...new Set(dates)]; // 중복 제거
+            displayInterviewDates();
+          }
+        } catch (error) {
+          console.error("면접 날짜 분석 실패:", error);
+          alert("면접 날짜를 분석할 수 없습니다.");
+        } finally {
+          document.getElementById("loading").style.display = "none";
+        }
+      }
+
+      function displayInterviewDates() {
+        const dateList = document.getElementById("dateList");
+        dateList.innerHTML = "";
+
+        interviewDates.forEach((date) => {
+          const dateTag = document.createElement("div");
+          dateTag.className = "date-tag";
+          dateTag.textContent = date;
+          dateList.appendChild(dateTag);
+        });
+
+        document.getElementById("interviewDates").style.display = "block";
+        document.getElementById("nextBtn").disabled = false;
+      }
+
+      async function proceedToNext() {
+        if (!selectedFormId || interviewDates.length === 0) {
+          alert("폼과 면접 날짜를 선택해주세요.");
+          return;
+        }
+
+        try {
+          const response = await fetch("/recruit/interview/plan/selectform", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              planId: window.location.search.split("planId=")[1],
+              formId: selectedFormId,
+              interviewDates: JSON.stringify(interviewDates),
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            // planId와 formId를 URL 파라미터로 전달
+            window.location.href =
+              data.redirect + `?planId=${data.planId}&formId=${data.formId}`;
+          } else {
+            alert("오류가 발생했습니다: " + data.error);
+          }
+        } catch (error) {
+          console.error("다음 단계 진행 실패:", error);
+          alert("다음 단계로 진행할 수 없습니다.");
+        }
+      }
+
+      function goBack() {
+        window.location.href = "/recruit/interview/plan";
+      }
+    </script>
+  </body>
+</html>
