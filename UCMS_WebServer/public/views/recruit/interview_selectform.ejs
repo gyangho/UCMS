@@ -2,8 +2,11 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>폼 선택 - 면접 타임테이블 생성</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>UCMS-폼 선택 - 면접 타임테이블 생성</title>
     <%- include('../header') %>
     <link rel="stylesheet" href="/styles/style.css" />
     <style>
@@ -79,6 +82,7 @@
       }
 
       .interview-dates h3 {
+        margin-top: 0;
         margin-bottom: 15px;
         color: #333;
       }
@@ -160,6 +164,38 @@
           transform: rotate(360deg);
         }
       }
+
+      .title-input-section {
+        margin-top: 20px;
+        padding: 20px;
+        background: #f8f9ff;
+        border-radius: 10px;
+        border: 1px solid #e0e0e0;
+      }
+
+      .title-input-section h3 {
+        margin-bottom: 15px;
+        color: #333;
+      }
+
+      .input-group {
+        margin-bottom: 15px;
+      }
+
+      .title-input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+        box-sizing: border-box;
+      }
+
+      .title-input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
     </style>
   </head>
 
@@ -176,13 +212,35 @@
         >
           <div class="form-title"><%= form.title %></div>
           <div class="form-date">
-            생성일: <%= new Date(form.created_at).toLocaleDateString('ko-KR') %>
+            생성일: <%= new
+            Date(form.created_at).toLocaleDateString('ko-KR') %>
           </div>
         </div>
         <% }); %>
       </div>
 
-      <div class="interview-dates" id="interviewDates" style="display: none">
+      <div
+        class="title-input-section"
+        id="titleInputSection"
+        style="display: none"
+      >
+        <h3>면접 타임테이블 제목</h3>
+        <div class="input-group">
+          <input
+            type="text"
+            id="titleInput"
+            placeholder="면접 타임테이블 제목을 입력하세요"
+            class="title-input"
+            value="<%= selected_plan_title %>"
+          />
+        </div>
+      </div>
+
+      <div
+        class="interview-dates"
+        id="interviewDates"
+        style="display: none"
+      >
         <h3>면접 일정</h3>
         <div class="date-list" id="dateList"></div>
       </div>
@@ -193,7 +251,9 @@
       </div>
 
       <div class="btn-container">
-        <button class="btn btn-secondary" onclick="goBack()">뒤로 가기</button>
+        <button class="btn btn-secondary" onclick="goBack()">
+          뒤로 가기
+        </button>
         <button
           class="btn btn-primary"
           id="nextBtn"
@@ -206,8 +266,10 @@
     </div>
 
     <script>
-      let selectedFormId = "<%= plan_form_id %>";
+      let selectedFormId = "<%= selected_plan_form_id %>";
       let interviewDates = [];
+      let questionIds = [];
+      let titleInput = "";
 
       if (selectedFormId) {
         document.querySelectorAll(".form-card").forEach((card) => {
@@ -235,20 +297,24 @@
 
       async function analyzeInterviewDates(formId) {
         document.getElementById("loading").style.display = "block";
-        document.getElementById("interviewDates").style.display = "none";
+        document.getElementById("interviewDates").style.display =
+          "none";
 
         try {
-          const response = await fetch(`/api/forms/${formId}/questions`);
+          const response = await fetch(
+            `/api/forms/${formId}/questions`
+          );
           const data = await response.json();
-          if (data.success) {
+          console.log(data);
+          if (data.questions.length > 0) {
             // 면접 가능 시간 질문들 찾기
             const interviewQuestions = data.questions.filter((q) =>
               q.question.replace(/\s+/g, "").includes("면접가능시간")
             );
-            console.log(interviewQuestions);
 
             // 날짜 추출 (MM/DD(요일) 형식)
-            const dates = [];
+            interviewDates = [];
+            questionIds = [];
             interviewQuestions.forEach((q) => {
               // 공백 제거
               const trimmedQuestion = q.question.replace(/\s+/g, "");
@@ -270,11 +336,12 @@
                     }
                   );
                 });
-                dates.push(...formattedDates);
+                interviewDates.push(...formattedDates);
+                questionIds.push(q.question_id);
               }
             });
-
-            interviewDates = [...new Set(dates)]; // 중복 제거
+            console.log(interviewDates);
+            console.log(questionIds);
             displayInterviewDates();
           }
         } catch (error) {
@@ -296,7 +363,10 @@
           dateList.appendChild(dateTag);
         });
 
-        document.getElementById("interviewDates").style.display = "block";
+        document.getElementById("interviewDates").style.display =
+          "block";
+        document.getElementById("titleInputSection").style.display =
+          "block";
         document.getElementById("nextBtn").disabled = false;
       }
 
@@ -306,25 +376,38 @@
           return;
         }
 
+        titleInput = document
+          .getElementById("titleInput")
+          .value.trim();
+        if (!titleInput) {
+          alert("면접 타임테이블 제목을 입력해주세요.");
+          return;
+        }
+
         try {
-          const response = await fetch("/recruit/interview/plan/selectform", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              planId: window.location.search.split("planId=")[1],
-              formId: selectedFormId,
-              interviewDates: JSON.stringify(interviewDates),
-            }),
-          });
+          const response = await fetch(
+            "/recruit/interview/plan/selectform",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                planId: window.location.search.split("planId=")[1],
+                formId: selectedFormId,
+                interviewDates: JSON.stringify(interviewDates),
+                questionIds: JSON.stringify(questionIds),
+                title: titleInput,
+              }),
+            }
+          );
 
           const data = await response.json();
 
           if (data.success) {
             // planId와 formId를 URL 파라미터로 전달
             window.location.href =
-              data.redirect + `?planId=${data.planId}&formId=${data.formId}`;
+              data.redirect + `?planId=${data.planId}`;
           } else {
             alert("오류가 발생했습니다: " + data.error);
           }

@@ -13,15 +13,15 @@ const bodyParser = require("body-parser");
 const path = require("path");
 const { ensureOAuthTokens } = require("./extern_apis/googleapis");
 
-const db = require("./models"); // MVC 구조에 맞게 모델 디렉토리 사용
-const defaultRouter = require("./routes/router");
-const apiRouter = require("./routes/api");
-const authRouter = require("./routes/auth");
-const memberRouter = require("./routes/member");
-const botRouter = require("./routes/bot");
-const recruitRouter = require("./routes/recruit");
-const eventRouter = require("./routes/event");
-const driveRouter = require("./routes/drive");
+const db = require("./models/db"); // MVC 구조에 맞게 모델 디렉토리 사용
+const defaultRouter = require("./routes/defaultRouter");
+const apiRouter = require("./routes/apiRoutes/apiRouter");
+const authRouter = require("./routes/authRouter");
+const memberRouter = require("./routes/memberRouter");
+const botRouter = require("./routes/botRouter");
+const recruitRouter = require("./routes/recruitRouter");
+const eventRouter = require("./routes/eventRouter");
+const driveRouter = require("./routes/driveRouter");
 
 const app = express();
 const DOMAIN = process.env.DOMAIN;
@@ -111,6 +111,9 @@ async function requireValidSession(req, res, next) {
     if (!sessionInfo || sessionInfo.authority < 3) {
       if (
         req.path === "/" ||
+        req.path.startsWith("/images") ||
+        req.path.startsWith("/css") ||
+        req.path.startsWith("/js") ||
         req.path.startsWith("/auth") ||
         req.path.startsWith("/bot")
       ) {
@@ -118,7 +121,7 @@ async function requireValidSession(req, res, next) {
       }
       const newErr = new Error("권한이 없습니다.");
       newErr.code = "CannotFindSessionID";
-      throw newErr;
+      return next(newErr);
     } else if (req.path === "/") {
       return res.redirect("/dashboard");
     } else {

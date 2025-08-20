@@ -1,9 +1,13 @@
 <!DOCTYPE html>
 <html lang="ko">
+  <link rel="icon" href="/images/favicon.png" />
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>UCMS</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>UCMS-로그인</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap"
       rel="stylesheet"
@@ -26,11 +30,27 @@
         display: flex; /* ① flex 컨테이너로 만든다 */
         justify-content: center; /* ② 가로 축(메인 축) 가운데 정렬 */
         width: 312px;
-        height: 300px;
+        max-height: 300px;
         font-size: clamp(10px, 25vw, 80px);
         font-weight: bold; /* 두껍게 */
         margin-bottom: 20px;
         letter-spacing: 2px; /* 자간 조절 */
+      }
+
+      .logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      .logo-text {
+        font-size: 30px;
+        font-weight: bold;
+        margin-bottom: 50px;
+      }
+
+      .logo-text span {
+        color: #ff80a0;
       }
 
       .login-btn img {
@@ -64,7 +84,17 @@
   </head>
 
   <body>
-    <div class="logo">UCMS</div>
+    <div class="logo-text">🍞빵실빵실 로그인🍞</div>
+    <div class="logo">
+      <img src="/images/logo.png" alt="로고" />
+    </div>
+    <br />
+    <br />
+    <br />
+    <br />
+    <br />
+    <br />
+    <br />
     <div class="login-btn">
       <a href="/auth/authorize">
         <img

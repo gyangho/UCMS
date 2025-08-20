@@ -3,9 +3,8 @@ const axios = require("axios");
 
 async function getHolidays(year) {
   const url = `https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo?serviceKey=${process.env.HOLIDAY_API_KEY}&solYear=${year}&numOfRows=100`;
-  const params = {};
   try {
-    const response = await axios.get(url, { params });
+    const response = await axios.get(url);
     return response.data.response.body.items.item;
   } catch (error) {
     console.error(

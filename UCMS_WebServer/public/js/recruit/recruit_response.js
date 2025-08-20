@@ -5,11 +5,15 @@ document.addEventListener("DOMContentLoaded", () => {
   {
     const searchToggles = document.querySelectorAll(".search-toggle");
     const searchInputs = document.querySelectorAll(".search-input");
-    const searchClosesBtns = document.querySelectorAll(".close-search");
-    const allsearchContaiers = document.querySelectorAll(".search-input-container");
+    const searchClosesBtns =
+      document.querySelectorAll(".close-search");
+    const allsearchContaiers = document.querySelectorAll(
+      ".search-input-container"
+    );
 
     if (currentSearch != "" && currentColumn != "") {
-      const currentSearchContainer = document.getElementById(currentColumn);
+      const currentSearchContainer =
+        document.getElementById(currentColumn);
       currentSearchContainer.children[0].value = currentSearch;
       currentSearchContainer.classList.remove("hidden");
     }
@@ -20,7 +24,9 @@ document.addEventListener("DOMContentLoaded", () => {
           inputContainer.classList.add("hidden");
         });
         const th = this.closest("th");
-        const inputContainer = th.querySelector(".search-input-container");
+        const inputContainer = th.querySelector(
+          ".search-input-container"
+        );
         const input = inputContainer.querySelector(".search-input");
         inputContainer.classList.remove("hidden"); // 보여주기
         input.focus(); // 포커스를 설정
@@ -28,16 +34,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     searchInputs.forEach((input) => {
-      input.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") {
-          const th = this.closest("th");
-          const column = th.getAttribute("data-column");
-          const value = this.value.trim();
-          if (value) {
-            window.location.href = `/recruit/responses?page=1&limit=10&column=${column}&search=${encodeURIComponent(
-              value
-            )}`;
-          }
+      input.addEventListener("change", function (e) {
+        const th = this.closest("th");
+        const column = th.getAttribute("data-column");
+        const value = this.value.trim();
+        if (value) {
+          window.location.href = `/recruit/responses?page=1&limit=10&column=${column}&search=${encodeURIComponent(
+            value
+          )}`;
         }
       });
     });

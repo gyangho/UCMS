@@ -2,8 +2,11 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>면접 계획 관리</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>UCMS-면접 계획 관리</title>
     <%- include('../header') %>
     <link rel="stylesheet" href="/styles/style.css" />
     <style>
@@ -205,10 +208,10 @@
                  <div class="plan-info">
            <div style="cursor: pointer; text-decoration: underline;" onclick="window.open('https://docs.google.com/forms/d/${
              plan.form_id
-           }/edit', '_blank')">폼: ${plan.form_id}</div>
-           <div>최종 수정일: ${new Date(plan.updated_at).toLocaleDateString(
-             "ko-KR"
-           )}</div>
+           }/edit', '_blank')">폼: ${plan.form_title}</div>
+           <div>최종 수정일: ${new Date(
+             plan.updated_at
+           ).toLocaleDateString("ko-KR")}</div>
            <div>최초 생성자: ${plan.created_by}</div>
            <div>최종 수정자: ${plan.updated_by}</div>
          </div>
@@ -258,7 +261,10 @@
       }
 
       // 페이지 로드 시 면접 계획 로드
-      document.addEventListener("DOMContentLoaded", loadInterviewPlans);
+      document.addEventListener(
+        "DOMContentLoaded",
+        loadInterviewPlans
+      );
     </script>
   </body>
 </html>

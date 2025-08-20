@@ -1,173 +1,253 @@
 <!DOCTYPE html>
 <html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+    <title>UCMS-부원 목록</title>
+    <link rel="stylesheet" href="../styles/membermanage.css" />
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UCMS</title>
-  <link rel="stylesheet" href="../styles/membermanage.css" />
-</head>
+  <body>
+    <%- include('header') %>
+    <!--검색 내역 유지를 위한 변수 저장-->
+    <script>
+      const currentSearch = "<%= search %>";
+      const currentColumn = "<%= column %>";
+    </script>
 
-<body>
-<%- include('header') %>
-<!--검색 내역 유지를 위한 변수 저장-->
-<script>
-  const currentSearch = "<%= search || '' %>";
-  const currentColumn = "<%= column || '' %>";
-</script>
+    <div class="container">
+      <div class="header">
+        <h1>동아리 부원 명단</h1>
+        <button id="add-toggle" class="btn btn-primary">➕</button>
+      </div>
 
-<div class="container">
-  <div class="header">
-    <h1>동아리 부원 명단</h1>
-    <button id="add-toggle" class="btn btn-primary">➕</button>
-  </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <!--부원 목록 테이블 헤더-->
+              <th data-column="student_id">
+                학번 <span class="search-toggle">🔍</span>
+                <!--검색 창-->
+                <div
+                  class="search-input-container hidden"
+                  id="student_id"
+                >
+                  <input
+                    type="text"
+                    class="search-input"
+                    placeholder="학번"
+                    size="8"
+                    maxlength="8"
+                  />
+                  <button class="icon-btn close-search">❌</button>
+                </div>
+              </th>
+              <th data-column="name">
+                이름 <span class="search-toggle">🔍</span>
+                <!--검색 창-->
+                <div class="search-input-container hidden" id="name">
+                  <input
+                    type="text"
+                    class="search-input"
+                    placeholder="이름"
+                    size="5"
+                    maxlength="8"
+                  />
+                  <button class="icon-btn close-search">❌</button>
+                </div>
+              </th>
+              <th data-column="major">
+                학과(부) <span class="search-toggle">🔍</span>
+                <!--검색 창-->
+                <div class="search-input-container hidden" id="major">
+                  <input
+                    type="text"
+                    class="search-input"
+                    placeholder="학과(부)"
+                    size="8"
+                    maxlength="10"
+                  />
+                  <button class="icon-btn close-search">❌</button>
+                </div>
+              </th>
+              <th data-column="phone">
+                전화번호 <span class="search-toggle">🔍</span>
+                <!--검색 창-->
+                <div class="search-input-container hidden" id="phone">
+                  <input
+                    type="text"
+                    class="search-input"
+                    placeholder="전화번호"
+                    size="10"
+                    maxlength="16"
+                  />
+                  <button class="icon-btn close-search">❌</button>
+                </div>
+              </th>
+              <th data-column="gender">
+                성별 <span class="search-toggle">🔍</span>
+                <!--검색 창-->
+                <div
+                  class="search-input-container hidden"
+                  id="gender"
+                >
+                  <selelct class="search-input">
+                    <option value="" disabled selected>성별</option>
+                    <option value="남자">남자</option>
+                    <option value="여자">여자</option>
+                  </selelct>
+                  <button class="icon-btn close-search">❌</button>
+                </div>
+              </th>
+              <th data-column="generation">
+                기수 <span class="search-toggle">🔍</span>
+                <!--검색 창-->
+                <div
+                  class="search-input-container hidden"
+                  id="generation"
+                >
+                  <input
+                    type="text"
+                    class="search-input"
+                    placeholder="기수"
+                    size="0"
+                    maxlength="3"
+                  />
+                  <button class="icon-btn close-search">❌</button>
+                </div>
+              </th>
+              <th data-column="authority">
+                권한 <span class="search-toggle">🔍</span>
+                <!--검색 창-->
+                <div
+                  class="search-input-container hidden"
+                  id="authority"
+                >
+                  <selelct class="search-input">
+                    <option value="" disabled selected>권한</option>
+                    <option value="일반">일반</option>
+                    <option value="부원">부원</option>
+                    <option value="회장">회장</option>
+                    <option value="부회장">부회장</option>
+                    <option value="임원진">임원진</option>
+                  </selelct>
+                  <button class="icon-btn close-search">❌</button>
+                </div>
+              </th>
+              <th></th>
+            </tr>
+          </thead>
+          <!--부원 목록 데이터-->
+          <tbody>
+            <% members.forEach(m=> { %>
+            <tr>
+              <td style="white-space: nowrap"><%= m.student_id %></td>
+              <td style="white-space: nowrap"><%= m.name %></td>
+              <td><%= m.major %></td>
+              <td><%= m.phone %></td>
+              <td><%= m.gender %></td>
+              <td><%= m.generation %></td>
+              <td><%= m.authority %></td>
+              <td class="actions">
+                <button class="icon-btn edit">✏️</button>
+                <form
+                  method="POST"
+                  action="/api/member/delete/<%= m.student_id %>"
+                  style="display: inline"
+                >
+                  <button type="submit" class="icon-btn delete">
+                    ❌
+                  </button>
+                </form>
+              </td>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <!--페이지 분리-->
+      <div class="pagination">
+        <% for (let i=1; i <=totalPages; i++) { %>
+        <a
+          href="/member?page=<%= i %>&limit=<%= limit %>&column=<%= column %>&search=<%= search %>"
+          class="page-item <%= currentPage === i ? 'active' : '' %>"
+        >
+          <%= i %>
+        </a>
+        <% } %>
+      </div>
 
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <!--부원 목록 테이블 헤더-->
-          <th data-column="student_id">
-            학번 <span class="search-toggle">🔍</span>
-            <!--검색 창-->
-            <div class="search-input-container hidden" id="student_id">
-              <input type="text" class="search-input" placeholder="학번" size="8" maxlength="8" />
-              <button class="icon-btn close-search">❌</button>
+      <!--부원 추가 모달-->
+      <div id="add-form" class="modal hidden">
+        <div class="backdrop"></div>
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>부원 추가</h2>
+            <div class="excel-actions">
+              <button
+                id="download-template-modal"
+                class="btn btn-secondary"
+              >
+                양식 다운로드
+              </button>
+              <input
+                type="file"
+                id="excel-upload-modal"
+                class="hidden"
+                accept=".xlsx,.xls"
+              />
+              <button
+                id="upload-excel-btn-modal"
+                class="btn btn-secondary"
+              >
+                Excel파일 업로드
+              </button>
             </div>
-          </th>
-          <th data-column="name">
-            이름 <span class="search-toggle">🔍</span>
-            <!--검색 창-->
-            <div class="search-input-container hidden" id="name">
-              <input type="text" class="search-input" placeholder="이름" size="5" maxlength="8" />
-              <button class="icon-btn close-search">❌</button>
+          </div>
+          <form
+            method="POST"
+            action="/member/add"
+            id="add-members-form"
+          >
+            <div class="row header-row">
+              <div class="header-cell">학번</div>
+              <div class="header-cell">이름</div>
+              <div class="header-cell">학과(부)</div>
+              <div class="header-cell">전화번호</div>
+              <div class="header-cell">성별</div>
+              <div class="header-cell">기수</div>
+              <div class="header-cell delete-btn-header"></div>
             </div>
-          </th>
-          <th data-column="major">
-            학과(부) <span class="search-toggle">🔍</span>
-            <!--검색 창-->
-            <div class="search-input-container hidden" id="major">
-              <input type="text" class="search-input" placeholder="학과(부)" size="8" maxlength="10" />
-              <button class="icon-btn close-search">❌</button>
+            <div id="add-rows"></div>
+            <div class="modal-actions">
+              <button
+                type="button"
+                id="close-add-form"
+                class="btn btn-close"
+                aria-label="닫기"
+              >
+                닫기
+              </button>
+              <button
+                type="button"
+                id="add-row"
+                class="btn btn-secondary"
+              >
+                + 행 추가
+              </button>
+              <button type="submit" class="btn btn-primary">
+                저장
+              </button>
             </div>
-          </th>
-          <th data-column="phone">
-            전화번호 <span class="search-toggle">🔍</span>
-            <!--검색 창-->
-            <div class="search-input-container hidden" id="phone">
-              <input type="text" class="search-input" placeholder="전화번호" size="10" maxlength="16" />
-              <button class="icon-btn close-search">❌</button>
-            </div>
-          </th>
-          <th data-column="gender">
-            성별 <span class="search-toggle">🔍</span>
-            <!--검색 창-->
-            <div class="search-input-container hidden" id="gender">
-              <selelct class="search-input">
-                <option value="" disabled selected>성별</option>
-                <option value="남자">남자</option>
-                <option value="여자">여자</option>
-              </selelct>
-              <button class="icon-btn close-search">❌</button>
-            </div>
-          </th>
-          <th data-column="generation">
-            기수 <span class="search-toggle">🔍</span>
-            <!--검색 창-->
-            <div class="search-input-container hidden" id="generation">
-              <input type="text" class="search-input" placeholder="기수" size="0" maxlength="3" />
-              <button class="icon-btn close-search">❌</button>
-            </div>
-          </th>
-          <th data-column="authority">
-            권한 <span class="search-toggle">🔍</span>
-            <!--검색 창-->
-            <div class="search-input-container hidden" id="authority">
-              <selelct class="search-input">
-                <option value="" disabled selected>권한</option>
-                <option value="일반">일반</option>
-                <option value="부원">부원</option>
-                <option value="회장">회장</option>
-                <option value="부회장">부회장</option>
-                <option value="임원진">임원진</option>
-              </selelct>
-              <button class="icon-btn close-search">❌</button>
-            </div>
-          </th>
-          <th></th>
-        </tr>
-      </thead>
-      <!--부원 목록 데이터-->
-      <tbody>
-        <% members.forEach(m => { %>
-        <tr>
-          <td style="white-space: nowrap"><%= m.student_id %></td>
-          <td style="white-space: nowrap"><%= m.name %></td>
-          <td><%= m.major %></td>
-          <td><%= m.phone %></td>
-          <td><%= m.gender %></td>
-          <td><%= m.generation %></td>
-          <td><%= m.authority %></td>
-          <td class="actions">
-            <button class="icon-btn edit">✏️</button>
-            <form method="POST" action="/member/delete/<%= m.student_id %>" style="display: inline">
-              <button type="submit" class="icon-btn delete">❌</button>
-            </form>
-          </td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  </div>
-  <!--페이지 분리-->
-  <div class="pagination">
-    <% for (let i = 1; i <= totalPages; i++) { %>
-    <a href="/member?page=<%= i %>&limit=<%= limit %>&column=<%= column %>&search=<%= search %>" class="page-item <%= currentPage === i ? 'active' : '' %>"><%= i %></a>
-    <% } %>
-  </div>
-
-  <!--부원 추가 모달-->
-  <div id="add-form" class="modal hidden">
-    <div class="backdrop"></div>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>부원 추가</h2>
-        <div class="excel-actions">
-          <button id="download-template-modal" class="btn btn-secondary">
-            양식 다운로드
-          </button>
-          <input type="file" id="excel-upload-modal" class="hidden" accept=".xlsx,.xls" />
-          <button id="upload-excel-btn-modal" class="btn btn-secondary">
-            Excel파일 업로드
-          </button>
+          </form>
         </div>
       </div>
-      <form method="POST" action="/member/add" id="add-members-form">
-        <div class="row header-row">
-          <div class="header-cell">학번</div>
-          <div class="header-cell">이름</div>
-          <div class="header-cell">학과(부)</div>
-          <div class="header-cell">전화번호</div>
-          <div class="header-cell">성별</div>
-          <div class="header-cell">기수</div>
-          <div class="header-cell delete-btn-header"></div>
-        </div>
-        <div id="add-rows"></div>
-        <div class="modal-actions">
-          <button type="button" id="close-add-form" class="btn btn-close" aria-label="닫기">
-            닫기
-          </button>
-          <button type="button" id="add-row" class="btn btn-secondary">
-            + 행 추가
-          </button>
-          <button type="submit" class="btn btn-primary">저장</button>
-        </div>
-      </form>
     </div>
-  </div>
-</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="../js/membermanage.js"></script>
-</body>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="../js/membermanage.js"></script>
+  </body>
 </html>
