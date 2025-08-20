@@ -1,19 +1,31 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../db");
-const { getOAuthClients, extractFormIdFromURL } = require("../extern_apis/googleapis");
+const FormTemplate = require("../models/FormTemplate");
+const {
+  getOAuthClients,
+  extractFormIdFromURL,
+} = require("../extern_apis/googleapis");
 
+// 폼 생성 페이지 (루트 경로)
 router.get("/", async (req, res, next) => {
-  //   res.render("drive/index");
+  try {
+    // form_templates 테이블에서 모든 템플릿 가져오기
+    const templates = await FormTemplate.findAll();
+
+    res.render("drive/generateform", {
+      templates: templates || [],
+    });
+  } catch (err) {
+    console.error("폼 생성 페이지 로드 실패:", err);
+    res.status(500).send("페이지를 불러올 수 없습니다.");
+  }
 });
 
 // 폼 생성 페이지
 router.get("/generateform", async (req, res, next) => {
   try {
     // form_templates 테이블에서 모든 템플릿 가져오기
-    const [templates] = await db.execute(
-      "SELECT id, title, form_url FROM form_templates ORDER BY title"
-    );
+    const templates = await FormTemplate.findAll();
 
     res.render("drive/generateform", {
       templates: templates || [],
@@ -30,19 +42,13 @@ router.post("/add-template", async (req, res, next) => {
     const { title, form_url } = req.body;
 
     if (!title || !form_url) {
-      return res.status(400).json({ error: "제목과 폼 URL을 모두 입력해주세요." });
+      return res
+        .status(400)
+        .json({ error: "제목과 폼 URL을 모두 입력해주세요." });
     }
 
     // form_templates 테이블에 저장
-    const insertSql = `
-      INSERT INTO form_templates (title, form_url, created_at) 
-      VALUES (?, ?, NOW())
-      ON DUPLICATE KEY UPDATE 
-        title = VALUES(title),
-        form_url = VALUES(form_url)
-    `;
-
-    await db.execute(insertSql, [title, form_url]);
+    await FormTemplate.createOrUpdate({ title, form_url });
 
     console.log(`폼 템플릿 추가: title=${title}, form_url=${form_url}`);
     res.json({ success: true, message: "폼 템플릿이 추가되었습니다." });
@@ -59,25 +65,24 @@ router.post("/create-form", async (req, res, next) => {
     const { template_id, user_email } = req.body;
 
     if (!template_id || !user_email) {
-      return res.status(400).json({ error: "템플릿과 이메일을 모두 입력해주세요." });
+      return res
+        .status(400)
+        .json({ error: "템플릿과 이메일을 모두 입력해주세요." });
     }
 
     // 템플릿 정보 가져오기
-    const [templateInfo] = await db.execute(
-      "SELECT title, form_url FROM form_templates WHERE id = ?",
-      [template_id]
-    );
+    const template = await FormTemplate.findById(template_id);
 
-    if (templateInfo.length === 0) {
+    if (!template) {
       return res.status(404).json({ error: "템플릿을 찾을 수 없습니다." });
     }
-
-    const template = templateInfo[0];
 
     // 템플릿 폼에서 폼 ID 추출
     const templateFormId = extractFormIdFromURL(template.form_url);
     if (!templateFormId) {
-      return res.status(400).json({ error: "템플릿 폼 URL이 유효하지 않습니다." });
+      return res
+        .status(400)
+        .json({ error: "템플릿 폼 URL이 유효하지 않습니다." });
     }
 
     // 1. 템플릿 폼 복사

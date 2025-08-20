@@ -1,4 +1,4 @@
-const db = require("./index");
+const db = require("./db");
 
 class Purchase {
   static async findAll(page = 1, limit = 10) {
@@ -63,6 +63,14 @@ class Purchase {
   static async delete(id) {
     try {
       await db.execute("DELETE FROM purchases WHERE id = ?", [id]);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async deleteAll() {
+    try {
+      await db.execute("DELETE FROM purchases");
     } catch (error) {
       throw error;
     }

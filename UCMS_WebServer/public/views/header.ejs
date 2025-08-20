@@ -52,10 +52,14 @@
     color: #ffffff;
   }
 </style>
+<link rel="icon" href="/images/favicon.png" />
+
 <header>
   <img src="/images/small-logo.png" alt="로고" class="small-logo" />
   <div class="header-right">
-    <div class="user-info" id="userInfo">로그인 정보 불러오는 중...</div>
+    <div class="user-info" id="userInfo">
+      로그인 정보 불러오는 중...
+    </div>
     <a href="/auth/logout" class="logout-btn">로그아웃</a>
   </div>
 </header>
@@ -63,16 +67,16 @@
   const logo = document.querySelector(".small-logo");
   const userInfo = document.querySelector(".user-info");
 
-  logo.addEventListener("click", function() {
+  logo.addEventListener("click", function () {
     window.location.href = "/";
   });
 
-  userInfo.addEventListener("click", function() {
+  userInfo.addEventListener("click", function () {
     window.location.href = "/mypage";
   });
 
   // 로그인한 사용자 정보 불러오기 (예: /api/user 반환값 사용)
-  fetch("/api/user")
+  fetch("/api/user/getUserById")
     .then((res) => res.json())
     .then((user) => {
       document.getElementById("userInfo").innerHTML = `

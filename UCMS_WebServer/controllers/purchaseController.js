@@ -80,6 +80,16 @@ class PurchaseController {
     }
   }
 
+  static async deleteAll(req, res) {
+    try {
+      await Purchase.deleteAll();
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete all purchases error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
   static async renderRecords(req, res) {
     try {
       res.render("records");

@@ -4,7 +4,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const searchToggles = document.querySelectorAll(".search-toggle");
     const searchInputs = document.querySelectorAll(".search-input");
     const searchClosesBtns = document.querySelectorAll(".close-search");
-    const allsearchContaiers = document.querySelectorAll(".search-input-container");
+    const allsearchContaiers = document.querySelectorAll(
+      ".search-input-container"
+    );
 
     if (currentSearch != "" && currentColumn != "") {
       const currentSearchContainer = document.getElementById(currentColumn);
@@ -74,8 +76,12 @@ document.addEventListener("DOMContentLoaded", () => {
       tds[3].innerHTML = `<input class="edit-input" name="phone" value="${data.phone}" size=14 maxlength=14 />`;
       tds[4].innerHTML = `
         <select class="edit-select" name="gender">
-          <option value="남자"${data.gender === "남자" ? " selected" : ""}>남자</option>
-          <option value="여자"${data.gender === "여자" ? " selected" : ""}>여자</option>
+          <option value="남자"${
+            data.gender === "남자" ? " selected" : ""
+          }>남자</option>
+          <option value="여자"${
+            data.gender === "여자" ? " selected" : ""
+          }>여자</option>
         </select>
       `;
       tds[5].innerHTML = `<input class="edit-input" name="generation" value="${data.generation}" size=1 maxlength=3/>`;
@@ -115,13 +121,16 @@ document.addEventListener("DOMContentLoaded", () => {
         );
 
         try {
-          const res = await fetch(`/member/edit/${encodeURIComponent(id)}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: formData.toString(),
-          });
+          const res = await fetch(
+            `/api/member/edit/${encodeURIComponent(id)}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: formData.toString(),
+            }
+          );
           if (!res.ok) throw new Error("네트워크 오류");
           window.location.reload();
         } catch (err) {
@@ -164,26 +173,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const idx = rowCount++; // 이 행의 고유 인덱스
 
-      ["student_id", "name", "major", "phone", "gender", "generation", ,].forEach(
-        (field) => {
-          let input;
+      [
+        "student_id",
+        "name",
+        "major",
+        "phone",
+        "gender",
+        "generation",
+        ,
+      ].forEach((field) => {
+        let input;
 
-          if (field === "gender") {
-            input = document.createElement("select");
-            ["남자", "여자"].forEach((val) => {
-              const opt = document.createElement("option");
-              opt.value = val;
-              opt.textContent = val;
-              input.appendChild(opt);
-            });
-          } else {
-            input = document.createElement("input");
-            input.type = "text";
-          }
-          input.name = `members[${idx}][${field}]`;
-          row.appendChild(input);
+        if (field === "gender") {
+          input = document.createElement("select");
+          ["남자", "여자"].forEach((val) => {
+            const opt = document.createElement("option");
+            opt.value = val;
+            opt.textContent = val;
+            input.appendChild(opt);
+          });
+        } else {
+          input = document.createElement("input");
+          input.type = "text";
         }
-      );
+        input.name = `members[${idx}][${field}]`;
+        row.appendChild(input);
+      });
 
       // 삭제 버튼
       const deleteBtn = document.createElement("button");
@@ -201,9 +216,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     //엑셀 업로드
 
-    document.getElementById("upload-excel-btn-modal").addEventListener("click", () => {
-      excelUploadModal.click();
-    });
+    document
+      .getElementById("upload-excel-btn-modal")
+      .addEventListener("click", () => {
+        excelUploadModal.click();
+      });
     excelUploadModal.addEventListener("change", (e) => {
       const file = e.target.files[0];
       if (file) handleExcelUpload(file);
@@ -217,7 +234,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-        const headers = ["학번", "이름", "학과(부)", "전화번호", "성별", "기수"];
+        const headers = [
+          "학번",
+          "이름",
+          "학과(부)",
+          "전화번호",
+          "성별",
+          "기수",
+        ];
 
         if (
           !json[0] ||
@@ -233,7 +257,14 @@ document.addEventListener("DOMContentLoaded", () => {
           row.className = "row";
 
           const idx = rowCount++;
-          const fields = ["student_id", "name", "major", "phone", "gender", "generation"];
+          const fields = [
+            "student_id",
+            "name",
+            "major",
+            "phone",
+            "gender",
+            "generation",
+          ];
 
           fields.forEach((field, i) => {
             let input;

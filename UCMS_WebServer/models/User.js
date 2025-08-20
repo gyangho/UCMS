@@ -1,12 +1,9 @@
-const db = require("./index");
+const db = require("./db");
 
 class User {
-  static async findBySessionId(sessionId) {
+  static async findById(id) {
     try {
-      const [rows] = await db.execute(
-        "SELECT * FROM Users WHERE session_id = ?",
-        [sessionId]
-      );
+      const [rows] = await db.execute("SELECT * FROM Users WHERE id = ?", [id]);
       return rows[0];
     } catch (error) {
       throw error;
@@ -22,11 +19,29 @@ class User {
     }
   }
 
+  static async findByKakaoId(kakaoId) {
+    try {
+      const [rows] = await db.execute(
+        "SELECT * FROM Users WHERE kakao_id = ?",
+        [kakaoId]
+      );
+      return rows[0];
+    } catch (error) {
+      throw error;
+    }
+  }
+
   static async create(userData) {
     try {
       const [result] = await db.execute(
-        "INSERT INTO Users (name, email, authority, session_id) VALUES (?, ?, ?, ?)",
-        [userData.name, userData.email, userData.authority, userData.session_id]
+        "INSERT INTO Users (kakao_id, name, profile_image, thumbnail_image, chat_room_id) VALUES (?, ?, ?, ?, ?)",
+        [
+          userData.kakao_id,
+          userData.name,
+          userData.profile_image,
+          userData.thumbnail_image,
+          userData.chat_room_id,
+        ]
       );
       return result.insertId;
     } catch (error) {
@@ -34,23 +49,20 @@ class User {
     }
   }
 
-  static async updateSessionId(userId, sessionId) {
+  static async update(userId, name, profile_image, thumbnail_image) {
     try {
-      await db.execute("UPDATE Users SET session_id = ? WHERE id = ?", [
-        sessionId,
-        userId,
-      ]);
+      await db.execute(
+        "UPDATE Users SET name = ?, profile_image = ?, thumbnail_image = ? WHERE id = ?",
+        [name, profile_image, thumbnail_image, userId]
+      );
     } catch (error) {
       throw error;
     }
   }
 
-  static async deleteSessionId(sessionId) {
+  static async delete(userId) {
     try {
-      await db.execute(
-        "UPDATE Users SET session_id = NULL WHERE session_id = ?",
-        [sessionId]
-      );
+      await db.execute("DELETE FROM Users WHERE id = ?", [userId]);
     } catch (error) {
       throw error;
     }

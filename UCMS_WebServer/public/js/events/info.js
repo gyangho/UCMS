@@ -1,22 +1,25 @@
 export function initEventInfoModal() {
   const valueDiv = document.querySelector(".values").dataset;
   const participants = JSON.parse(valueDiv.participants);
-  const currentKakaoId = valueDiv.currentKakaoId;
+  const currentUserId = valueDiv.currentUserId;
   const sessionAuthority = valueDiv.sessionAuthority;
   const currentEvent = JSON.parse(valueDiv.currentEvent);
   const eventId = currentEvent.id;
 
   let isChanged = false;
 
-  const recruitCheckbox = document.querySelector('input[name="isrecruiting"]');
-  let recruitTimeDiv = "";
-  let recruitStartInput = "";
-  let recruitEndInput = "";
-  if (currentEvent.isRecruiting) {
-    recruitTimeDiv = document.getElementById("recruit-time");
-    recruitStartInput = recruitTimeDiv.querySelector('input[name="recruit_start"]');
-    recruitEndInput = recruitTimeDiv.querySelector('input[name="recruit_end"]');
-  }
+  const recruitCheckbox = document.querySelector(
+    'input[name="isrecruiting"]'
+  );
+
+  const recruitTimeDiv = document.getElementById("recruit-time");
+  const recruitStartInput = recruitTimeDiv.querySelector(
+    'input[name="recruit_start"]'
+  );
+  const recruitEndInput = recruitTimeDiv.querySelector(
+    'input[name="recruit_end"]'
+  );
+
   const participateButton = document.querySelector(".participate");
   const cancleButton = document.querySelector(".cancel");
   const editButton = document.querySelector(".edit");
@@ -31,8 +34,24 @@ export function initEventInfoModal() {
   const recruit_start = new Date(currentEvent.recruit_start);
   const recruit_end = new Date(currentEvent.recruit_end);
 
-  if (currentEvent.isRecruiting && recruit_start < today && recruit_end > today) {
-    if (!participants.some((p) => `${p.kakao_id}` === currentKakaoId)) {
+  if (currentEvent.isRecruiting) {
+    recruitTimeDiv.classList.remove("hidden");
+    recruitStartInput.required = true;
+    recruitEndInput.required = true;
+    recruitCheckbox.checked = true;
+  } else {
+    recruitTimeDiv.classList.add("hidden");
+    recruitStartInput.required = false;
+    recruitEndInput.required = false;
+    recruitCheckbox.checked = false;
+  }
+
+  if (
+    currentEvent.isRecruiting &&
+    recruit_start < today &&
+    recruit_end > today
+  ) {
+    if (!participants.some((p) => `${p.user_id}` === currentUserId)) {
       participateButton.classList.remove("hidden");
     } else {
       cancleButton.classList.remove("hidden");
@@ -40,20 +59,22 @@ export function initEventInfoModal() {
   }
 
   if (
-    currentEvent.authority < sessionAuthority ||
-    currentEvent.author_kakao_id === currentKakaoId
+    currentEvent.authority_num <= sessionAuthority ||
+    currentEvent.author_user_id === currentUserId
   ) {
     editButton.classList.remove("hidden");
   }
 
   // 닫기 버튼
-  document.querySelector(".close-modal").addEventListener("click", () => {
-    if (isChanged) window.location.reload();
-    else {
-      overlay.classList.add("hidden");
-      overlay.innerHTML = "";
-    }
-  });
+  document
+    .querySelector(".close-modal")
+    .addEventListener("click", () => {
+      if (isChanged) window.location.reload();
+      else {
+        overlay.classList.add("hidden");
+        overlay.innerHTML = "";
+      }
+    });
 
   recruitCheckbox.addEventListener("change", function (e) {
     if (e.target.checked) {
@@ -68,7 +89,10 @@ export function initEventInfoModal() {
   });
 
   participateButton.addEventListener("click", async function (e) {
-    const resp = await fetch(`/event/participate?id=${eventId}`);
+    const resp = await fetch(`/event/participate?id=${eventId}`, {
+      method: "POST",
+    });
+    console.log(resp.json());
     if (resp.ok) {
       cancleButton.classList.remove("hidden");
       participateButton.classList.add("hidden");
@@ -77,7 +101,10 @@ export function initEventInfoModal() {
   });
 
   cancleButton.addEventListener("click", async function (e) {
-    const resp = await fetch(`/event/cancel?id=${eventId}`);
+    const resp = await fetch(`/event/cancel?id=${eventId}`, {
+      method: "POST",
+    });
+    console.log(resp.json());
     if (resp.ok) {
       cancleButton.classList.add("hidden");
       participateButton.classList.remove("hidden");
@@ -86,7 +113,10 @@ export function initEventInfoModal() {
   });
 
   deleteButton.addEventListener("click", async function (e) {
-    const resp = await fetch(`/event/delete?id=${eventId}`);
+    const resp = await fetch(`/event/delete?id=${eventId}`, {
+      method: "DELETE",
+    });
+    console.log(resp.json());
     if (resp.ok) {
       window.location.reload();
     }
@@ -115,7 +145,9 @@ export function initEventInfoModal() {
     editButton.classList.remove("hidden");
 
     if (currentEvent.isRecruiting) {
-      if (!participants.some((p) => `${p.kakao_id}` === currentKakaoId)) {
+      if (
+        !participants.some((p) => `${p.kakao_id}` === currentKakaoId)
+      ) {
         participateButton.classList.remove("hidden");
       } else {
         cancleButton.classList.remove("hidden");

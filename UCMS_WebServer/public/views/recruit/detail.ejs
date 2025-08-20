@@ -2,9 +2,10 @@
 <html lang="ko">
 
 <head>
+  <link rel="icon" href="/images/favicon.png" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>응답 상세 정보</title>
+  <title>UCMS-응답상세정보</title>
   <style>
     * {
       margin: 0;
@@ -80,8 +81,8 @@
     }
 
     .info-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      display: flex;
+      flex-direction: column;
       gap: 10px;
     }
 
@@ -376,12 +377,13 @@
         }
 
         try {
-          const response = await fetch('/recruit/update-rating', {
+          const response = await fetch('/api/recruit/update-rating', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
+              form_id: '<%= memberInfo.form_id %>',
               response_id: responseId,
               rating: newRating
             })

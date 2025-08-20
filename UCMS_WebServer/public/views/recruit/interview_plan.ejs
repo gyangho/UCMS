@@ -1,138 +1,147 @@
 <!DOCTYPE html>
 <html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>UCMS-면접 타임테이블 생성 - UCMS</title>
+    <link rel="stylesheet" href="/styles/style.css" />
+    <%-include('../header.ejs')%>
+    <style>
+      body {
+        margin: 0;
+      }
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>면접 타임테이블 생성 - UCMS</title>
-  <link rel="stylesheet" href="/styles/style.css">
-  <%-include('../header.ejs')%>
-  <style>
-    body {
-      margin: 0;
-    }
+      .container {
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+        text-align: center;
+      }
 
-    .container {
-      max-width: 800px;
-      margin: 50px auto;
-      padding: 20px;
-      text-align: center;
-    }
+      .title {
+        font-size: 2.5rem;
+        color: #333;
+        margin-bottom: 30px;
+      }
 
-    .title {
-      font-size: 2.5rem;
-      color: #333;
-      margin-bottom: 30px;
-    }
+      .description {
+        font-size: 1.2rem;
+        color: #666;
+        margin-bottom: 40px;
+        line-height: 1.6;
+      }
 
-    .description {
-      font-size: 1.2rem;
-      color: #666;
-      margin-bottom: 40px;
-      line-height: 1.6;
-    }
+      .start-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 15px 40px;
+        font-size: 1.3rem;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      }
 
-    .start-btn {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      padding: 15px 40px;
-      font-size: 1.3rem;
-      border-radius: 50px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
+      .start-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+      }
 
-    .start-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-    }
+      .steps {
+        margin-top: 50px;
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+      }
 
-    .steps {
-      margin-top: 50px;
-      display: flex;
-      justify-content: space-around;
-      flex-wrap: wrap;
-    }
+      .step {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin: 10px;
+        flex: 1;
+        min-width: 200px;
+      }
 
-    .step {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      margin: 10px;
-      flex: 1;
-      min-width: 200px;
-    }
+      .step-number {
+        background: #667eea;
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 15px;
+        font-weight: bold;
+      }
 
-    .step-number {
-      background: #667eea;
-      color: white;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 15px;
-      font-weight: bold;
-    }
+      .step-title {
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #333;
+      }
 
-    .step-title {
-      font-weight: bold;
-      margin-bottom: 10px;
-      color: #333;
-    }
+      .step-desc {
+        color: #666;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
 
-    .step-desc {
-      color: #666;
-      font-size: 0.9rem;
-    }
-  </style>
-</head>
+  <body>
+    <div class="container">
+      <h1 class="title">면접 타임테이블 생성</h1>
+      <p class="description">
+        지원자들의 면접 가능 시간을 분석하여<br />
+        최적의 면접 일정을 자동으로 생성합니다.
+      </p>
 
-<body>
-<div class="container">
-  <h1 class="title">면접 타임테이블 생성</h1>
-  <p class="description">
-    지원자들의 면접 가능 시간을 분석하여<br>
-    최적의 면접 일정을 자동으로 생성합니다.
-  </p>
+      <button class="start-btn" onclick="startInterviewPlanning()">
+        면접 타임테이블 생성 시작
+      </button>
 
-  <button class="start-btn" onclick="startInterviewPlanning()">
-    면접 타임테이블 생성 시작
-  </button>
-
-  <div class="steps">
-    <div class="step">
-      <div class="step-number">1</div>
-      <div class="step-title">폼 선택</div>
-      <div class="step-desc">면접 지원 폼을 선택하고 면접 날짜를 확인합니다.</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-title">폼 선택</div>
+          <div class="step-desc">
+            면접 지원 폼을 선택하고 면접 날짜를 확인합니다.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-title">면접관 추가</div>
+          <div class="step-desc">
+            면접에 참여할 면접관들을 선택합니다.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-title">시간 설정</div>
+          <div class="step-desc">
+            면접관별로 참여 가능한 시간을 설정합니다.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-title">타임테이블 생성</div>
+          <div class="step-desc">
+            최적의 면접 일정을 자동으로 생성합니다.
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="step">
-      <div class="step-number">2</div>
-      <div class="step-title">면접관 추가</div>
-      <div class="step-desc">면접에 참여할 면접관들을 선택합니다.</div>
-    </div>
-    <div class="step">
-      <div class="step-number">3</div>
-      <div class="step-title">시간 설정</div>
-      <div class="step-desc">면접관별로 참여 가능한 시간을 설정합니다.</div>
-    </div>
-    <div class="step">
-      <div class="step-number">4</div>
-      <div class="step-title">타임테이블 생성</div>
-      <div class="step-desc">최적의 면접 일정을 자동으로 생성합니다.</div>
-    </div>
-  </div>
-</div>
 
-<script>
-  function startInterviewPlanning() {
-    window.location.href = '/recruit/interview/plan/selectform';
-  }
-</script>
-</body>
-
+    <script>
+      function startInterviewPlanning() {
+        window.location.href = "/recruit/interview/plan/selectform";
+      }
+    </script>
+  </body>
 </html>

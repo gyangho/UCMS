@@ -1,6 +1,18 @@
 const WebSocket = require("ws");
-require("dotenv-expand").expand(require("dotenv").config({ path: "../keys/.env" }));
-const db = require("./db");
+require("dotenv-expand").expand(
+  require("dotenv").config({ path: "../keys/.env" })
+);
+const mysql = require("mysql2/promise");
+
+const db = mysql.createPool({
+  host: "localhost",
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: "UCMS",
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
 
 // WebSocket 서버 생성 (로컬에서만 접속 허용)
 const wss = new WebSocket.Server({

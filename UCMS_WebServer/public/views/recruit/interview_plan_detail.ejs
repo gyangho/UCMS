@@ -1,483 +1,487 @@
 <!DOCTYPE html>
 <html lang="ko">
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>면접 계획 상세보기</title>
-  <%- include('../header') %>
-  <link rel="stylesheet" href="/styles/style.css">
-  <style>
-    body {
-      margin: 0;
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 30px auto;
-      padding: 20px;
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 30px;
-    }
-
-    .title {
-      font-size: 2rem;
-      color: #333;
-      margin: 0;
-    }
-
-    .btn {
-      padding: 12px 24px;
-      font-size: 1rem;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      text-decoration: none;
-      display: inline-block;
-    }
-
-    .btn-primary {
-      background: #667eea;
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: #5a6fd8;
-    }
-
-    .btn-secondary {
-      background: #6c757d;
-      color: white;
-    }
-
-    .btn-secondary:hover {
-      background: #5a6268;
-    }
-
-    .plan-info {
-      background: white;
-      border: 2px solid #e0e0e0;
-      border-radius: 12px;
-      padding: 25px;
-      margin-bottom: 30px;
-    }
-
-    .plan-title {
-      font-size: 1.8rem;
-      font-weight: bold;
-      color: #333;
-      margin-bottom: 15px;
-    }
-
-    .plan-meta {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
-      margin-bottom: 20px;
-    }
-
-    .meta-item {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .meta-label {
-      font-size: 0.9rem;
-      color: #666;
-      margin-bottom: 5px;
-    }
-
-    .meta-value {
-      font-weight: bold;
-      color: #333;
-    }
-
-    .plan-status {
-      display: inline-block;
-      padding: 6px 16px;
-      border-radius: 20px;
-      font-size: 0.9rem;
-      font-weight: bold;
-    }
-
-    .status-draft {
-      background: #f8f9fa;
-      color: #6c757d;
-    }
-
-    .status-active {
-      background: #d4edda;
-      color: #155724;
-    }
-
-    .status-completed {
-      background: #cce5ff;
-      color: #004085;
-    }
-
-    .status-cancelled {
-      background: #f8d7da;
-      color: #721c24;
-    }
-
-    .section {
-      background: white;
-      border: 2px solid #e0e0e0;
-      border-radius: 12px;
-      padding: 25px;
-      margin-bottom: 30px;
-    }
-
-    .section-title {
-      font-size: 1.4rem;
-      font-weight: bold;
-      color: #333;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .section-icon {
-      width: 24px;
-      height: 24px;
-      background: #667eea;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 0.8rem;
-      font-weight: bold;
-    }
-
-    .dates-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 15px;
-    }
-
-    .date-card {
-      background: #f8f9ff;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      padding: 15px;
-      text-align: center;
-    }
-
-    .date-text {
-      font-weight: bold;
-      color: #333;
-      font-size: 1.1rem;
-    }
-
-    .interviewers-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-      gap: 15px;
-    }
-
-    .interviewer-card {
-      background: #f8f9ff;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      padding: 15px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .interviewer-avatar {
-      width: 40px;
-      height: 40px;
-      background: #667eea;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: bold;
-      font-size: 1.1rem;
-    }
-
-    .interviewer-info h4 {
-      margin: 0 0 5px 0;
-      color: #333;
-    }
-
-    .interviewer-authority {
-      color: #666;
-      font-size: 0.9rem;
-    }
-
-    .time-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-    }
-
-    .time-table th,
-    .time-table td {
-      border: 1px solid #e0e0e0;
-      padding: 10px;
-      text-align: center;
-    }
-
-    .time-table th {
-      background: #f8f9fa;
-      font-weight: bold;
-      color: #333;
-    }
-
-    .time-available {
-      background: #d4edda;
-      color: #155724;
-      font-weight: bold;
-    }
-
-    .time-unavailable {
-      background: #f8d7da;
-      color: #721c24;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 40px;
-      color: #666;
-    }
-
-    .spinner {
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid #667eea;
-      border-radius: 50%;
-      width: 30px;
-      height: 30px;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 20px;
-    }
-
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>UCMS-면접 계획 상세보기</title>
+    <%- include('../header') %>
+    <link rel="stylesheet" href="/styles/style.css" />
+    <style>
+      body {
+        margin: 0;
       }
 
-      100% {
-        transform: rotate(360deg);
+      .container {
+        max-width: 1200px;
+        margin: 30px auto;
+        padding: 20px;
       }
-    }
 
-    .error {
-      text-align: center;
-      padding: 40px;
-      color: #721c24;
-      background: #f8d7da;
-      border-radius: 8px;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 40px;
-      color: #666;
-    }
-  </style>
-</head>
-
-<body>
-
-<div class="container">
-  <div class="header">
-    <h1 class="title">면접 계획 상세보기</h1>
-    <div>
-      <button class="btn btn-secondary" onclick="goBack()">목록으로</button>
-      <button class="btn btn-primary" onclick="editPlan()">편집</button>
-    </div>
-  </div>
-
-  <div id="planDetail">
-    <!-- 면접 계획 상세 정보가 여기에 표시됩니다 -->
-  </div>
-</div>
-
-<script>
-  const planId = window.location.pathname.split('/').pop();
-  const plan = <%- JSON.stringify(plan) %>;
-
-  function displayPlanDetail() {
-    const container = document.getElementById('planDetail');
-
-    container.innerHTML = `
-      <div class="plan-info">
-        <div class="plan-title">${plan.title}</div>
-        <div class="plan-meta">
-          <div class="meta-item">
-            <span class="meta-label">폼 ID</span>
-            <span class="meta-value" style="cursor: pointer; text-decoration: underline;" onclick="window.open('https://docs.google.com/forms/d/${plan.form_id}/edit', '_blank')">${plan.form_id}</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">폼 제목</span>
-            <span class="meta-value">${plan.form_title || '제목 없음'}</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">생성일</span>
-            <span class="meta-value">${new Date(plan.created_at).toLocaleDateString('ko-KR')}</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">상태</span>
-            <span class="meta-value">
-              <span class="plan-status status-${plan.status}">${getStatusText(plan.status)}</span>
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-title">
-          <div class="section-icon">📅</div>
-          면접 날짜
-        </div>
-        ${displayDates(plan.dates)}
-      </div>
-
-      <div class="section">
-        <div class="section-title">
-          <div class="section-icon">👥</div>
-          면접관 (${plan.interviewers.length}명)
-        </div>
-        ${displayInterviewers(plan.interviewers)}
-      </div>
-
-      <div class="section">
-        <div class="section-title">
-          <div class="section-icon">⏰</div>
-          면접관 시간대
-        </div>
-        ${displayTimeSlots(plan.timeSlots)}
-      </div>
-    `;
-  }
-
-  function displayDates(dates) {
-    if (!dates || dates.length === 0) {
-      return '<div class="empty-state">등록된 면접 날짜가 없습니다.</div>';
-    }
-
-    const datesHtml = dates.map(date => `
-      <div class="date-card">
-        <div class="date-text">${date.interview_date}</div>
-      </div>
-    `).join('');
-
-    return `<div class="dates-grid">${datesHtml}</div>`;
-  }
-
-  function displayInterviewers(interviewers) {
-    if (!interviewers || interviewers.length === 0) {
-      return '<div class="empty-state">등록된 면접관이 없습니다.</div>';
-    }
-
-    const interviewersHtml = interviewers.map(interviewer => `
-      <div class="interviewer-card">
-        <div class="interviewer-avatar">${interviewer.name.charAt(0)}</div>
-        <div class="interviewer-info">
-          <h4>${interviewer.name}</h4>
-          <div class="interviewer-authority">${interviewer.authority}</div>
-        </div>
-      </div>
-    `).join('');
-
-    return `<div class="interviewers-grid">${interviewersHtml}</div>`;
-  }
-
-  function displayTimeSlots(timeSlots) {
-    if (!timeSlots || timeSlots.length === 0) {
-      return '<div class="empty-state">등록된 시간대 정보가 없습니다.</div>';
-    }
-
-    // 면접관별로 그룹화
-    const groupedByInterviewer = {};
-    timeSlots.forEach(slot => {
-      if (!groupedByInterviewer[slot.interviewer_name]) {
-        groupedByInterviewer[slot.interviewer_name] = [];
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
       }
-      groupedByInterviewer[slot.interviewer_name].push(slot);
-    });
 
-    let timeSlotsHtml = '';
+      .title {
+        font-size: 2rem;
+        color: #333;
+        margin: 0;
+      }
 
-    Object.entries(groupedByInterviewer).forEach(([interviewerName, slots]) => {
-      // 날짜별로 그룹화
-      const groupedByDate = {};
-      slots.forEach(slot => {
-        if (!groupedByDate[slot.interview_date]) {
-          groupedByDate[slot.interview_date] = [];
+      .btn {
+        padding: 12px 24px;
+        font-size: 1rem;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+      }
+
+      .btn-primary {
+        background: #667eea;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #5a6fd8;
+      }
+
+      .btn-secondary {
+        background: #6c757d;
+        color: white;
+      }
+
+      .btn-secondary:hover {
+        background: #5a6268;
+      }
+
+      .plan-info {
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 30px;
+      }
+
+      .plan-title {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 15px;
+      }
+
+      .plan-meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+
+      .meta-item {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .meta-label {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 5px;
+      }
+
+      .meta-value {
+        font-weight: bold;
+        color: #333;
+      }
+
+      .plan-status {
+        display: inline-block;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: bold;
+      }
+
+      .status-draft {
+        background: #f8f9fa;
+        color: #6c757d;
+      }
+
+      .status-active {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .status-completed {
+        background: #cce5ff;
+        color: #004085;
+      }
+
+      .status-cancelled {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .section {
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 30px;
+      }
+
+      .section-title {
+        font-size: 1.4rem;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .section-icon {
+        width: 24px;
+        height: 24px;
+        background: #667eea;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.8rem;
+        font-weight: bold;
+      }
+
+      .dates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+      }
+
+      .date-card {
+        background: #f8f9ff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+      }
+
+      .date-text {
+        font-weight: bold;
+        color: #333;
+        font-size: 1.1rem;
+      }
+
+      .interviewers-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 15px;
+      }
+
+      .interviewer-card {
+        background: #f8f9ff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .interviewer-avatar {
+        width: 40px;
+        height: 40px;
+        background: #667eea;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.1rem;
+      }
+
+      .interviewer-info h4 {
+        margin: 0 0 5px 0;
+        color: #333;
+      }
+
+      .interviewer-authority {
+        color: #666;
+        font-size: 0.9rem;
+      }
+
+      .time-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+      }
+
+      .time-table th,
+      .time-table td {
+        border: 1px solid #e0e0e0;
+        padding: 10px;
+        text-align: center;
+      }
+
+      .time-table th {
+        background: #f8f9fa;
+        font-weight: bold;
+        color: #333;
+      }
+
+      .time-available {
+        background: #d4edda;
+        color: #155724;
+        font-weight: bold;
+      }
+
+      .time-unavailable {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+      }
+
+      .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
         }
-        groupedByDate[slot.interview_date].push(slot);
-      });
 
-      timeSlotsHtml += `
-        <div style="margin-bottom: 30px;">
-          <h4 style="margin-bottom: 15px; color: #333;">${interviewerName}</h4>
-      `;
+        100% {
+          transform: rotate(360deg);
+        }
+      }
 
-      Object.entries(groupedByDate).forEach(([date, dateSlots]) => {
-        timeSlotsHtml += `
-          <div style="margin-bottom: 20px;">
-            <h5 style="margin-bottom: 10px; color: #666;">${date}</h5>
-            <table class="time-table">
-              <thead>
-                <tr>
-                  <th>시간대</th>
-                  <th>참여 가능 여부</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${dateSlots.map(slot => `
-                  <tr>
-                    <td>${slot.time_slot}</td>
-                    <td class="${slot.is_available ? 'time-available' : 'time-unavailable'}">
-                      ${slot.is_available ? '가능' : '불가능'}
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
+      .error {
+        text-align: center;
+        padding: 40px;
+        color: #721c24;
+        background: #f8d7da;
+        border-radius: 8px;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1 class="title">면접 계획 상세보기</h1>
+        <div>
+          <button class="btn btn-secondary" onclick="goBack()">
+            목록으로
+          </button>
+          <button class="btn btn-primary" onclick="editPlan()">
+            편집
+          </button>
+        </div>
+      </div>
+
+      <div id="planDetail">
+        <!-- 면접 계획 상세 정보가 여기에 표시됩니다 -->
+      </div>
+    </div>
+
+    <script>
+      const planId = window.location.pathname.split('/').pop();
+      const plan = <%- JSON.stringify(plan) %>;
+
+      function displayPlanDetail() {
+        const container = document.getElementById('planDetail');
+
+        container.innerHTML = `
+          <div class="plan-info">
+            <div class="plan-title">${plan.title}</div>
+            <div class="plan-meta">
+              <div class="meta-item">
+                <span class="meta-label">폼 ID</span>
+                <span class="meta-value" style="cursor: pointer; text-decoration: underline;" onclick="window.open('https://docs.google.com/forms/d/${plan.form_id}/edit', '_blank')">${plan.form_id}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">폼 제목</span>
+                <span class="meta-value">${plan.form_title || '제목 없음'}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">생성일</span>
+                <span class="meta-value">${new Date(plan.created_at).toLocaleDateString('ko-KR')}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">상태</span>
+                <span class="meta-value">
+                  <span class="plan-status status-${plan.status}">${getStatusText(plan.status)}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">
+              <div class="section-icon">📅</div>
+              면접 날짜
+            </div>
+            ${displayDates(plan.dates)}
+          </div>
+
+          <div class="section">
+            <div class="section-title">
+              <div class="section-icon">👥</div>
+              면접관 (${plan.interviewers.length}명)
+            </div>
+            ${displayInterviewers(plan.interviewers)}
+          </div>
+
+          <div class="section">
+            <div class="section-title">
+              <div class="section-icon">⏰</div>
+              면접관 시간대
+            </div>
+            ${displayTimeSlots(plan.timeSlots)}
           </div>
         `;
-      });
+      }
 
-      timeSlotsHtml += '</div>';
-    });
+      function displayDates(dates) {
+        if (!dates || dates.length === 0) {
+          return '<div class="empty-state">등록된 면접 날짜가 없습니다.</div>';
+        }
 
-    return timeSlotsHtml;
-  }
+        const datesHtml = dates.map(date => `
+          <div class="date-card">
+            <div class="date-text">${date.interview_date}</div>
+          </div>
+        `).join('');
 
-  function getStatusText(status) {
-    const statusMap = {
-      'draft': '초안',
-      'active': '진행중',
-      'completed': '완료',
-      'cancelled': '취소됨'
-    };
-    return statusMap[status] || status;
-  }
+        return `<div class="dates-grid">${datesHtml}</div>`;
+      }
 
-  function goBack() {
-    window.location.href = '/recruit/interview/plans';
-  }
+      function displayInterviewers(interviewers) {
+        if (!interviewers || interviewers.length === 0) {
+          return '<div class="empty-state">등록된 면접관이 없습니다.</div>';
+        }
 
-  function editPlan() {
-    window.location.href = `/recruit/interview/plan/selectform?planId=${planId}`;
-  }
+        const interviewersHtml = interviewers.map(interviewer => `
+          <div class="interviewer-card">
+            <div class="interviewer-avatar">${interviewer.name.charAt(0)}</div>
+            <div class="interviewer-info">
+              <h4>${interviewer.name}</h4>
+              <div class="interviewer-authority">${interviewer.authority}</div>
+            </div>
+          </div>
+        `).join('');
 
-  // 페이지 로드 시 면접 계획 상세 정보 표시
-  document.addEventListener('DOMContentLoaded', displayPlanDetail);
-</script>
-</body>
+        return `<div class="interviewers-grid">${interviewersHtml}</div>`;
+      }
 
+      function displayTimeSlots(timeSlots) {
+        if (!timeSlots || timeSlots.length === 0) {
+          return '<div class="empty-state">등록된 시간대 정보가 없습니다.</div>';
+        }
+
+        // 면접관별로 그룹화
+        const groupedByInterviewer = {};
+        timeSlots.forEach(slot => {
+          if (!groupedByInterviewer[slot.interviewer_name]) {
+            groupedByInterviewer[slot.interviewer_name] = [];
+          }
+          groupedByInterviewer[slot.interviewer_name].push(slot);
+        });
+
+        let timeSlotsHtml = '';
+
+        Object.entries(groupedByInterviewer).forEach(([interviewerName, slots]) => {
+          // 날짜별로 그룹화
+          const groupedByDate = {};
+          slots.forEach(slot => {
+            if (!groupedByDate[slot.interview_date]) {
+              groupedByDate[slot.interview_date] = [];
+            }
+            groupedByDate[slot.interview_date].push(slot);
+          });
+
+          timeSlotsHtml += `
+            <div style="margin-bottom: 30px;">
+              <h4 style="margin-bottom: 15px; color: #333;">${interviewerName}</h4>
+          `;
+
+          Object.entries(groupedByDate).forEach(([date, dateSlots]) => {
+            timeSlotsHtml += `
+              <div style="margin-bottom: 20px;">
+                <h5 style="margin-bottom: 10px; color: #666;">${date}</h5>
+                <table class="time-table">
+                  <thead>
+                    <tr>
+                      <th>시간대</th>
+                      <th>참여 가능 여부</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${dateSlots.map(slot => `
+                      <tr>
+                        <td>${slot.time_slot}</td>
+                        <td class="${slot.is_available ? 'time-available' : 'time-unavailable'}">
+                          ${slot.is_available ? '가능' : '불가능'}
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            `;
+          });
+
+          timeSlotsHtml += '</div>';
+        });
+
+        return timeSlotsHtml;
+      }
+
+      function getStatusText(status) {
+        const statusMap = {
+          'draft': '초안',
+          'active': '진행중',
+          'completed': '완료',
+          'cancelled': '취소됨'
+        };
+        return statusMap[status] || status;
+      }
+
+      function goBack() {
+        window.location.href = '/recruit/interview/plans';
+      }
+
+      function editPlan() {
+        window.location.href = `/recruit/interview/plan/selectform?planId=${planId}`;
+      }
+
+      // 페이지 로드 시 면접 계획 상세 정보 표시
+      document.addEventListener('DOMContentLoaded', displayPlanDetail);
+    </script>
+  </body>
 </html>

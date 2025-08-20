@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const BotController = require("../controllers/botController");
 
 router.get("/", (req, res, next) => {
   console.log(req.query);
@@ -11,5 +12,7 @@ router.get("/", (req, res, next) => {
   };
   return res.status(200).json(responseData);
 });
+
+router.get("/auth", BotController.completeAuth);
 
 module.exports = router;
