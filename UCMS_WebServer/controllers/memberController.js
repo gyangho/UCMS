@@ -8,7 +8,12 @@ class MemberController {
       const search = req.query.search || "";
       const searchType = req.query.searchType || "";
 
-      const members = await Member.findAll(page, limit, search, searchType);
+      const members = await Member.findAll(
+        page,
+        limit,
+        search,
+        searchType
+      );
       const total = await Member.count(search, searchType);
       const totalPages = Math.ceil(total / limit);
 
@@ -43,19 +48,6 @@ class MemberController {
     }
   }
 
-  static async createMember(req, res) {
-    try {
-      const memberData = req.body;
-      const memberId = await Member.create(memberData);
-      const member = await Member.findById(memberId);
-
-      res.status(201).json(member);
-    } catch (error) {
-      console.error("Create member error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  }
-
   static async updateMember(req, res) {
     try {
       const { id } = req.params;
@@ -75,35 +67,77 @@ class MemberController {
     try {
       const { id } = req.params;
       await Member.delete(id);
-      res.status(204).send();
+      res.redirect("/member");
     } catch (error) {
       console.error("Delete member error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   }
 
-  static async bulkCreateMembers(req, res) {
+  static async addMember(req, res) {
     try {
       const { members } = req.body;
 
-      if (!Array.isArray(members) || members.length === 0) {
-        return res.status(400).json({ error: "Invalid members data" });
-      }
+      console.log(members);
 
-      await Member.bulkCreate(members);
-      res.status(201).json({ message: "Members created successfully" });
+      if (!Array.isArray(members) || members.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "Invalid members data" });
+      }
+      members.forEach(async (member) => {
+        await Member.create(member);
+      });
+
+      res.redirect("/member");
     } catch (error) {
-      console.error("Bulk create members error:", error);
+      console.error("Add members error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   }
 
   static async renderMemberManage(req, res) {
     try {
-      res.render("membermanage");
+      res.render("membermanage", {
+        search: req.query.search || "",
+        column: req.query.column || "",
+        members: await Member.findAll(
+          req.query.page || 1,
+          req.query.limit || 10,
+          req.query.search || "",
+          req.query.column || ""
+        ),
+        total: await Member.count(
+          req.query.search || "",
+          req.query.column || ""
+        ),
+        totalPages: Math.ceil(
+          (await Member.count(
+            req.query.search || "",
+            req.query.column || ""
+          )) / (req.query.limit || 10)
+        ),
+        currentPage: req.query.page || 1,
+        limit: req.query.limit || 10,
+      });
     } catch (error) {
       console.error("Render member manage error:", error);
       res.status(500).send("Internal server error");
+    }
+  }
+
+  static async editMember(req, res) {
+    try {
+      const { id } = req.params;
+      const memberData = req.body;
+      console.log(id, memberData);
+      await Member.update(id, memberData);
+      res
+        .status(200)
+        .json({ message: "Member updated successfully" });
+    } catch (error) {
+      console.error("Edit member error:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   }
 }

@@ -174,15 +174,28 @@
 
 <script>
   // 예시 이벤트 데이터 (id 포함)
-  const events = <%- JSON.stringify(calendar_events) %>
-    .map(ev => ({
-      id: ev.id,
-      title: ev.title,
-      start: new Date(ev.start).toISOString().slice(0, 10),
-      end: new Date(ev.end).toISOString().slice(0, 10),
-      IsMultipleDays: ev.ismultiple,
-      color: ev.color
-    }));
+  const calendar_events = <%- calendar_events %>;
+
+  // 로컬 타임존 기준 YYYY-MM-DD 포맷터 (UTC 변환 회피)
+  function toLocalYYYYMMDD(value) {
+    const d = new Date(value);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  const events = calendar_events.map((ev) => ({
+    id: ev.id,
+    title: ev.title,
+    start: toLocalYYYYMMDD(ev.start),
+    end: toLocalYYYYMMDD(ev.end),
+    IsMultipleDays: ev.ismultiple,
+    isRecruiting: ev.isRecruiting,
+    color: ev.color,
+  }));
+
+  console.log(events);
 
   const monthYear = document.getElementById("monthYear");
   const calendarBody = document.getElementById("calendarBody");
@@ -213,9 +226,12 @@
 
   function showEvents(dateKey) {
     eventsList.innerHTML = "";
-    const dayEvs = events.filter((ev) => ev.start <= dateKey && dateKey <= ev.end);
+    const dayEvs = events.filter(
+      (ev) => ev.start <= dateKey && dateKey <= ev.end
+    );
     if (!dayEvs.length) {
-      eventsList.innerHTML = '<p class="no-events">일정이 없습니다.</p>';
+      eventsList.innerHTML =
+        '<p class="no-events">일정이 없습니다.</p>';
       return;
     }
     dayEvs.forEach((ev) => {
@@ -238,7 +254,11 @@
 
     const firstDay = new Date(year, month, 1).getDay();
     const lastDate = new Date(year, month + 1, 0).getDate();
-    const todayKey = formatDate(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayKey = formatDate(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
     let date = 1;
 
     for (let r = 0; r < 6; r++) {
@@ -262,10 +282,18 @@
 
         // 다중일정: 주 단위 분할 세그먼트
         events
-          .filter((ev) => ev.IsMultipleDays && ev.start <= dateKey && dateKey <= ev.end)
+          .filter(
+            (ev) =>
+              ev.IsMultipleDays &&
+              ev.start <= dateKey &&
+              dateKey <= ev.end
+          )
           .forEach((ev) => {
             // 세그먼트 시작: 이벤트 시작일 or 일요일
-            const isSegStart = dateKey === ev.start || dateObj.getDay() === 0 || dateObj.getDate() === 1;
+            const isSegStart =
+              dateKey === ev.start ||
+              dateObj.getDay() === 0 ||
+              dateObj.getDate() === 1;
             if (!isSegStart) {
               const bar = document.createElement("div");
               bar.className = "event-bar";
@@ -283,7 +311,8 @@
             const actualEnd = evEnd < weekEnd ? evEnd : weekEnd;
 
             // 세그먼트 길이 (일수)
-            const segDays = (actualEnd - dateObj) / (1000 * 60 * 60 * 24) + 1;
+            const segDays =
+              (actualEnd - dateObj) / (1000 * 60 * 60 * 24) + 1;
 
             // 바 생성
             const bar = document.createElement("div");

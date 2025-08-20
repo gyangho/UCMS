@@ -1,106 +1,178 @@
 <!DOCTYPE html>
 <html lang="ko">
+  <head>
+    <meta
+      charset="UTF-8"
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+    <title>UCMS-대시보드</title>
+    <link rel="stylesheet" href="../styles/dashboard.css" />
+  </head>
 
-<head>
-  <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UCMS</title>
-  <link rel="stylesheet" href="../styles/dashboard.css" />
-</head>
+  <%- include('header') %>
 
-<%- include('header') %>
-
-<body>
-<div class="event-container">
-  <%- include('./event/calendar')%>
-  <div class="myevents-container">
-    <%- include('./event/myevents',{myEvents: myEvents, comment: "내 일정"})%>
-    <div class="divider"></div>
-    <%- include('./event/myevents',{myEvents: recruitingEvents, comment:"모집 중인 일정"})%>
-  </div>
-</div>
-<main>
-  <div class="func-btn-container">
-    <span class="category-icon">👨‍👩‍👧‍👦</span>
-    <div class="func-btn" onclick="location.href='/member'">부원 목록</div>
-  </div>
-  <div class="func-btn-container">
-    <span class="category-icon">🐥</span>
-    <div class="func-btn" onclick="location.href='/recruit/responses'">
-      신규부원 지원
+  <body>
+    <div class="event-container">
+      <%- include('./event/calendar',{calendar_events:
+      calendar_events, myEvents:
+      myEvents,recruitingEvents:recruitingEvents})%>
+      <div class="myevents-container">
+        <%- include('./event/myevents',{myEvents: myEvents, comment:
+        "내일정" })%>
+        <div class="divider"></div>
+        <%- include('./event/myevents',{myEvents: recruitingEvents,
+        comment:"모집 중인 일정"})%>
+      </div>
     </div>
-    <div class="func-btn" onclick="location.href='/recruit/responses'">응답 조회</div>
-    <div class="func-btn" onclick="location.href='/recruit/result'">결과 조회</div>
-    <div class="func-btn" onclick="location.href='/recruit/interview'">
-      면접 타임테이블
-    </div>
-    <div class="func-btn" onclick="location.href='/recruit/interview/plan'">면접 타임테이블 생성</div>
-    <div class="func-btn" onclick="location.href='/recruit/interview/plans'">면접 계획 관리</div>
-  </div>
-  <div class="func-btn-container">
-    <span class="category-icon">🗓️</span>
-    <div class="func-btn" onclick="location.href='/event'">일정 관리</div>
-    <div class="func-btn" onclick="location.href='/event/add'">일정 생성</div>
-    <div class="func-btn" onclick="location.href='/event/holidays'">
-      공휴일 업데이트
-    </div>
-  </div>
-  <div class="func-btn-container">
-    <span class="category-icon">💰</span>
-    <div class="func-btn" onclick="location.href='/member'">회비 장부</div>
-    <div class="func-btn" onclick="location.href='/'"></div>
-  </div>
-  <div class="func-btn-container">
-    <span class="category-icon">⁉️</span>
-    <div class="func-btn" onclick="location.href='/member'">공지사항</div>
-    <div class="func-btn" onclick="location.href='/inquiry'">문의</div>
-  </div>
-  <div class="func-btn-container">
-    <span class="category-icon">📁</span>
-    <div class="func-btn" onclick="window.open('https://drive.google.com/drive/folders/14B5qRObeDEQjDJwHK0HkcXVqr2B6WLw5?usp=sharing','_blank')">
-      문서함
-    </div>
-    <div class="func-btn" onclick="location.href='/drive/requestpermission'">권한 요청</div>
-    <div class="func-btn" onclick="location.href='/drive/generateform'">폼 생성</div>
+    <main>
+      <div class="func-btn-container">
+        <span class="category-icon">👨‍👩‍👧‍👦</span>
+        <div class="func-btn" onclick="location.href='/member'">
+          부원 목록
+        </div>
+      </div>
+      <div class="func-btn-container">
+        <span class="category-icon">🐥</span>
+        <div
+          class="func-btn"
+          onclick="location.href='/recruit/responses'"
+        >
+          신규부원 지원
+        </div>
+        <div
+          class="func-btn"
+          onclick="location.href='/recruit/responses'"
+        >
+          응답 조회
+        </div>
+        <div
+          class="func-btn"
+          onclick="location.href='/recruit/result'"
+        >
+          결과 조회
+        </div>
+        <div
+          class="func-btn"
+          onclick="location.href='/recruit/interview'"
+        >
+          면접 타임테이블
+        </div>
+        <div
+          class="func-btn"
+          onclick="location.href='/recruit/interview/plan'"
+        >
+          면접 타임테이블 생성
+        </div>
+        <div
+          class="func-btn"
+          onclick="location.href='/recruit/interview/plans'"
+        >
+          면접 계획 관리
+        </div>
+      </div>
+      <div class="func-btn-container">
+        <span class="category-icon">🗓️</span>
+        <div class="func-btn" onclick="location.href='/event/events'">
+          일정 관리
+        </div>
+        <div class="func-btn form">일정 생성</div>
+        <div
+          class="func-btn"
+          onclick="location.href='/event/holidays'"
+        >
+          공휴일 업데이트
+        </div>
+      </div>
+      <div class="func-btn-container">
+        <span class="category-icon">💰</span>
+        <div class="func-btn" onclick="location.href='/member'">
+          회비 장부
+        </div>
+        <div class="func-btn" onclick="location.href='/'"></div>
+      </div>
+      <div class="func-btn-container">
+        <span class="category-icon">⁉️</span>
+        <div class="func-btn" onclick="location.href='/member'">
+          공지사항
+        </div>
+        <div class="func-btn" onclick="location.href='/inquiry'">
+          문의
+        </div>
+      </div>
+      <div class="func-btn-container">
+        <span class="category-icon">📁</span>
+        <div
+          class="func-btn"
+          onclick="window.open('https://drive.google.com/drive/folders/14B5qRObeDEQjDJwHK0HkcXVqr2B6WLw5?usp=sharing','_blank')"
+        >
+          문서함
+        </div>
+        <div
+          class="func-btn"
+          onclick="location.href='/drive/requestpermission'"
+        >
+          권한 요청
+        </div>
+        <div
+          class="func-btn"
+          onclick="location.href='/drive/generateform'"
+        >
+          폼 생성
+        </div>
+      </div>
+    </main>
+  </body>
+  <div id="modal-overlay" class="hidden"></div>
 
-  </div>
-</main>
-</body>
-<div id="modal-overlay" class="hidden">
-</div>
+  <script type="module">
+    import { initEventInfoModal } from "../js/events/info.js";
 
-<script type="module">
-  import {
-    initEventInfoModal
-  } from '../js/events/info.js';
-  document.addEventListener('DOMContentLoaded', () => {
-    const overlay = document.getElementById('modal-overlay');
-    // 일정들이 들어가는 최상위 컨테이너
-    const eventContainer = document.querySelector('.event-container');
+    import { initEventFormModal } from "../js/events/form.js";
 
-    eventContainer.addEventListener('click', async (e) => {
-      // 클릭된 요소 또는 조상 중 .event-card/.event-item 찾기
-      const card = e.target.closest('.event-card, .event-item');
-      if (!card) return; // 해당 클래스가 아니면 무시
+    document.addEventListener("DOMContentLoaded", () => {
+      const overlay = document.getElementById("modal-overlay");
+      // 일정들이 들어가는 최상위 컨테이너
+      const eventContainer = document.querySelector(
+        ".event-container"
+      );
+      const formButton = document.querySelector(".form");
 
-      const eventId = card.dataset.eventId;
-      try {
-        const resp = await fetch(`/event/info?id=${eventId}`);
-        if (!resp.ok) throw new Error('서버 응답 에러');
-        const html = await resp.text();
+      eventContainer.addEventListener("click", async (e) => {
+        // 클릭된 요소 또는 조상 중 .event-card/.event-item 찾기
+        const card = e.target.closest(".event-card, .event-item");
+        if (!card) return; // 해당 클래스가 아니면 무시
 
-        // ① HTML 삽입
-        overlay.innerHTML = html;
-        overlay.classList.remove('hidden');
+        const eventId = card.dataset.eventId;
+        try {
+          const resp = await fetch(`/event/info?id=${eventId}`);
+          if (!resp.ok) throw new Error("서버 응답 에러");
+          const html = await resp.text();
 
+          // ① HTML 삽입
+          overlay.innerHTML = html;
+          overlay.classList.remove("hidden");
 
-        initEventInfoModal();
+          initEventInfoModal();
+        } catch (err) {
+          console.error(err);
+          alert("모달을 불러오는 데 실패했습니다.");
+        }
+      });
 
-      } catch (err) {
-        console.error(err);
-        alert('모달을 불러오는 데 실패했습니다.');
-      }
+      formButton.addEventListener("click", async function () {
+        try {
+          const resp = await fetch("/event/form");
+          if (!resp.ok) throw new Error("서버 응답 에러");
+          const html = await resp.text();
+          overlay.innerHTML = html;
+          overlay.classList.remove("hidden");
+          initEventFormModal();
+        } catch (err) {
+          console.error(err);
+          alert("모달을 불러오는 데 실패했습니다.");
+        }
+      });
     });
-  });
-</script>
-
+  </script>
 </html>

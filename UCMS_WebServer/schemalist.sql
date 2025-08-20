@@ -5,22 +5,46 @@ CREATE TABLE Members (
   phone VARCHAR(20) NOT NULL UNIQUE,
   gender ENUM('남자', '여자') NOT NULL,
   generation INT NOT NULL,
-  authority ENUM('일반','부원','임원진','부회장','회장','admin') NOT NULL DEFAULT '일반'
+  authority ENUM('미인증','일반','부원','임원진','부회장','회장','admin') NOT NULL DEFAULT '부원',
+  user_id INT UNIQUE COMMENT 'Users.id 참조' DEFAULT NULL,
+  FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
+ALTER TABLE members
+CHANGE COLUMN authority authority ENUM('미인증','일반','부원','임원진','부회장','회장','admin') NOT NULL DEFAULT '미인증';
+
+CREATE TABLE pending_auth (
+  auth_code VARCHAR(10) NOT NULL PRIMARY KEY,
+  kakao_id BIGINT UNSIGNED NOT NULL UNIQUE COMMENT '카카오 사용자 고유 ID',
+  name VARCHAR(50) NOT NULL,
+  profile_image VARCHAR(255) DEFAULT NULL COMMENT '프로필 이미지 URL',
+  thumbnail_image VARCHAR(255) DEFAULT NULL COMMENT '썸네일 이미지 URL',
+  is_completed BOOLEAN NOT NULL DEFAULT FALSE,
+  chat_room_id BIGINT UNSIGNED DEFAULT NULL COMMENT '카카오톡 채팅방 아이디',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+ALTER TABLE pending_auth
+CHANGE COLUMN chat_room_id chat_room_id BIGINT UNSIGNED DEFAULT NULL COMMENT '카카오톡 채팅방 아이디';
+
+INSERT INTO members (student_id,name,major,phone,gender,generation,authority)
+ VALUES("20192854","이경호","소프트웨어학부","010-6406-1150","남자",3,7);
 
 CREATE TABLE `Users` (
-  `kakao_id` BIGINT UNSIGNED NOT NULL COMMENT '카카오 사용자 고유 ID',
-  `name` VARCHAR(50) NOT NULL COMMENT '사용자 이름',
-  `email` VARCHAR(100) NOT NULL UNIQUE COMMENT '이메일 주소',
+  `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `kakao_id` BIGINT UNSIGNED NOT NULL UNIQUE COMMENT '카카오 사용자 고유 ID',
+  `name` VARCHAR(50) NOT NULL,
   `profile_image` VARCHAR(255) DEFAULT NULL COMMENT '프로필 이미지 URL',
   `thumbnail_image` VARCHAR(255) DEFAULT NULL COMMENT '썸네일 이미지 URL',
+  `chat_room_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '카카오톡 채팅방 아이디',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '레코드 생성 시각',
-  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '레코드 수정 시각',
-  `phone` VARCHAR(20) NOT NULL UNIQUE,
-  `gender` ENUM('남자', '여자') NOT NULL,
-  PRIMARY KEY (`kakao_id`)
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '레코드 수정 시각'
 );
+
+ALTER TABLE `Users`
+CHANGE COLUMN `chat_room_id` `chat_room_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '카카오톡 채팅방 아이디';
+
+
 
 CREATE TABLE `purchases` (
   `id` INT NOT NULL AUTO_INCREMENT,
@@ -45,8 +69,8 @@ CREATE TABLE events (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                    ON UPDATE CURRENT_TIMESTAMP,
-  author_kakao_id BIGINT UNSIGNED NOT NULL,
-  updater_id BIGINT UNSIGNED NOT NULL,
+  author_id INT NOT NULL,
+  updater_id INT NOT NULL,
   color CHAR(10) NOT NULL DEFAULT '#43ff7bff',
   ismultiple BOOLEAN NOT NULL,
   authority ENUM('일반','부원','임원진','부회장','회장','admin') NOT NULL DEFAULT '일반',
@@ -55,14 +79,17 @@ CREATE TABLE events (
   recruit_end DATETIME
 );
 
+ALTER TABLE events
+CHANGE COLUMN authority authority ENUM('미인증','일반','부원','임원진','부회장','회장','admin') NOT NULL DEFAULT '부원';
+
 CREATE TABLE event_participants
 (
   id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   event_id BIGINT NOT NULL COMMENT 'events.id 참조',
-  kakao_id BIGINT UNSIGNED NOT NULL COMMENT 'users.kakao_id 참조',
-  UNIQUE KEY uk_event_user (event_id, kakao_id),
+  user_id INT NOT NULL COMMENT 'users.id 참조',
+  UNIQUE KEY uk_event_user (event_id, user_id),
   FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  FOREIGN KEY (kakao_id) REFERENCES users(kakao_id) ON DELETE CASCADE ON UPDATE CASCADE
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE formlist
@@ -73,8 +100,6 @@ CREATE TABLE formlist
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO members (student_id,name,major,phone,gender,generation,authority)
- VALUES("20192854","이경호","소프트웨어학부","010-6406-1150","남자",3,6);
 
 CREATE TABLE form_responses (
   response_id   VARCHAR(100) NOT NULL,
@@ -101,16 +126,20 @@ CREATE TABLE recruiting_members
 (
   id INT AUTO_INCREMENT PRIMARY KEY,
   form_id VARCHAR(100) NOT NULL,
-  response_id VARCHAR(100) NOT NULL UNIQUE,
+  response_id VARCHAR(100) NOT NULL,
   student_id VARCHAR(20),
   name VARCHAR(50),
   major VARCHAR(100),
   phone VARCHAR(20),
   gender ENUM('남자', '여자'),
   synced_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  rating ENUM('대기','불합격','느별','느괜','느좋','합격') NOT NULL DEFAULT '대기'
-  FOREIGN KEY (form_id) REFERENCES formlist(id) ON DELETE CASCADE ON UPDATE CASCADE;
+  rating ENUM('대기','1차합격','불합격','느별','느괜','느좋','합격') NOT NULL DEFAULT '대기',
+  FOREIGN KEY (form_id) REFERENCES formlist(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  UNIQUE KEY uk_form_response (form_id, response_id)
 );
+
+ALTER TABLE recruiting_members
+CHANGE COLUMN rating rating ENUM('대기','1차합격','불합격','느별','느괜','느좋','합격') NOT NULL DEFAULT '대기';
 
 -- 평가 노트 저장 테이블
 CREATE TABLE evaluation_notes (
@@ -138,8 +167,8 @@ CREATE TABLE interview_plans (
   status ENUM('draft', 'active', 'completed', 'cancelled') NOT NULL DEFAULT 'draft' COMMENT '면접 계획 상태',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  created_by VARCHAR(20) NOT NULL COMMENT '면접 계획 생성자 (members.name 참조)',
-  updated_by VARCHAR(20) NOT NULL COMMENT '면접 계획 수정자 (members.name 참조)' DEFAULT created_by,
+  created_by INT NOT NULL COMMENT '면접 계획 생성자 (users.id 참조)',
+  updated_by INT NOT NULL COMMENT '면접 계획 수정자 (users.id 참조)',
   FOREIGN KEY (form_id) REFERENCES formlist(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 

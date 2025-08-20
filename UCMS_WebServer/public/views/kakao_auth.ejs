@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <link rel="icon" href="/images/favicon.png" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>UCMS-카카오톡 인증</title>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .auth-container {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        max-width: 400px;
+        width: 90%;
+      }
+
+      .logo {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 20px;
+        border-radius: 20px;
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 24px;
+      }
+
+      .subtitle {
+        color: #666;
+        margin-bottom: 10px;
+        font-size: 14px;
+      }
+
+      .qr-section {
+        margin-bottom: 30px;
+      }
+
+      .qr-code {
+        width: 200px;
+        height: 200px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .auth-code {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 20px;
+        font-family: "Arial", sans-serif;
+        font-size: 18px;
+        font-weight: bold;
+        color: #495057;
+        letter-spacing: 2px;
+      }
+
+      .timer {
+        font-size: 16px;
+        color: #dc3545;
+        margin-bottom: 20px;
+        font-weight: bold;
+      }
+
+      .button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: normal;
+        transition: background 0.3s;
+        margin: 5px;
+      }
+
+      .button:hover {
+        background: #0056b3;
+      }
+
+      .button:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+      }
+
+      .check-auth-btn {
+        background: #ff6b6b;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: normal;
+        transition: background 0.3s;
+        margin: 10px 5px;
+        width: 200px;
+      }
+
+      .check-auth-btn:hover {
+        background: #ff5252;
+      }
+
+      .warning {
+        color: #dc3545;
+        font-size: 12px;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="auth-container">
+      <img src="/images/icon.png" alt="로고" class="logo" />
+      <h1>카카오톡 인증</h1>
+      <p class="subtitle">
+        빵뿡이 친구 추가 후
+        <br />
+        빵뿡이에게 인증코드를 보내주세요.
+      </p>
+      <div class="qr-section">
+        <br />
+        <img
+          src="/images/bot_qr_code.png"
+          alt="QR 코드"
+          class="qr-code"
+          style="width: 200px; height: 200px"
+        />
+        <br />
+        <a
+          href="http://qr.kakao.com/talk/b67hkpXLDwkY3pvVcM4Wjbcivq8-"
+          target="_blank"
+          onclick="window.open(this.href, '_blank', 'width=600,height=800'); return false;"
+          style="
+            color: #ff80a0;
+            text-decoration: underline;
+            font-size: 16px;
+            font-weight: bold;
+          "
+        >
+          빵뿡이 카카오톡 친구 추가하기(모바일 환경)
+        </a>
+        <br />
+        <br />
+        아래 텍스트를 복사하여 빵뿡이에게 보내주세요.
+        <br />
+        <div class="auth-code" id="authCode">
+          !인증 <%= authCode %>
+        </div>
+        <div class="timer" id="timer">05:00</div>
+      </div>
+
+      <button class="check-auth-btn" onclick="checkAuthCompleted()">
+        인증 확인
+      </button>
+
+      <div style="margin-top: 15px">
+        <button
+          class="button"
+          id="regenerateBtn"
+          onclick="regenerateCode()"
+        >
+          재발급
+        </button>
+        <button class="button" onclick="cancelAuth()">취소</button>
+      </div>
+
+      <p class="warning">인증코드는 5분 뒤에 만료됩니다.</p>
+    </div>
+
+    <script>
+      let timeLeft = 300; // 5분 = 300초
+      let timerInterval;
+      let authCode = "<%= authCode %>";
+
+      function updateTimer() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        document.getElementById("timer").textContent = `${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          window.location.href = "/";
+        }
+        timeLeft--;
+      }
+
+      function regenerateCode() {
+        fetch("/auth/regenerate-code", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              authCode = data.authCode;
+              document.getElementById("authCode").textContent =
+                authCode;
+              timeLeft = 300; // 5분으로 리셋
+              document.getElementById(
+                "regenerateBtn"
+              ).disabled = false;
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("인증코드 재발급에 실패했습니다.");
+          });
+      }
+
+      // 타이머 시작
+      timerInterval = setInterval(updateTimer, 1000);
+      updateTimer();
+
+      function checkAuthCompleted() {
+        fetch("/auth/checkAuthCompleted")
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              if (data.redirect) {
+                alert(data.message);
+                window.location.href = data.redirect;
+              } else {
+                alert(data.message);
+                window.location.href = "/dashboard";
+              }
+            } else {
+              alert(data.message);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("인증 확인에 실패했습니다.");
+          });
+      }
+
+      function cancelAuth() {
+        fetch("/auth/cancelAuth")
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              alert(data.message);
+              window.location.href = "/";
+            } else {
+              alert(data.message);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("인증 취소에 실패했습니다.");
+          });
+      }
+    </script>
+  </body>
+</html>

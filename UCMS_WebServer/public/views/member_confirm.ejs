@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>UCMS-멤버 확인</title>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .confirm-container {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        max-width: 500px;
+        width: 90%;
+      }
+
+      .logo {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 20px;
+        border-radius: 20px;
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 24px;
+      }
+
+      .subtitle {
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 14px;
+      }
+
+      .member-list {
+        margin-bottom: 30px;
+      }
+
+      .member-item {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: left;
+      }
+
+      .member-item:hover {
+        border-color: #007bff;
+        background: #e3f2fd;
+      }
+
+      .member-item.selected {
+        border-color: #007bff;
+        background: #007bff;
+        color: white;
+      }
+
+      .member-name {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+
+      .member-info {
+        font-size: 12px;
+        color: #666;
+      }
+
+      .member-item.selected .member-info {
+        color: #e3f2fd;
+      }
+
+      .member-details {
+        font-size: 11px;
+        color: #888;
+        margin-top: 3px;
+      }
+
+      .member-item.selected .member-details {
+        color: #cce7ff;
+      }
+
+      .button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: normal;
+        transition: background 0.3s;
+        margin: 5px;
+      }
+
+      .button:hover {
+        background: #0056b3;
+      }
+
+      .button:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+      }
+
+      .confirm-btn {
+        background: #28a745;
+      }
+
+      .confirm-btn:hover {
+        background: #218838;
+      }
+
+      .warning {
+        color: #dc3545;
+        font-size: 12px;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="confirm-container">
+      <img src="/images/icon.png" alt="로고" class="logo" />
+      <h1>멤버 확인</h1>
+      <p class="subtitle">본인을 선택해주세요</p>
+
+      <div class="member-list" id="memberList">
+        <% members.forEach(function(member) { %>
+        <div
+          class="member-item"
+          data-member-id="<%= member.student_id %>"
+          onclick="selectMember(this)"
+        >
+          <div class="member-name"><%= member.name %></div>
+          <div class="member-info">
+            학번: <%= member.student_id %> | 권한: <%=
+            member.authority %>
+          </div>
+          <div class="member-details">
+            전공: <%= member.major %> | 전화번호: <%= member.phone %>
+          </div>
+          <div class="member-details">
+            성별: <%= member.gender || '미입력' %> | 기수: <%=
+            member.generation || '미입력' %>
+          </div>
+        </div>
+        <% }); %>
+      </div>
+
+      <button
+        class="button confirm-btn"
+        id="confirmBtn"
+        onclick="confirmMember()"
+        disabled
+      >
+        확인
+      </button>
+      <button class="button" onclick="window.location.href='/'">
+        취소
+      </button>
+
+      <p class="warning">본인을 정확히 선택해주세요.</p>
+    </div>
+
+    <script>
+      let selectedMemberId = null;
+
+      function selectMember(element) {
+        // 모든 멤버 아이템에서 선택 상태 제거
+        document.querySelectorAll(".member-item").forEach((item) => {
+          item.classList.remove("selected");
+        });
+
+        // 선택된 멤버 아이템에 선택 상태 추가
+        element.classList.add("selected");
+        selectedMemberId = element.dataset.memberId;
+
+        // 확인 버튼 활성화
+        document.getElementById("confirmBtn").disabled = false;
+      }
+
+      function confirmMember() {
+        if (!selectedMemberId) {
+          alert("멤버를 선택해주세요.");
+          return;
+        }
+
+        fetch("/auth/confirm-member", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            memberId: selectedMemberId,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              window.location.href = "/dashboard";
+            } else {
+              alert(data.message);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("멤버 확인에 실패했습니다.");
+          });
+      }
+    </script>
+  </body>
+</html>

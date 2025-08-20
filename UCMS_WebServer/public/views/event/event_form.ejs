@@ -1,201 +1,170 @@
 <!-- views/event_form.ejs -->
-<!DOCTYPE html>
-<html lang="ko">
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UCMS</title>
-  <style>
-    body {
-      font-family: "Noto Sans KR", sans-serif;
-      background-color: #f4f4f9;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
 
-    .container {
-      background: #ffffff;
-      padding: 2rem;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      width: 100%;
-      max-width: 500px;
-    }
+<style>
+  body {
+    font-family: "Noto Sans KR", sans-serif;
+    background-color: #f4f4f9;
+    height: 100%;
+    margin: 0;
+  }
 
-    h1 {
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
-      text-align: center;
-      color: #333;
-    }
+  .container {
+    background: #ffffff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+    justify-self: center;
+    margin-top: 100px;
+  }
 
-    form {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1rem;
-    }
+  h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    color: #333;
+  }
 
-    label {
-      display: flex;
-      flex-direction: column;
-      font-size: 0.9rem;
-      color: #555;
-    }
+  form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 
-    /* inline label for checkbox and color to align with text */
-    .inline-field {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.9rem;
-      color: #555;
-    }
+  label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9rem;
+    color: #555;
+  }
 
-    input[type="text"],
-    input[type="datetime-local"],
-    select,
-    textarea {
-      background: #d6d6d6;
-      padding: 2px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      margin-top: 0.3rem;
-    }
+  /* inline label for checkbox and color to align with text */
+  .inline-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #555;
+  }
 
-    input[type="color"] {
-      height: 30px;
-      width: 30px;
-    }
+  input[type="text"],
+  input[type="datetime-local"],
+  select,
+  textarea {
+    background: #d6d6d6;
+    padding: 2px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    margin-top: 0.3rem;
+  }
 
-    textarea {
-      resize: vertical;
-      min-height: 80px;
-    }
+  input[type="color"] {
+    height: 30px;
+    width: 30px;
+  }
 
-    .error-message {
-      color: #e74c3c;
-      font-size: 0.85rem;
-      margin-bottom: 0.5rem;
-      text-align: center;
-    }
+  textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
 
-    button {
-      padding: 0.8rem;
-      border: none;
-      border-radius: 8px;
-      background-color: #5c93f5;
-      color: #fff;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
+  .error-message {
+    color: #e74c3c;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
 
-    button:hover {
-      background-color: #497acb;
-    }
+  button {
+    padding: 0.8rem;
+    border: none;
+    border-radius: 8px;
+    background-color: #5c93f5;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
 
-    .hidden {
-      display: none;
-    }
-  </style>
-</head>
+  button:hover {
+    background-color: #497acb;
+  }
 
-<body>
+  .hidden {
+    display: none;
+  }
+</style>
+
 <div class="container">
   <h1>이벤트 등록</h1>
 
   <% if (error) { %>
-  <p class="error-message">
-    <%= error %>
-  </p>
-  <% } %>
+    <p class="error-message">
+      <%= error %>
+    </p>
+    <% } %>
 
-  <form method="POST" action="/event/submit">
-    <label>
-      제목
-      <input type="text" name="title" value="<%= data.title || '' %>" required />
-    </label>
+      <form method="POST" action="/event/submit">
+        <label>
+          제목
+          <input type="text" name="title" value="<%= data.title || '' %>" required />
+        </label>
 
-    <label>
-      설명
-      <textarea name="description"><%= data.description || '' %></textarea>
-    </label>
+        <label>
+          설명
+          <textarea name="description"><%= data.description || '' %></textarea>
+        </label>
 
-    <div>
-      <label class="inline-field">
-        시작 시각
-        <input type="datetime-local" name="start" value="<%= data.start || '' %>" required />
-      </label>
-      <label class="inline-field">
-        종료 시각
-        <input type="datetime-local" name="end" value="<%= data.end || '' %>" required />
-      </label>
-    </div>
+        <div>
+          <label class="inline-field">
+            시작 시각
+            <input type="datetime-local" name="start" value="<%= data.start || '' %>" required />
+          </label>
+          <label class="inline-field">
+            종료 시각
+            <input type="datetime-local" name="end" value="<%= data.end || '' %>" required />
+          </label>
+        </div>
 
-    <label class="inline-field">
-      참가자 모집 여부
-      <input type="checkbox" name="isrecruiting" <%=data.ismultiple ? 'checked' : '' %> />
-    </label>
+        <label class="inline-field">
+          참가자 모집 여부
+          <input type="checkbox" name="isrecruiting" <%=data.ismultiple ? 'checked' : '' %> />
+        </label>
 
-    <div class="hidden" id="recruit-time">
-      <label class="inline-field">
-        모집 시작 시각
-        <input type="datetime-local" name="recruit_start" value="<%= data.end || '' %>" />
-      </label>
-      <label class="inline-field">
-        모집 종료 시각
-        <input type="datetime-local" name="recruit_end" value="<%= data.end || '' %>" />
-      </label>
-    </div>
+        <div class="hidden" id="recruit-time">
+          <label class="inline-field">
+            모집 시작 시각
+            <input type="datetime-local" name="recruit_start" value="<%= data.end || '' %>" />
+          </label>
+          <label class="inline-field">
+            모집 종료 시각
+            <input type="datetime-local" name="recruit_end" value="<%= data.end || '' %>" />
+          </label>
+        </div>
 
-    <label class="inline-field">
-      색
-      <input type="color" name="color" value="<%= data.color || '#43ff7b' %>" />
-    </label>
+        <label class="inline-field">
+          색
+          <input type="color" name="color" value="<%= data.color || '#43ff7b' %>" />
+        </label>
 
-    <label class="inline-field">
-      공개범위
-      <select name="authority" required>
-        <% const authorityMap=['일반','부원','임원진','부회장','회장','admin']; %>
-        <% authorityMap.forEach((auth, idx)=> { %>
-        <% if (idx < sessionAuthority) { %>
-        <option value="<%= auth %>" <%=data.authority===auth ? 'selected' : '' %>><%= auth %>
-        </option>
-        <% } %>
-        <% }) %>
-      </select>
-    </label>
+        <label class="inline-field">
+          공개범위
+          <select name="authority" required>
+            <% const authorityMap=['일반','부원','임원진','부회장','회장','admin']; %>
+              <% authorityMap.forEach((auth, idx)=> { %>
+                <% if (idx < sessionAuthority) { %>
+                  <option value="<%= auth %>" <%=data.authority===auth ? 'selected' : '' %>><%= auth %>
+                  </option>
+                  <% } %>
+                    <% }) %>
+          </select>
+        </label>
 
-    <button type="submit">등록</button>
-  </form>
+        <button type="submit">등록</button>
+        <button style="background-color: #ff8b8b;" type="button" class="cancel">취소</button>
+      </form>
 </div>
-</body>
-
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const recruitCheckbox = document.querySelector('input[name="isrecruiting"]');
-    const recruitTimeDiv = document.getElementById("recruit-time");
-    const recruitStartInput = recruitTimeDiv.querySelector('input[name="recruit_start"]');
-    const recruitEndInput = recruitTimeDiv.querySelector('input[name="recruit_end"]');
-
-    recruitCheckbox.addEventListener('change', function(e) {
-      if (e.target.checked) {
-        recruitTimeDiv.classList.remove("hidden");
-        recruitStartInput.required = true;
-        recruitEndInput.required = true;
-      } else {
-        recruitTimeDiv.classList.add("hidden");
-        recruitStartInput.required = false;
-        recruitEndInput.required = false;
-      }
-    });
-  });
-</script>
-
-</html>

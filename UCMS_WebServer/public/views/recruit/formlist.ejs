@@ -95,7 +95,8 @@
 
 <div class="modal-container">
   <form id="formchange" method="POST" action="/recruit/formlist">
-    <label>기존 폼 선택
+    <label
+      >기존 폼 선택
       <select name="URLSelect">
         <option value="" selected></option>
         <% forms.forEach((form)=>{%>
@@ -104,12 +105,24 @@
       </select>
     </label>
     <div class="divider"></div>
-    <label>새로운 폼 추가
-      <input type="text" name="newURL" value='' placeholder="여기에 구글 폼 주소(편집 화면, 응답자 주소 x)를 입력해주세요">
+    <label
+      >새로운 폼 추가
+      <input
+        type="text"
+        name="newURL"
+        value=""
+        placeholder="여기에 구글 폼 주소(편집 화면, 응답자 주소 x)를 입력해주세요"
+      />
     </label>
     <div class="button-container">
       <button class="modal-btn submit" type="submit">확인</button>
-      <button class="modal-btn close-modal" style="background-color: #e74c3c;">닫기</button>
+      <button
+        class="modal-btn close-modal"
+        type="button"
+        style="background-color: #e74c3c"
+      >
+        닫기
+      </button>
     </div>
   </form>
 </div>
