@@ -43,18 +43,23 @@ router.get(
 
 router.post(
   "/interview/plan/interviewer/add",
-  RecruitController.addInterviewer
+  RecruitController.duplicateInterviewer
 );
 
 router.get(
-  "/interview/plan/timeinfo",
+  "/interview/plan/interviewer/timeinfo",
   RecruitController.renderInterviewTimeInfo
+);
+
+router.post(
+  "/interview/plan/interviewer/timeinfo",
+  RecruitController.createInterviewTimeInfo
 );
 
 // 면접 계획 관리
 router.get("/interview/plans", RecruitController.getInterviewPlans);
 router.get(
   "/interview/plans/:id",
-  RecruitController.getInterviewPlan
+  RecruitController.renderInterviewPlanDetail
 );
 module.exports = router;
