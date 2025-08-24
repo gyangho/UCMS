@@ -219,11 +219,11 @@
           ${getStatusText(plan.status)}
         </div>
         <div class="plan-actions">
-          <button class="btn btn-small btn-secondary" onclick="viewPlan(${
+          <a href="/recruit/interview/plans/${
             plan.id
-          })">
+          }" class="btn btn-small btn-secondary">
             상세보기
-          </button>
+          </a>
           <button class="btn btn-small btn-primary" onclick="editPlan(${
             plan.id
           })">
@@ -250,10 +250,6 @@
           cancelled: "취소됨",
         };
         return statusMap[status] || status;
-      }
-
-      function viewPlan(planId) {
-        window.location.href = `/recruit/interview/plans/${planId}`;
       }
 
       function editPlan(planId) {

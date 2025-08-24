@@ -228,9 +228,9 @@
     </style>
   </head>
 
-  <body>
-    <%- include('../header') %>
+  <%- include('../header') %>
 
+  <body>
     <div class="container">
       <h1 class="title">면접관 시간 설정</h1>
 
@@ -558,10 +558,11 @@
           const data = await response.json();
 
           if (data.success) {
-            alert(data.message);
-            console.log("면접 응답 데이터:", data.responses);
-            // 여기서 타임테이블 생성 결과를 처리할 수 있습니다
-            window.location.href = "/recruit/interview/plan";
+            alert("타임테이블 생성은 미구현 상태입니다.");
+            window.location.href = "/dashboard";
+
+            // window.location.href =
+            //   data.redirect + "?planId=" + planId;
           } else {
             alert("오류가 발생했습니다: " + data.error);
           }

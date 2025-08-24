@@ -6,7 +6,8 @@ class RecruitingMembers {
     limit = 10,
     search = "",
     column = "",
-    formId
+    formId,
+    sortBy = "id"
   ) {
     const offset = (page - 1) * limit;
     let query = `
@@ -25,8 +26,24 @@ class RecruitingMembers {
       }
     }
 
+    // 정렬 기준에 따른 ORDER BY 절 구성
+    let orderByClause = "ORDER BY ";
+    switch (sortBy) {
+      case "student_id":
+        orderByClause += "student_id ASC";
+        break;
+      case "name":
+        orderByClause += "name ASC";
+        break;
+      case "major":
+        orderByClause += "major ASC";
+        break;
+      default:
+        orderByClause += "id ASC"; // 기본값: 응답순
+    }
+
     query += `
-      ORDER BY name ASC
+      ${orderByClause}
       LIMIT ${limit} OFFSET ${offset}
     `;
 
