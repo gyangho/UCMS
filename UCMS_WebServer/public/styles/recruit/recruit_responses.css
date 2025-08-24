@@ -25,9 +25,13 @@ body {
 
 .header {
   display: flex;
+  flex-direction: column;
+}
+
+.header-top {
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
 }
 
 .sync-container {
@@ -35,6 +39,39 @@ body {
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+}
+
+.sort-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.sort-container label {
+  font-size: inherit;
+  font-weight: 500;
+  color: #374151;
+}
+
+.sort-container select {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.sort-container select:hover {
+  border-color: #9ca3af;
+}
+
+.sort-container select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .header h1 {
@@ -50,7 +87,7 @@ select {
   border: 1px solid #ccc;
   border-radius: 6px;
   margin-top: 0.3rem;
-  font-size: 14px;
+  font-size: inherit;
 }
 
 /* 평가 select 스타일 */
@@ -58,7 +95,7 @@ select {
   padding: 4px 8px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: inherit;
   cursor: pointer;
   transition: border-color 0.2s ease;
   text-align: center;
@@ -361,4 +398,18 @@ tbody tr:hover {
 /* 숨김 처리용 */
 .hidden {
   display: none;
+}
+
+@media (max-width: 768px) {
+  .header-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .header-top .sync-container {
+    align-self: flex-end;
+  }
+  .sort-container {
+    align-self: flex-end;
+  }
 }

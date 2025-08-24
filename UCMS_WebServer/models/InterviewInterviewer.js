@@ -35,11 +35,11 @@ class InterviewInterviewer {
   }
 
   //면접 인터뷰어 삭제
-  static async removeInterviewer(planId, interviewerId) {
+  static async deleteInterviewers(planId) {
     try {
       await db.execute(
-        "DELETE FROM interview_interviewers WHERE plan_id = ? AND interviewer_id = ?",
-        [planId, interviewerId]
+        "DELETE FROM interview_interviewers WHERE plan_id = ?",
+        [planId]
       );
     } catch (error) {
       throw error;

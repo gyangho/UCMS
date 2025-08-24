@@ -198,10 +198,9 @@
       }
     </style>
   </head>
+  <%- include('../header') %>
 
   <body>
-    <%- include('../header') %>
-
     <div class="container">
       <h1 class="title">면접관 추가</h1>
 
@@ -282,7 +281,7 @@
 
       plannedInterviewers.forEach((interviewer) => {
         toggleMember(
-          interviewer,
+          interviewer.id,
           members.find(
             (member) => member.student_id === interviewer.id
           ).name,
@@ -313,11 +312,16 @@
           visibleCount === 0 ? "block" : "none";
       }
 
-      function toggleMember(id, name, authority) {
+      function toggleMember(id, name, authority, event = null) {
         const memberId = id; // student_id는 문자열이므로 parseInt 제거
         const index = selectedMembers.findIndex(
           (m) => m.id === memberId
         );
+
+        // event가 없으면 해당 멤버 카드를 찾아서 currentTarget으로 설정
+        let currentTarget = event
+          ? event.currentTarget
+          : document.getElementById(memberId);
 
         if (index === -1) {
           // 추가
@@ -326,11 +330,11 @@
             name,
             authority,
           });
-          event.currentTarget.classList.add("selected");
+          currentTarget.classList.add("selected");
         } else {
           // 제거
           selectedMembers.splice(index, 1);
-          event.currentTarget.classList.remove("selected");
+          currentTarget.classList.remove("selected");
         }
 
         updateSelectedDisplay();

@@ -227,10 +227,12 @@ class RecruitController {
     }
   }
 
-  static async addInterviewer(req, res) {
+  static async duplicateInterviewer(req, res) {
     try {
       const planId = req.body.planId;
       const interviewers = req.body.interviewers;
+
+      await Recruit.deleteInterviewers(planId);
 
       for (const interviewerId of interviewers) {
         await Recruit.addInterviewer(planId, interviewerId);
@@ -238,7 +240,7 @@ class RecruitController {
 
       res.status(201).json({
         success: true,
-        redirect: "/recruit/interview/plan/timeinfo",
+        redirect: "/recruit/interview/plan/interviewer/timeinfo",
       });
     } catch (error) {
       console.error("Add interviewer error:", error);
@@ -246,13 +248,37 @@ class RecruitController {
     }
   }
 
-  static async removeInterviewer(req, res) {
+  static async createInterviewTimeInfo(req, res) {
     try {
-      const { planId, interviewerId } = req.params;
-      await Recruit.removeInterviewer(planId, interviewerId);
-      res.status(204).send();
+      const planId = req.body.planId;
+      const timeInfo = req.body.timeInfo;
+
+      await Recruit.deleteInterviewerTimeSlots(planId);
+
+      Object.keys(timeInfo).forEach(async (interviewerId) => {
+        Object.keys(timeInfo[interviewerId]).forEach(
+          async (interviewDate) => {
+            Object.keys(
+              timeInfo[interviewerId][interviewDate]
+            ).forEach(async (timeSlot) => {
+              await Recruit.createInterviewerTimeSlots(
+                planId,
+                interviewerId,
+                interviewDate,
+                timeSlot,
+                timeInfo[interviewerId][interviewDate][timeSlot]
+              );
+            });
+          }
+        );
+      });
+
+      res.status(201).json({
+        success: true,
+        redirect: "/recruit/interview/plan/timetable",
+      });
     } catch (error) {
-      console.error("Remove interviewer error:", error);
+      console.error("Create interview time info error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   }
@@ -276,13 +302,15 @@ class RecruitController {
     const column = req.query.column || "";
     const page = req.query.page || 1;
     const limit = req.query.limit || 10;
+    const sortBy = req.query.sortBy || "id";
 
     const recruitingMembers = await Recruit.getRecruitingMembers(
       page,
       limit,
       search,
       column,
-      formId
+      formId,
+      sortBy
     );
 
     const total = await Recruit.countRecruitingMembers(
@@ -312,6 +340,7 @@ class RecruitController {
         currentPage,
         currentForm,
         limit,
+        sortBy,
       });
     } catch (error) {
       console.error("Render recruit response error:", error);
@@ -363,7 +392,42 @@ class RecruitController {
 
   static async renderInterviewPlanDetail(req, res) {
     try {
-      res.render("recruit/interview_plan_detail");
+      const { id } = req.params;
+
+      // 면접 계획 정보 조회
+      const plan = await Recruit.getInterviewPlanById(id);
+      if (!plan) {
+        return res.status(404).send("면접 계획을 찾을 수 없습니다.");
+      }
+
+      // 면접 계획 생성자/수정자 정보 조회
+      const createdBy = await User.findById(plan.created_by);
+      const updatedBy = await User.findById(plan.updated_by);
+
+      // 폼 정보 조회
+      const form = await Form.getFormById(plan.form_id);
+
+      // 면접 날짜 및 질문 정보 조회
+      const interviewDates = await Recruit.getInterviewDates(id);
+
+      // 면접관 정보 조회
+      const interviewers = await Recruit.getInterviewers(id);
+
+      // 면접관별 시간대 정보 조회
+      const interviewerTimeSlots =
+        await Recruit.getInterviewerTimeSlots(id);
+
+      res.render("recruit/interview_plan_detail", {
+        plan: {
+          ...plan,
+          created_by_name: createdBy?.name || "알 수 없음",
+          updated_by_name: updatedBy?.name || "알 수 없음",
+          form_title: form?.title || "폼 정보 없음",
+        },
+        interviewDates,
+        interviewers,
+        interviewerTimeSlots,
+      });
     } catch (error) {
       console.error("Render interview plan detail error:", error);
       res.status(500).send("Internal server error");

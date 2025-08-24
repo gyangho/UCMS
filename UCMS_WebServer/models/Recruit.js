@@ -20,7 +20,7 @@ class Recruit {
   // InterviewInterviewer 메서드들
   static getInterviewers = InterviewInterviewer.getInterviewers;
   static addInterviewer = InterviewInterviewer.addInterviewer;
-  static removeInterviewer = InterviewInterviewer.removeInterviewer;
+  static deleteInterviewers = InterviewInterviewer.deleteInterviewers;
 
   // InterviewerTimeSlots 메서드들
   static createInterviewerTimeSlots =

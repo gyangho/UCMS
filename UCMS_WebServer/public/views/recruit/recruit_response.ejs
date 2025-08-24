@@ -31,9 +31,10 @@
 
     <div class="container">
       <div class="header">
-        <h1>신입부원 응답자 목록</h1>
-        <form method="POST" action="/recruit/sync" class="sync-container">
-          현재 폼 URL<input type="text" name="formURL" value="<%=currentForm.title || '' %>" disabled />
+        <div class="header-top">
+          <h1>신입부원 응답자 목록</h1>
+          <form method="POST" action="/recruit/sync" class="sync-container">
+          현재 폼 URL<input size="10"type="text" name="formURL" value="<%=currentForm.title || '' %>" disabled />
           <input type="text" name="formId" class="hidden" value="<%=currentForm.id%>">
           <button type="button" id="URLChangeBtn" class="btn-url-change">변경</button>
           <button type="submit" id="syncBtn" class="btn-sync" title="동기화">
@@ -46,6 +47,17 @@
             </svg>
           </button>
         </form>
+        </div>
+        <!-- 정렬 기준 선택 -->
+        <div class="sort-container">
+          <label for="sortBy">정렬 기준:</label>
+          <select id="sortBy" name="sortBy" onchange="changeSort(this.value)">
+            <option value="id" <%= (sortBy === 'id' || !sortBy) ? 'selected' : '' %>>응답순</option>
+            <option value="student_id" <%= sortBy === 'student_id' ? 'selected' : '' %>>학번순</option>
+            <option value="name" <%= sortBy === 'name' ? 'selected' : '' %>>이름순</option>
+            <option value="major" <%= sortBy === 'major' ? 'selected' : '' %>>학과순</option>
+          </select>
+        </div>  
       </div>
 
       <div class="table-wrap">
@@ -93,7 +105,7 @@
                     <option value="" disabled selected>성별</option>
                     <option value="남자">남자</option>
                     <option value="여자">여자</option>
-                  </selelct>
+                  </select>
                   <button class="icon-btn close-search">❌</button>
                 </div>
               </th>
@@ -153,7 +165,7 @@
       <!--페이지 분리-->
       <div class="pagination">
         <% for (let i=1; i <=totalPages; i++) { %>
-          <a href="/recruit/responses?page=<%= i %>&limit=<%= limit %>&column=<%= column %>&search=<%= search %>"
+          <a href="/recruit/responses?page=<%= i %>&limit=<%= limit %>&column=<%= column %>&search=<%= search %>&sortBy=<%= sortBy || 'id' %>"
             class="page-item <%= currentPage == i ? 'active' : '' %>">
             <%= i %>
           </a>
@@ -165,6 +177,14 @@
     <script type="module" src="../../js/recruit/recruit_response.js"></script>
 
     <script>
+      // 정렬 기준 변경 함수
+      function changeSort(sortBy) {
+        const url = new URL(window.location);
+        url.searchParams.set('sortBy', sortBy);
+        url.searchParams.set('page', '1'); // 정렬 변경 시 첫 페이지로 이동
+        window.location.href = url.toString();
+      }
+      
       // 평가 select 변경 시 DB 업데이트
       document.addEventListener('DOMContentLoaded', function () {
         const ratingSelects = document.querySelectorAll('.rating-select');
