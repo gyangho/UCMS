@@ -35,6 +35,15 @@ class InterviewDate {
     );
     return result.affectedRows;
   }
+
+  // 타임테이블 생성을 위한 메서드
+  static async getInterviewDatesWithQuestions(planId) {
+    const [rows] = await db.execute(
+      "SELECT interview_date, question_id FROM interview_dates WHERE plan_id = ? ORDER BY interview_date",
+      [planId]
+    );
+    return rows;
+  }
 }
 
 module.exports = InterviewDate;

@@ -17,12 +17,6 @@ router.get("/forms/:id", RecruitController.getForm);
 router.put("/forms/:id", RecruitController.updateForm);
 router.delete("/forms/:id", RecruitController.deleteForm);
 
-//면접 타임테이블 목록
-router.get(
-  "/interview/plans",
-  RecruitController.renderInterviewPlans
-);
-
 // 면접 타임테이블 생성
 router.get("/interview/plan", RecruitController.renderInterviewPlan);
 
@@ -53,13 +47,23 @@ router.get(
 
 router.post(
   "/interview/plan/interviewer/timeinfo",
-  RecruitController.createInterviewTimeInfo
+  RecruitController.createInterviewerTimeInfo
 );
 
 // 면접 계획 관리
-router.get("/interview/plans", RecruitController.getInterviewPlans);
+router.get(
+  "/interview/plans",
+  RecruitController.renderInterviewPlans
+);
 router.get(
   "/interview/plans/:id",
   RecruitController.renderInterviewPlanDetail
 );
+
+// 활성 면접 스케줄 조회
+router.get(
+  "/interview/activedschedule",
+  RecruitController.getActiveInterviewSchedules
+);
+
 module.exports = router;

@@ -238,12 +238,12 @@
         <h3>면접 정보 요약</h3>
         <div class="summary-item">
           <span class="summary-label">폼 ID:</span>
-          <span class="summary-value"><%= formId %></span>
+          <span class="summary-value"> <%= formId %> </span>
         </div>
         <div class="summary-item">
           <span class="summary-label">면접 날짜:</span>
-          <span class="summary-value"
-            ><%= interviewDates.join(', ') %></span
+          <span class="summary-value">
+            <%= interviewDates.join(', ') %></span
           >
         </div>
         <div class="summary-item">
@@ -272,7 +272,7 @@
           id="generateBtn"
           onclick="generateTimetable()"
         >
-          타임테이블 생성
+          다음 단계
         </button>
       </div>
     </div>
@@ -507,23 +507,26 @@
 
       async function generateTimetable() {
         const timeInfo = collectTimeInfo();
-        console.log(JSON.stringify(timeInfo));
+
+        console.log(timeInfo);
 
         // 최소한 하나의 시간이 선택되었는지 확인
-        let hasAnyTimeSelected = false;
+        let hasAnyTimeSelected = 0;
         Object.values(timeInfo).forEach((interviewer) => {
+          hasAnyTimeSelected = 0;
           Object.values(interviewer).forEach((times) => {
             if (JSON.stringify(times).includes("true")) {
-              hasAnyTimeSelected = true;
+              hasAnyTimeSelected += 1;
               return;
             }
           });
+          if (hasAnyTimeSelected === 0) {
+            return;
+          }
         });
 
-        if (!hasAnyTimeSelected) {
-          alert(
-            "최소한 하나의 면접관이 참여 가능한 시간을 선택해주세요."
-          );
+        if (hasAnyTimeSelected === 0) {
+          alert("면접관 당 최소 하나를 선택해주세요.");
           return;
         }
 
@@ -540,41 +543,32 @@
             return;
           }
 
-          const response = await fetch(
-            "/recruit/interview/plan/interviewer/timeinfo",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                timeInfo,
-                planId: planId,
-                formId: formId,
-              }),
-            }
-          );
+          const response = await fetch("/api/interview/timetable", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              planId: planId,
+              timeInfo: timeInfo,
+            }),
+          });
 
           const data = await response.json();
 
           if (data.success) {
-            alert("타임테이블 생성은 미구현 상태입니다.");
-            window.location.href = "/dashboard";
-
-            // window.location.href =
-            //   data.redirect + "?planId=" + planId;
+            window.location.href = data.redirect;
           } else {
             alert("오류가 발생했습니다: " + data.error);
           }
         } catch (error) {
-          console.error("타임테이블 생성 실패:", error);
-          alert("타임테이블을 생성할 수 없습니다.");
+          console.error("면접 시간대 설정 중 오류가 발생:", error);
+          alert("면접 시간대 설정 중 오류가 발생했습니다.");
         } finally {
           document.getElementById("loading").style.display = "none";
           document.getElementById("generateBtn").disabled = false;
         }
       }
-
       function goBack() {
         window.location.href =
           "/recruit/interview/plan/interviewer/add?planId=" + planId;
