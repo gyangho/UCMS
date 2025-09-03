@@ -1,8 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const AuthController = require("../controllers/authController");
+const path = require("path");
 
-router.get("/", (req, res) => {});
+// 로그인 페이지
+router.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/views/login.html"));
+});
 
 // 카카오 로그인 콜백
 router.get("/authorize", AuthController.authorize);

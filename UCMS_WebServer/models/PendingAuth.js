@@ -21,6 +21,30 @@ class PendingAuth {
       throw error;
     }
   }
+
+  static async createForBot(pendingAuthData) {
+    try {
+      await db.execute(
+        `DELETE FROM pending_auth WHERE kakao_id = ?`,
+        [pendingAuthData.kakao_id]
+      );
+
+      const [result] = await db.execute(
+        `INSERT INTO pending_auth 
+        (kakao_id, name, auth_code, chat_room_id) 
+        VALUES (?, ?, ?, ?)`,
+        [
+          pendingAuthData.kakao_id,
+          pendingAuthData.name,
+          pendingAuthData.auth_code,
+          pendingAuthData.chat_room_id,
+        ]
+      );
+      return result.insertId;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 PendingAuth.findByAuthCode = async (authCode) => {
@@ -56,7 +80,11 @@ PendingAuth.updateAuthCode = async (authCode, newAuthCode) => {
   }
 };
 
-PendingAuth.updateIsCompleted = async (chatRoomId, authCode, isCompleted) => {
+PendingAuth.updateIsCompleted = async (
+  chatRoomId,
+  authCode,
+  isCompleted
+) => {
   try {
     await db.execute(
       "UPDATE pending_auth SET is_completed = ? WHERE auth_code = ?",

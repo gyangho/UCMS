@@ -80,6 +80,19 @@ body {
   color: #111827;
 }
 
+.header-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 버튼들을 오른쪽에 그룹화 */
+.header-bottom .button-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 input[type="text"],
 select {
   background: #d6d6d6;
@@ -117,6 +130,11 @@ select {
   color: #6b7280;
 }
 
+.rating-select[data-current-rating="1차합격"] {
+  background-color: #f0f9ff;
+  color: #0369a1;
+}
+
 .rating-select[data-current-rating="불합격"] {
   background-color: #fef2f2;
   color: #dc2626;
@@ -137,7 +155,7 @@ select {
   color: #64a316;
 }
 
-.rating-select[data-current-rating="합격"] {
+.rating-select[data-current-rating="최종합격"] {
   background-color: #f0fdf4;
   color: #047857;
 }
@@ -146,6 +164,11 @@ select {
 .rating-select option[value="대기"] {
   background-color: #f3f4f6;
   color: #6b7280;
+}
+
+.rating-select option[value="1차합격"] {
+  background-color: #f0f9ff;
+  color: #0369a1;
 }
 
 .rating-select option[value="불합격"] {
@@ -168,7 +191,7 @@ select {
   color: #64a316;
 }
 
-.rating-select option[value="합격"] {
+.rating-select option[value="최종합격"] {
   background-color: #f0fdf4;
   color: #047857;
 }
@@ -192,6 +215,78 @@ button:hover {
   cursor: pointer;
   border-radius: 4px;
   background-color: #dae6ff;
+}
+
+/* 구글 폼 열기 버튼 컨테이너 */
+.google-form-container {
+  display: flex;
+  align-items: center;
+}
+
+/* 구글 폼 열기 버튼 */
+.btn-open-form {
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  padding: 8px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: inherit;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn-open-form:hover {
+  background-color: #3367d6;
+  transform: translateY(-1px);
+}
+
+.btn-open-form:active {
+  transform: translateY(0);
+}
+
+.btn-open-form svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Excel 다운로드 버튼 컨테이너 */
+.excel-download-container {
+  display: flex;
+  align-items: center;
+}
+
+/* Excel 다운로드 버튼 */
+.btn-download-excel {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 6px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: inherit;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn-download-excel:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+}
+
+.btn-download-excel:active {
+  transform: translateY(0);
+}
+
+.btn-download-excel svg {
+  width: 16px;
+  height: 16px;
 }
 .btn-sync:disabled {
   cursor: not-allowed;

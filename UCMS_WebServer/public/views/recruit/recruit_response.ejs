@@ -46,18 +46,42 @@
               <path d="M20.49 15a9 9 0 01-14.14 3.36L3 16" />
             </svg>
           </button>
-        </form>
+        </form> 
         </div>
-        <!-- 정렬 기준 선택 -->
-        <div class="sort-container">
-          <label for="sortBy">정렬 기준:</label>
-          <select id="sortBy" name="sortBy" onchange="changeSort(this.value)">
-            <option value="id" <%= (sortBy === 'id' || !sortBy) ? 'selected' : '' %>>응답순</option>
-            <option value="student_id" <%= sortBy === 'student_id' ? 'selected' : '' %>>학번순</option>
-            <option value="name" <%= sortBy === 'name' ? 'selected' : '' %>>이름순</option>
-            <option value="major" <%= sortBy === 'major' ? 'selected' : '' %>>학과순</option>
-          </select>
-        </div>  
+        <div class="header-bottom">
+          <!-- 정렬 기준 선택 -->
+          <div class="sort-container">
+            <label for="sortBy">정렬 기준:</label>
+            <select id="sortBy" name="sortBy" onchange="changeSort(this.value)">
+              <option value="id" <%= (sortBy === 'id' || !sortBy) ? 'selected' : '' %>>응답순</option>
+              <option value="student_id" <%= sortBy === 'student_id' ? 'selected' : '' %>>학번순</option>
+              <option value="name" <%= sortBy === 'name' ? 'selected' : '' %>>이름순</option>
+              <option value="major" <%= sortBy === 'major' ? 'selected' : '' %>>학과순</option>
+            </select>
+          </div>
+          <!-- 버튼 그룹 -->
+          <div class="button-group">
+            <!-- 구글 폼 열기 버튼 -->
+            <div class="google-form-container">
+              <button type="button" id="openGoogleFormBtn" class="btn-open-form" title="구글 폼 열기">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM4.5 7.5a.5.5 0 0 0 0 1h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5H4.5z"/>
+                </svg>
+                구글 폼 열기
+              </button>
+            </div>
+            <!-- Excel 다운로드 버튼 -->
+            <div class="excel-download-container">
+              <button type="button" id="downloadExcelBtn" class="btn-download-excel" title="Excel 다운로드">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M8.5 6a.5.5 0 0 0-1 0v1.5H6a.5.5 0 0 0 0 1h1.5V10a.5.5 0 0 0 1 0V8.5H10a.5.5 0 0 0 0-1H8.5V6z"/>
+                  <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm10-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"/>
+                </svg>
+                Excel 다운로드
+              </button>
+            </div>
+          </div>  
+        </div>
       </div>
 
       <div class="table-wrap">
@@ -116,11 +140,13 @@
                   <select class="search-input">
                     <option value="" disabled selected>평가</option>
                     <option value="대기">대기</option>
+                    <option value="1차합격">1차합격</option>
                     <option value="불합격">불합격</option>
                     <option value="느별">느별</option>
                     <option value="느괜">느괜</option>
                     <option value="느좋">느좋</option>
-                    <option value="합격">합격</option>
+                    <option value="최종합격">최종합격</option>
+                    <option value="1차불합격">1차불합격</option>
                   </select>
                   <button class="icon-btn close-search">❌</button>
                 </div>
@@ -150,11 +176,13 @@
                   <select class="rating-select" data-response-id="<%= m.response_id %>"
                     data-current-rating="<%= m.rating %>">
                     <option value="대기" <%=m.rating==='대기' ? 'selected' : '' %>>대기</option>
+                    <option value="1차합격" <%=m.rating==='1차합격' ? 'selected' : '' %>>1차합격</option>
                     <option value="불합격" <%=m.rating==='불합격' ? 'selected' : '' %>>불합격</option>
                     <option value="느별" <%=m.rating==='느별' ? 'selected' : '' %>>느별</option>
                     <option value="느괜" <%=m.rating==='느괜' ? 'selected' : '' %>>느괜</option>
                     <option value="느좋" <%=m.rating==='느좋' ? 'selected' : '' %>>느좋</option>
-                    <option value="합격" <%=m.rating==='합격' ? 'selected' : '' %>>합격</option>
+                    <option value="최종합격" <%=m.rating==='최종합격' ? 'selected' : '' %>>최종합격</option>
+                    <option value="1차불합격" <%=m.rating==='1차불합격' ? 'selected' : '' %>>1차불합격</option>
                   </select>
                 </td>
               </tr>
@@ -244,6 +272,43 @@
             window.open(detailUrl, '_blank');
           });
         });
+
+        // 구글 폼 열기 버튼 이벤트
+        const openGoogleFormBtn = document.getElementById('openGoogleFormBtn');
+        if (openGoogleFormBtn) {
+          openGoogleFormBtn.addEventListener('click', function() {
+            const formURL = document.querySelector('input[name="formId"]').value;
+            if (formURL && formURL.trim() !== '') {
+              // 새 탭에서 구글 폼 열기
+              window.open("https://docs.google.com/forms/d/"+formURL, '_blank');
+            } else {
+              alert('폼 URL이 설정되지 않았습니다. 먼저 폼 URL을 설정해주세요.');
+            }
+          });
+        }
+
+        // Excel 다운로드 버튼 이벤트
+        const downloadExcelBtn = document.getElementById('downloadExcelBtn');
+        if (downloadExcelBtn) {
+          downloadExcelBtn.addEventListener('click', function() {
+            const formId = document.querySelector('input[name="formId"]').value;
+            if (!formId || formId.trim() === '') {
+              alert('폼이 선택되지 않았습니다. 먼저 폼을 선택해주세요.');
+              return;
+            }
+
+            // 현재 검색 조건과 정렬 기준을 가져와서 URL에 포함
+            const currentSearch = "<%= search || '' %>";
+            const currentColumn = "<%= column || '' %>";
+            const currentSortBy = "<%= sortBy || 'id' %>";
+
+            // API 엔드포인트로 Excel 다운로드 요청
+            const downloadUrl = `/api/recruit/download-excel?formId=${formId}&search=${encodeURIComponent(currentSearch)}&column=${encodeURIComponent(currentColumn)}&sortBy=${encodeURIComponent(currentSortBy)}`;
+            
+            // 새 창에서 다운로드 시작
+            window.open(downloadUrl, '_blank');
+          });
+        }
       });
     </script>
 

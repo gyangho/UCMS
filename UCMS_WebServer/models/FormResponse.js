@@ -49,6 +49,21 @@ class FormResponse {
       throw error;
     }
   }
+
+  // 타임테이블 생성을 위한 메서드
+  static async getFormResponse(formId, questionId, responseId) {
+    try {
+      const [rows] = await db.execute(
+        `SELECT answer 
+         FROM form_responses 
+         WHERE form_id = ? AND question_id = ? AND response_id = ?`,
+        [formId, questionId, responseId]
+      );
+      return rows[0];
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = FormResponse;

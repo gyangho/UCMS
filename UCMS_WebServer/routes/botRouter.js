@@ -15,4 +15,8 @@ router.get("/", (req, res, next) => {
 
 router.get("/auth", BotController.completeAuth);
 
+router.get("/chat", BotController.chatResponse);
+
+router.get("/kakaobank", BotController.kakaobankResponse);
+
 module.exports = router;

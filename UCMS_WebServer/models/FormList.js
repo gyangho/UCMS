@@ -74,7 +74,10 @@ class FormList {
 
     // form_questions에서 특정 질문들의 question_id 가져오기
     const questionIds = await this.getQuestionIds(formId);
-    console.log("찾은 질문 ID들:", questionIds);
+    console.log(
+      "찾은 질문 ID 개수:",
+      Object.keys(questionIds).length
+    );
 
     // 응답 읽기
     const resp = await googleApis.saForms.forms.responses.list({
@@ -146,9 +149,16 @@ class FormList {
         memberData.phone,
         memberData.gender,
       ]);
-
-      console.log("저장된 멤버 데이터:", memberData);
     }
+    console.log("저장된 멤버 데이터 수:", responses.length);
+    // 18:00 이후 시간대 처리
+    await db.execute(
+      "UPDATE form_responses SET answer = REPLACE(answer, '18:00 이후; ', '');"
+    );
+    await db.execute(
+      "UPDATE form_responses SET answer = REPLACE(answer, '18:00 이후', '');"
+    );
+    await db.execute("DELETE FROM form_responses WHERE answer = '';");
   }
 
   // 특정 질문들의 question_id를 가져오는 함수

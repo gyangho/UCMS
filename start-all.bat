@@ -69,9 +69,10 @@ if not exist node_modules (
         pause
         goto menu
     )
-)
+    )
 
-start "UCMS Servers" cmd /c "npm run dev:all"
+start "UCMS Web Server" cmd /c "npm run dev"
+start "UCMS WebSocket Server" cmd /c "npm run sharedb"
 
 echo.
 echo All services started successfully!
@@ -137,7 +138,8 @@ if not exist package.json (
     goto menu
 )
 
-start "UCMS Servers" cmd /c "npm run dev:all"
+start "UCMS Web Server" cmd /c "npm run dev"
+start "UCMS WebSocket Server" cmd /c "npm run sharedb"
 
 echo All services restarted successfully!
 pause

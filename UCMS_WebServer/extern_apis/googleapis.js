@@ -45,7 +45,9 @@ async function ensureOAuthTokens() {
   });
 
   console.log("\n[Google OAuth] 최초 설정이 필요합니다.");
-  console.log("다음 URL을 브라우저에 복사-붙여넣기 하여 로그인 해주세요.");
+  console.log(
+    "다음 URL을 브라우저에 복사-붙여넣기 하여 로그인 해주세요."
+  );
   console.log(authUrl, "\n");
 
   /* 서버는 콜백이 올 때까지 service 계정만으로 계속 실행 */

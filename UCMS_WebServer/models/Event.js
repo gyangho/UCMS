@@ -131,7 +131,7 @@ class Event {
   static async findByAuthority(authority) {
     try {
       const [rows] = await db.execute(
-        "SELECT * FROM events WHERE authority <= ? ORDER BY start DESC",
+        "SELECT * FROM events WHERE authority <= ? AND author_id != 0 ORDER BY start DESC",
         [authority]
       );
       return rows;
@@ -175,6 +175,17 @@ class Event {
          FROM events 
          WHERE isrecruiting = true AND recruit_start <= ? AND recruit_end >= ?`,
         [today, today]
+      );
+      return rows;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async findAllForSettlement() {
+    try {
+      const [rows] = await db.execute(
+        "SELECT * FROM events WHERE author_id != 0 ORDER BY start DESC"
       );
       return rows;
     } catch (error) {

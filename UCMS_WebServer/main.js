@@ -22,6 +22,8 @@ const botRouter = require("./routes/botRouter");
 const recruitRouter = require("./routes/recruitRouter");
 const eventRouter = require("./routes/eventRouter");
 const driveRouter = require("./routes/driveRouter");
+const publicRouter = require("./routes/publicRouter");
+const financeRouter = require("./routes/financeRouter");
 
 const app = express();
 const DOMAIN = process.env.DOMAIN;
@@ -38,23 +40,24 @@ const sessionStore = new mySQLSessionStore(
 // 0. 개발자도구 무시
 app.use(ignoreChromeDevTools);
 
-// 1. 로그 찍기 - 모든 요청 로깅
-app.use(logger);
-
-/* 2. body-parser (json, form 데이터 파싱) */
+/* 1. body-parser (json, form 데이터 파싱) */
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-/* 3. 세션 설정 */
+/* 2. 세션 설정 */
 app.use(
   session({
-    secret: "secert",
+    secret:
+      "gyanghogyanghogyanghogyanghogyanghogyanghogyanghogyanghogyangho",
     resave: false,
     saveUninitialized: false,
     store: sessionStore,
     cookie: { maxAge: 1000 * 60 * 60 * 2 },
   })
 );
+
+// 3. 로그 찍기 - 모든 요청 로깅 (세션 설정 후)
+app.use(logger);
 
 /* 4. 세션 유효성 검사 미들웨어 (로그인된 사용자만 접근 가능하도록) */
 app.use(requireValidSession);
@@ -68,6 +71,7 @@ app.set("views", path.join(__dirname, "public/views"));
 
 /* 7. 라우터 등록 */
 app.use("/", defaultRouter);
+app.use("/public", publicRouter);
 app.use("/api", apiRouter);
 app.use("/auth", authRouter);
 app.use("/member", memberRouter);
@@ -75,10 +79,13 @@ app.use("/bot", botRouter);
 app.use("/recruit", recruitRouter);
 app.use("/event", eventRouter);
 app.use("/drive", driveRouter);
+app.use("/finance", financeRouter);
 
 app.use((err, req, res, next) => {
   if (err.status === 401 || err.code) {
-    console.error("[" + new Date() + "]" + "\t" + "Error: " + err.stack);
+    console.error(
+      "[" + new Date() + "]" + "\t" + "Error: " + err.stack
+    );
     return res.send(`
       <script>
         alert("잘못된 접근입니다.");
@@ -108,20 +115,26 @@ async function requireValidSession(req, res, next) {
   try {
     //세션 정보 검색
     const sessionInfo = await sessionStore.get(req.sessionID);
-    if (!sessionInfo || sessionInfo.authority < 3) {
+    if (!sessionInfo || sessionInfo.authority <= 4) {
       if (
         req.path === "/" ||
         req.path.startsWith("/images") ||
-        req.path.startsWith("/css") ||
+        req.path.startsWith("/styles") ||
         req.path.startsWith("/js") ||
         req.path.startsWith("/auth") ||
-        req.path.startsWith("/bot")
+        req.path.startsWith("/bot") ||
+        req.path.startsWith("/public")
       ) {
         return next();
       }
       const newErr = new Error("권한이 없습니다.");
       newErr.code = "CannotFindSessionID";
-      return next(newErr);
+      return res.send(`
+        <script>
+          alert("세션이 없거나 권한이 없습니다.");
+          window.location.href = "/";
+        </script>
+      `);
     } else if (req.path === "/") {
       return res.redirect("/dashboard");
     } else {
@@ -143,12 +156,19 @@ function ignoreChromeDevTools(req, res, next) {
 }
 
 function logger(req, res, next) {
+  const userId =
+    req.session && req.session.userId
+      ? req.session.userId
+      : "anonymous";
   console.log(
     "[LOG]\t" +
       new Date().toISOString() +
       "  " +
-      req.ip +
-      " " +
+      req.headers["x-forwarded-for"] +
+      "  " +
+      "  User: " +
+      userId +
+      "  " +
       req.method +
       " " +
       req.url

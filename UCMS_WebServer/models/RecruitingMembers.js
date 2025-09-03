@@ -96,6 +96,33 @@ class RecruitingMembers {
     ]);
     return rows[0];
   }
+
+  // 타임테이블 생성을 위한 메서드들
+  static async getQualifiedMembers(formId) {
+    const query = `
+      SELECT response_id, student_id 
+      FROM recruiting_members 
+      WHERE form_id = ? AND rating = '1차합격'
+    `;
+    const [rows] = await db.execute(query, [formId]);
+    return rows;
+  }
+
+  static async getRecruitingMembersByIds(ids) {
+    if (!ids || ids.length === 0) {
+      return [];
+    }
+
+    const placeholders = ids.map(() => "?").join(",");
+    const query = `
+      SELECT name, student_id, major, rating 
+      FROM recruiting_members 
+      WHERE student_id IN (${placeholders})
+      ORDER BY name ASC
+    `;
+    const [rows] = await db.execute(query, ids);
+    return rows;
+  }
 }
 
 module.exports = RecruitingMembers;
