@@ -1,12 +1,26 @@
 const express = require("express");
 const router = express.Router();
-const path = require("path");
 const Event = require("../models/Event");
-const PurchaseController = require("../controllers/purchaseController");
+const path = require("path");
 
-// 루트 경로 - 로그인 페이지로 리다이렉트
-router.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../public/index.html"));
+// 루트 경로 - 공개 페이지
+router.get("/", async (req, res, next) => {
+  try {
+    const calendar_events = await Event.findByAuthority(2);
+
+    calendar_events.forEach((ev) => {
+      ev.start = new Date(ev.start);
+      ev.end = new Date(ev.end);
+    });
+
+    res.render("publicDashboard", {
+      error: null,
+      data: {},
+      calendar_events: JSON.stringify(calendar_events),
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.get("/dashboard", async (req, res, next) => {

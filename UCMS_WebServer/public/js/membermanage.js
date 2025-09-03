@@ -3,13 +3,15 @@ document.addEventListener("DOMContentLoaded", () => {
   {
     const searchToggles = document.querySelectorAll(".search-toggle");
     const searchInputs = document.querySelectorAll(".search-input");
-    const searchClosesBtns = document.querySelectorAll(".close-search");
+    const searchClosesBtns =
+      document.querySelectorAll(".close-search");
     const allsearchContaiers = document.querySelectorAll(
       ".search-input-container"
     );
 
     if (currentSearch != "" && currentColumn != "") {
-      const currentSearchContainer = document.getElementById(currentColumn);
+      const currentSearchContainer =
+        document.getElementById(currentColumn);
       currentSearchContainer.children[0].value = currentSearch;
       currentSearchContainer.classList.remove("hidden");
     }
@@ -20,7 +22,9 @@ document.addEventListener("DOMContentLoaded", () => {
           inputContainer.classList.add("hidden");
         });
         const th = this.closest("th");
-        const inputContainer = th.querySelector(".search-input-container");
+        const inputContainer = th.querySelector(
+          ".search-input-container"
+        );
         const input = inputContainer.querySelector(".search-input");
         inputContainer.classList.remove("hidden"); // 보여주기
         input.focus(); // 포커스를 설정
@@ -28,16 +32,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     searchInputs.forEach((input) => {
-      input.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") {
-          const th = this.closest("th");
-          const column = th.getAttribute("data-column");
-          const value = this.value.trim();
-          if (value) {
-            window.location.href = `/member?page=1&limit=10&column=${column}&search=${encodeURIComponent(
-              value
-            )}`;
-          }
+      input.addEventListener("change", function (e) {
+        const th = this.closest("th");
+        const column = th.getAttribute("data-column");
+        const value = this.value.trim();
+        if (value) {
+          window.location.href = `/member?page=1&limit=10&column=${column}&search=${encodeURIComponent(
+            value
+          )}`;
         }
       });
     });
@@ -113,12 +115,17 @@ document.addEventListener("DOMContentLoaded", () => {
       // 4) ✔️ 버튼 클릭 시 submit
       confirmBtn.addEventListener("click", async () => {
         const formData = new URLSearchParams();
-        ["name", "major", "phone", "gender", "generation", "authority"].forEach(
-          (field) => {
-            const input = tr.querySelector(`[name="${field}"]`);
-            formData.append(field, input.value);
-          }
-        );
+        [
+          "name",
+          "major",
+          "phone",
+          "gender",
+          "generation",
+          "authority",
+        ].forEach((field) => {
+          const input = tr.querySelector(`[name="${field}"]`);
+          formData.append(field, input.value);
+        });
 
         try {
           const res = await fetch(
@@ -141,7 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // 추가
+  // 부원 추가
   {
     // 추가 모달 토글
     const addToggle = document.getElementById("add-toggle");
@@ -149,7 +156,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const addRows = document.getElementById("add-rows");
     const closeAddFormBtn = document.getElementById("close-add-form");
 
-    const excelUploadModal = document.getElementById("excel-upload-modal");
+    const excelUploadModal = document.getElementById(
+      "excel-upload-modal"
+    );
 
     let rowCount = 0;
 
@@ -212,7 +221,9 @@ document.addEventListener("DOMContentLoaded", () => {
       addRows.appendChild(row);
     }
     // 행 추가 버튼
-    document.getElementById("add-row").addEventListener("click", buildRow);
+    document
+      .getElementById("add-row")
+      .addEventListener("click", buildRow);
 
     //엑셀 업로드
 

@@ -69,6 +69,52 @@ class InterviewPlan {
       throw error;
     }
   }
+
+  static async updateInterviewPlanPanelSize(id, panelSize) {
+    try {
+      await db.execute(
+        "UPDATE interview_plans SET panel_size = ? WHERE id = ?",
+        [panelSize, id]
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 면접 계획 상태 업데이트
+  static async updateInterviewPlanStatus(id, status) {
+    try {
+      await db.execute(
+        "UPDATE interview_plans SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [status, id]
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 활성화된 면접 계획 조회
+  static async getActiveInterviewPlans() {
+    try {
+      const [rows] = await db.execute(
+        "SELECT * FROM interview_plans WHERE status = 'active' ORDER BY created_at DESC"
+      );
+      return rows;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async getCompletedInterviewPlans() {
+    try {
+      const [rows] = await db.execute(
+        "SELECT * FROM interview_plans WHERE status = 'completed' ORDER BY created_at DESC"
+      );
+      return rows;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = InterviewPlan;

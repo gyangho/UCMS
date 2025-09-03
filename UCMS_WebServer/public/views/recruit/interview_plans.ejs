@@ -135,6 +135,15 @@
         background: #5a6268;
       }
 
+      .btn-danger {
+        background: #dc3545;
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background: #c82333;
+      }
+
       .empty-state {
         text-align: center;
         padding: 60px 20px;
@@ -229,6 +238,11 @@
           })">
             편집
           </button>
+          <button class="btn btn-small btn-danger" onclick="deletePlan(${
+            plan.id
+          }, '${plan.title}')">
+            삭제
+          </button>
         </div>
       </div>
     `
@@ -254,6 +268,42 @@
 
       function editPlan(planId) {
         window.location.href = `/recruit/interview/plan/selectform?planId=${planId}`;
+      }
+
+      async function deletePlan(planId, planTitle) {
+        // 삭제 확인 다이얼로그
+        if (
+          !confirm(
+            `"${planTitle}" 면접 계획을 정말 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`
+          )
+        ) {
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `/api/interview/plans/${planId}`,
+            {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          const data = await response.json();
+
+          if (data.success) {
+            alert("면접 계획이 성공적으로 삭제되었습니다.");
+            // 페이지 새로고침하여 목록 업데이트
+            loadInterviewPlans();
+          } else {
+            throw new Error(data.error || "삭제에 실패했습니다.");
+          }
+        } catch (error) {
+          console.error("면접 계획 삭제 실패:", error);
+          alert(`삭제에 실패했습니다: ${error.message}`);
+        }
       }
 
       // 페이지 로드 시 면접 계획 로드

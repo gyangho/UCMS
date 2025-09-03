@@ -24,7 +24,7 @@ class Member {
         params.push(`%${search}%`);
       }
 
-      query += ` ORDER BY authority DESC LIMIT ${limitNum} OFFSET ${offset}`;
+      query += ` ORDER BY name ASC LIMIT ${limitNum} OFFSET ${offset}`;
 
       const [rows] = await db.execute(query, params);
       return rows;
@@ -97,7 +97,15 @@ class Member {
       const [result] = await db.execute(
         `INSERT INTO Members 
         (name, student_id, major, phone, gender, generation) 
-        VALUES (?, ?, ?, ?, ?, ?)`,
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE 
+        name = VALUES(name),
+        student_id = VALUES(student_id),
+        major = VALUES(major),
+        phone = VALUES(phone),
+        gender = VALUES(gender),
+        generation = VALUES(generation)
+        `,
         [
           members.name,
           members.student_id,
@@ -128,7 +136,7 @@ class Member {
   static async findByName(name) {
     try {
       const [rows] = await db.execute(
-        "SELECT * , authority + 0 as authority_num FROM Members WHERE name = ?",
+        "SELECT * , authority + 0 as authority_num FROM Members WHERE name LIKE ?",
         [name]
       );
       return rows;
@@ -165,6 +173,17 @@ class Member {
       const [rows] = await db.execute(
         "SELECT * FROM Members WHERE authority >= ?",
         [authority]
+      );
+      return rows;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async findAllMembers() {
+    try {
+      const [rows] = await db.execute(
+        "SELECT * FROM Members ORDER BY name ASC"
       );
       return rows;
     } catch (error) {

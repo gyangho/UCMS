@@ -3,16 +3,22 @@ const db = require("./db");
 class User {
   static async findById(id) {
     try {
-      const [rows] = await db.execute("SELECT * FROM Users WHERE id = ?", [id]);
+      const [rows] = await db.execute(
+        "SELECT * FROM Users WHERE id = ?",
+        [id]
+      );
       return rows[0];
     } catch (error) {
       throw error;
     }
   }
 
-  static async findById(id) {
+  static async findByChatRoomId(chatRoomId) {
     try {
-      const [rows] = await db.execute("SELECT * FROM Users WHERE id = ?", [id]);
+      const [rows] = await db.execute(
+        "SELECT * FROM Users WHERE chat_room_id = ?",
+        [chatRoomId]
+      );
       return rows[0];
     } catch (error) {
       throw error;
