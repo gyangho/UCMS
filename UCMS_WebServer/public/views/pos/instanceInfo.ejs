@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UCMS - 인스턴스 상세</title>
+  <link rel="stylesheet" href="/styles/pos.css" />
+  <style>
+    .group {
+      display: flex;
+      gap: 16px;
+    }
+
+    .col {
+      flex: 1;
+    }
+  </style>
+
+</head>
+<%- include('../header') %>
+
+<body>
+<div class="container" style="flex-direction:column; gap:16px;">
+
+  <div class="panel">
+    <div class="header">
+      <h1 class="title">인스턴스: <%= instance.instance_name %></h1>
+      <div>
+        <button class="btn" onclick="location.href='/pos/instances'">목록으로</button>
+        <button class="btn" onclick="location.href='/pos/instances/<%= instance.id %>/edit'">편집</button>
+        <button class="btn" id="delete-btn" style="color:#dc3545; border-color:#dc3545;">삭제</button>
+      </div>
+    </div>
+    상태: <strong><%= instance.status %></strong>
+    <div style="margin-top:8px; display:flex; gap:8px;">
+      <button class="btn" onclick="location.href='/pos/instances'">목록으로</button>
+      <button class="btn primary" id="open-btn">인스턴스 활성화</button>
+      <button class="btn" onclick="location.href='/pos/<%= instance.id %>'">판매 페이지 이동</button>
+    </div>
+  </div>
+
+  <div class="group" style="display:flex; gap:16px;">
+    <div class="panel col">
+      <h3>상품</h3>
+      <div class="grid">
+        <% (products || []).forEach(function(p){ %>
+        <div class="card">
+          <h4><%= p.product_name %></h4>
+          <div class="meta">가격: <strong><%= p.product_price.toLocaleString() %>원</strong></div>
+          <div class="meta">재고: <span class="pill"><%= p.stock %>개</span></div>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+    <div class="panel col">
+      <h3>판매원</h3>
+      <div class="grid">
+        <% (salesmans || []).forEach(function(s){ %>
+        <div class="card">
+          <h4><%= s.member_name %></h4>
+          <div class="meta">학번: <%= s.member_id %></div>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  document.getElementById('open-btn').addEventListener('click', async () => {
+    const res = await fetch('/api/pos/instances/<%= instance.id %>/open', {
+      method: 'POST'
+    });
+    if (res.ok) {
+      location.href = '/pos/<%= instance.id %>';
+    } else {
+      alert('오픈 실패');
+    }
+  });
+
+  document.getElementById('delete-btn').addEventListener('click', async () => {
+    if (!confirm('정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+    const res = await fetch('/api/pos/instances/<%= instance.id %>', {
+      method: 'DELETE'
+    });
+    if (res.ok) {
+      alert('삭제되었습니다.');
+      location.href = '/pos/instances';
+    } else {
+      const r = await res.json().catch(() => ({}));
+      alert('삭제할 수 없습니다.: ' + (r.error || 'unknown'));
+    }
+  });
+</script>
+</body>
+
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UCMS - 인스턴스 생성</title>
+    <link rel="stylesheet" href="/styles/pos.css" />
+</head>
+<%- include('../header') %>
+
+    <body>
+        <div class="container" style="flex-direction:column; padding:16px; gap:16px;">
+            <h2>POS 인스턴스 생성</h2>
+
+            <div class="panel">
+                <div class="row">
+                    <label style="width:120px">인스턴스 이름</label>
+                    <input id="instance-name" placeholder="예) 2025 봄 축제" style="flex:1" />
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>판매자 지정</h3>
+                <div class="row">
+                    <input id="seller-search" placeholder="학번으로 검색 (student_id)" style="flex:1" />
+                    <button class="btn" id="seller-search-btn">검색</button>
+                </div>
+                <ul id="seller-results" class="list"></ul>
+                <h4>선택된 판매자</h4>
+                <ul id="seller-selected" class="list"></ul>
+            </div>
+
+            <div class="panel">
+                <h3>상품 설정</h3>
+                <div class="row">
+                    <input id="prod-name" placeholder="상품명" style="flex:2" />
+                    <input id="prod-price" placeholder="가격" type="number" style="flex:1" />
+                    <input id="prod-stock" placeholder="재고" type="number" style="flex:1" />
+                    <button class="btn" id="add-prod">추가</button>
+                </div>
+                <ul id="prod-list" class="list"></ul>
+            </div>
+
+            <div class="row" style="justify-content:flex-end; gap:8px;">
+                <button class="btn" onclick="history.back()">취소</button>
+                <button class="btn primary" id="create">생성</button>
+            </div>
+        </div>
+
+        <script>
+            const sellers = new Map();
+            const products = [];
+
+            function renderSellers() {
+                const ul = document.getElementById('seller-selected');
+                ul.innerHTML = '';
+                sellers.forEach((name, id) => {
+                    const li = document.createElement('li');
+                    li.textContent = id + ' - ' + name;
+                    const btn = document.createElement('button');
+                    btn.textContent = '삭제';
+                    btn.className = 'btn';
+                    btn.style.marginLeft = '8px';
+                    btn.onclick = () => { sellers.delete(id); renderSellers(); };
+                    li.appendChild(btn);
+                    ul.appendChild(li);
+                });
+            }
+
+            function renderProducts() {
+                const ul = document.getElementById('prod-list');
+                ul.innerHTML = '';
+                products.forEach((p, idx) => {
+                    const li = document.createElement('li');
+                    li.textContent = `${p.product_name} - ${p.product_price}원 / 재고 ${p.stock}`;
+                    const btn = document.createElement('button');
+                    btn.textContent = '삭제';
+                    btn.className = 'btn';
+                    btn.style.marginLeft = '8px';
+                    btn.onclick = () => { products.splice(idx, 1); renderProducts(); };
+                    ul.appendChild(li);
+                    li.appendChild(btn);
+                });
+            }
+
+            document.getElementById('seller-search-btn').addEventListener('click', async () => {
+                const q = document.getElementById('seller-search').value.trim();
+                const ul = document.getElementById('seller-results');
+                ul.innerHTML = '';
+                if (!q) return;
+                const res = await fetch('/api/pos/members?student_id=' + encodeURIComponent(q));
+                const data = await res.json();
+                (data.members || []).forEach(m => {
+                    const li = document.createElement('li');
+                    li.textContent = `${m.student_id} - ${m.name}`;
+                    const btn = document.createElement('button');
+                    btn.textContent = '추가';
+                    btn.className = 'btn';
+                    btn.style.marginLeft = '8px';
+                    btn.onclick = () => { sellers.set(m.student_id, m.name); renderSellers(); };
+                    li.appendChild(btn);
+                    ul.appendChild(li);
+                });
+            });
+
+            document.getElementById('add-prod').addEventListener('click', () => {
+                const name = document.getElementById('prod-name').value.trim();
+                const price = parseInt(document.getElementById('prod-price').value || '0', 10);
+                const stock = parseInt(document.getElementById('prod-stock').value || '0', 10);
+                if (!name || price < 0 || stock < 0) { alert('상품 정보를 확인하세요'); return; }
+                products.push({ product_name: name, product_price: price, stock });
+                document.getElementById('prod-name').value = '';
+                document.getElementById('prod-price').value = '';
+                document.getElementById('prod-stock').value = '';
+                renderProducts();
+            });
+
+            document.getElementById('create').addEventListener('click', async () => {
+                const instance_name = document.getElementById('instance-name').value.trim();
+                if (!instance_name) { alert('인스턴스 이름을 입력하세요'); return; }
+                if (products.length === 0) { if (!confirm('상품이 없습니다. 계속하시겠습니까?')) return; }
+                const salesmans = Array.from(sellers.keys()).map(id => ({ member_id: id }));
+                const res = await fetch('/api/pos/instances', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ instance_name, products, salesmans })
+                });
+                if (res.ok) {
+                    const { id } = await res.json();
+                    location.href = '/pos/instances/' + id;
+                } else {
+                    const r = await res.json().catch(() => ({}));
+                    alert('생성 실패: ' + (r.error || 'unknown'));
+                }
+            });
+        </script>
+    </body>
+
+</html>

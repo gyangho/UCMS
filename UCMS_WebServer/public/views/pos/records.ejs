@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UCMS - 판매 기록</title>
+  <link rel="stylesheet" href="/styles/pos.css" />
+  <%- include('../header') %>
+</head>
+
+
+
+<body class="has-summary">
+<div style="padding:16px;">
+  <div class="records-header">
+    <h2>🧾 판매 기록</h2>
+    <button class="btn" onclick="history.back()">💰구매 화면</button>
+  </div>
+  <div id="records"></div>
+  <button id="clear-data">🧨 구매기록 초기화</button>
+
+  <!-- 통계 박스를 오른쪽 하단에 고정 -->
+  <div class="summary-panel" id="summary-panel">
+    <button id="summary-toggle" class="summary-toggle" title="접기/펼치기">📊</button>
+    <div id="summary" class="summary"></div>
+  </div>
+</div>
+<script src="../../js/pos/records.js"></script>
+</body>
+
+</html>

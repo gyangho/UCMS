@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UCMS - 인스턴스 편집</title>
+  <link rel="stylesheet" href="/styles/pos.css" />
+</head>
+
+<%- include('../header') %>
+
+<body>
+<div class="container" style="flex-direction: column;">
+  <div class="header">
+    <h1 class="title">인스턴스 편집: <%= instance.instance_name %></h1>
+    <div>
+      <button class="btn" onclick="location.href='/pos/instances/<%= instance.id %>'">취소</button>
+      <button class="btn primary" id="save">저장</button>
+    </div>
+  </div>
+
+  <div class="panel"> 
+    <h3>인스턴스 이름</h3>
+    <div class="row">
+      <input id="instance-name" style="flex:1; font-size: 21px;" value="<%= instance.instance_name %>" />
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>판매자</h3>
+    <div class="row">
+      <input id="seller-search" placeholder="학번으로 검색 (student_id)" style="flex:1" />
+      <button class="btn" id="seller-search-btn">검색</button>
+    </div>
+    <ul id="seller-results" class="list"></ul>
+    <h4>선택된 판매자</h4>
+    <div id="seller-selected" class="grid"></div>
+  </div>
+
+  <div class="panel">
+    <h3>상품</h3>
+    <div class="row">
+      <input id="prod-name" placeholder="상품명" style="flex:2" />
+      <input id="prod-price" placeholder="가격" type="number" style="flex:1" />
+      <input id="prod-stock" placeholder="재고" type="number" style="flex:1" />
+      <button class="btn" id="add-prod">추가</button>
+    </div>
+    <div id="prod-list" class="grid"></div>
+  </div>
+  <!-- 초기 데이터 제공용 -->
+  <div id="edit-data" data-sales="<%- JSON.stringify(salesmans || []).replace(/\"/g, '&quot;') %>" data-products="<%- JSON.stringify(products || []).replace(/\"/g, '&quot;') %>"></div>
+</div>
+
+<script>
+  const sellers = new Map();
+  const products = [];
+
+  // Prefill
+  (function prefill() {
+    const dataEl = document.getElementById('edit-data');
+    const initialSales = JSON.parse(dataEl.dataset.sales || '[]');
+    initialSales.forEach(s => sellers.set(s.member_id, s.member_name || s.member_id));
+    renderSellers();
+
+    const initialProducts = JSON.parse(dataEl.dataset.products || '[]');
+    initialProducts.forEach(p => products.push({
+      product_name: p.product_name,
+      product_price: p.product_price,
+      stock: p.stock
+    }));
+    renderProducts();
+  })();
+
+  function renderSellers() {
+    const wrap = document.getElementById('seller-selected');
+    wrap.innerHTML = '';
+    sellers.forEach((name, id) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      const title = document.createElement('h4');
+      title.textContent = name;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = '학번: ' + id;
+      const btn = document.createElement('button');
+      btn.textContent = '삭제';
+      btn.className = 'btn';
+      btn.style.marginTop = '8px';
+      btn.onclick = () => { sellers.delete(id); renderSellers(); };
+      card.appendChild(title);
+      card.appendChild(meta);
+      card.appendChild(btn);
+      wrap.appendChild(card);
+    });
+  }
+
+  function renderProducts() {
+    const wrap = document.getElementById('prod-list');
+    wrap.innerHTML = '';
+    products.forEach((p, idx) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      const title = document.createElement('h4');
+      title.textContent = p.product_name;
+      const price = document.createElement('div');
+      price.className = 'meta';
+      price.innerHTML = '가격: <strong>' + Number(p.product_price).toLocaleString() + '원</strong>';
+      const stock = document.createElement('div');
+      stock.className = 'meta';
+      const pill = document.createElement('span');
+      pill.className = 'pill';
+      pill.textContent = (p.stock || 0) + '개';
+      stock.textContent = '재고: ';
+      stock.appendChild(pill);
+      const btn = document.createElement('button');
+      btn.textContent = '삭제';
+      btn.className = 'btn';
+      btn.style.marginTop = '8px';
+      btn.onclick = () => { products.splice(idx, 1); renderProducts(); };
+      card.appendChild(title);
+      card.appendChild(price);
+      card.appendChild(stock);
+      card.appendChild(btn);
+      wrap.appendChild(card);
+    });
+  }
+
+  document.getElementById('seller-search-btn').addEventListener('click', async () => {
+    const q = document.getElementById('seller-search').value.trim();
+    const ul = document.getElementById('seller-results');
+    ul.innerHTML = '';
+    if (!q) return;
+    const res = await fetch('/api/pos/members?student_id=' + encodeURIComponent(q));
+    const data = await res.json();
+    (data.members || []).forEach(m => {
+      const li = document.createElement('li');
+      li.textContent = `${m.student_id} - ${m.name}`;
+      const btn = document.createElement('button');
+      btn.textContent = '추가';
+      btn.className = 'btn';
+      btn.style.marginLeft = '8px';
+      btn.onclick = () => {
+        sellers.set(m.student_id, m.name);
+        renderSellers();
+      };
+      li.appendChild(btn);
+      ul.appendChild(li);
+    });
+  });
+
+  document.getElementById('add-prod').addEventListener('click', () => {
+    const name = document.getElementById('prod-name').value.trim();
+    const price = parseInt(document.getElementById('prod-price').value || '0', 10);
+    const stock = parseInt(document.getElementById('prod-stock').value || '0', 10);
+    if (!name || price < 0 || stock < 0) {
+      alert('상품 정보를 확인하세요');
+      return;
+    }
+    products.push({
+      product_name: name,
+      product_price: price,
+      stock
+    });
+    document.getElementById('prod-name').value = '';
+    document.getElementById('prod-price').value = '';
+    document.getElementById('prod-stock').value = '';
+    renderProducts();
+  });
+
+  document.getElementById('save').addEventListener('click', async () => {
+    const instance_name = document.getElementById('instance-name').value.trim();
+    const salesmans = Array.from(sellers.keys()).map(id => ({
+      member_id: id
+    }));
+    const res = await fetch('/api/pos/instances/<%= instance.id %>', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        instance_name,
+        products,
+        salesmans
+      })
+    });
+    if (res.ok) {
+      alert('저장되었습니다.');
+      location.href = '/pos/instances/<%= instance.id %>';
+    } else {
+      const r = await res.json().catch(() => ({}));
+      alert('저장 실패: ' + (r.error || 'unknown'));
+    }
+  });
+</script>
+</body>
+
+</html>
