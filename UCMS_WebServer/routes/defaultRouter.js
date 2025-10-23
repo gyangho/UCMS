@@ -66,16 +66,6 @@ router.get("/dashboard", async (req, res, next) => {
   }
 });
 
-// POS 페이지 - HTML 파일로 직접 제공
-router.get("/pos", (req, res) => {
-  res.sendFile(path.join(__dirname, "../public/views/pos.html"));
-});
-
-// Records 페이지 - HTML 파일로 직접 제공
-router.get("/records", (req, res) => {
-  res.sendFile(path.join(__dirname, "../public/views/records.html"));
-});
-
 // Mypage 페이지 - HTML 파일로 직접 제공
 router.get("/mypage", (req, res) => {
   res.sendFile(path.join(__dirname, "../public/views/mypage.html"));

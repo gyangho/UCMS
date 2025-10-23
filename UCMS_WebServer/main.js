@@ -24,6 +24,7 @@ const eventRouter = require("./routes/eventRouter");
 const driveRouter = require("./routes/driveRouter");
 const publicRouter = require("./routes/publicRouter");
 const financeRouter = require("./routes/financeRouter");
+const posRouter = require("./routes/posRouter");
 
 const app = express();
 const DOMAIN = process.env.DOMAIN;
@@ -80,6 +81,7 @@ app.use("/recruit", recruitRouter);
 app.use("/event", eventRouter);
 app.use("/drive", driveRouter);
 app.use("/finance", financeRouter);
+app.use("/pos", posRouter);
 
 app.use((err, req, res, next) => {
   if (err.status === 401 || err.code) {
@@ -115,7 +117,7 @@ async function requireValidSession(req, res, next) {
   try {
     //세션 정보 검색
     const sessionInfo = await sessionStore.get(req.sessionID);
-    if (!sessionInfo || sessionInfo.authority <= 4) {
+    if (!sessionInfo || sessionInfo.authority < 3) {
       if (
         req.path === "/" ||
         req.path.startsWith("/images") ||
@@ -129,6 +131,7 @@ async function requireValidSession(req, res, next) {
       }
       const newErr = new Error("권한이 없습니다.");
       newErr.code = "CannotFindSessionID";
+      res.status(403);
       return res.send(`
         <script>
           alert("세션이 없거나 권한이 없습니다.");
@@ -139,6 +142,29 @@ async function requireValidSession(req, res, next) {
       return res.redirect("/dashboard");
     } else {
       /* 권한 별 분기 적용 */
+      if (
+        req.path.startsWith("/member") ||
+        req.path.startsWith("/recruit/responses") ||
+        req.path.startsWith("/recruit/detail") ||
+        req.path.startsWith("/drive") ||
+        req.path.startsWith("/event/submit") ||
+        req.path.startsWith("/event/edit") ||
+        req.path.startsWith("/event/delete") ||
+        req.path.startsWith("/event/holidays") ||
+        req.path.startsWith("/pos/instances/new") ||
+        /^\/pos\/instances\/\d+\/edit$/.test(req.path) ||
+        req.method === "DELETE"
+      ) {
+        if (sessionInfo.authority <= 4) {
+          res.status(403);
+          return res.send(`
+        <script>
+          alert("권한이 없습니다.");
+          window.location.href = "/";
+        </script>
+      `);
+        }
+      }
       return next();
     }
   } catch (err) {

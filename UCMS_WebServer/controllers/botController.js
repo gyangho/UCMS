@@ -73,7 +73,7 @@ class BotController {
     const query = req.query;
     const content = query.content;
     const chat_room_id = parseInt(query.chat_room_id);
-    const isgroupchat = parseInt(query.isgroupchat);
+    const isgroupchat = query.isgroupchat;
     const author = query.author;
 
     let sender;
@@ -82,7 +82,7 @@ class BotController {
 
     console.log(query);
 
-    if (isgroupchat) {
+    if (isgroupchat === "true") {
       groupChatRoom = await GroupChatRooms.findById(chat_room_id);
       if (groupChatRoom) {
         authority = groupChatRoom.authority;
@@ -109,8 +109,6 @@ class BotController {
         author
       );
 
-      console.log(ret.isProcessed);
-
       if (!ret.isProcessed) {
         ret = await BotController.settingResponse(
           content,
@@ -122,8 +120,6 @@ class BotController {
       }
     }
 
-    console.log(ret.isProcessed);
-
     if (!ret.isProcessed) {
       ret = await BotController.publicResponse(
         content,
@@ -133,8 +129,6 @@ class BotController {
         author
       );
     }
-    console.log(ret.isProcessed);
-
     console.log(ret.message);
 
     res.json({
@@ -155,6 +149,12 @@ class BotController {
     let isProcessed = false;
 
     switch (content) {
+      case "명령어":
+        message = `제가 아는 명령어 목록은 다음과 같아요😊\n❤️ 안녕: 빵뿡이 인사\n❤️ 명령어: 명령어 목록\n❤️ 일정: 일정 목록\n❤️ 미완료 정산 목록: 미완료 정산 목록\n❤️ 단체 채팅방 목록: 단체 채팅방 목록`;
+        message += `\n❤️ 관리방 지정\n❤️ 대화방 지정\n❤️ 공지방 지정\n❤️ 관리방 해제\n❤️ 공지방 해제\n❤️ 대화방 해제`;
+        isProcessed = true;
+        break;
+
       case "단체 채팅방 목록":
         const chatRooms = await GroupChatRooms.findAll();
         message = `채팅방 목록🎉\n${chatRooms
@@ -232,6 +232,11 @@ class BotController {
         message = `안녕하세요🤚\n${
           author ? author : ""
         }님😊\n저는 🍞빵뿡이🥖이에요!!\n무엇을 도와드릴까요?`;
+        break;
+
+      case "명령어":
+        message = `제가 아는 명령어 목록은 다음과 같아요😊\n❤️ 안녕: 빵뿡이 인사\n❤️ 명령어: 명령어 목록\n❤️ 일정: 일정 목록\n❤️ 미완료 정산 목록: 미완료 정산 목록\n`;
+        message += `❤️ 인증: 인증 명령어`;
         break;
 
       case "일정":

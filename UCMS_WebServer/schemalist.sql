@@ -45,22 +45,6 @@ CHANGE COLUMN `kakao_id` `kakao_id` BIGINT UNSIGNED DEFAULT NULL UNIQUE COMMENT 
 ALTER TABLE `Users`
 CHANGE COLUMN `chat_room_id` `chat_room_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '카카오톡 채팅방 아이디';
 
-
-
-CREATE TABLE `purchases` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `버터쿠키` INT NOT NULL DEFAULT 0,
-  `플레인휘낭시에` INT NOT NULL DEFAULT 0,
-  `고구마식빵휘낭` INT NOT NULL DEFAULT 0,
-  `고구마휘낭시에` INT NOT NULL DEFAULT 0,
-  `흑임자휘낭시에` INT NOT NULL DEFAULT 0,
-  `행운과자` INT NOT NULL DEFAULT 0,
-  `행운과자증정` INT NOT NULL DEFAULT 0,
-  `total_price` DECIMAL(10,2) NOT NULL,
-  `purchase_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-)
-
 CREATE TABLE events (
   id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(255) NOT NULL COMMENT '일정 제목',
@@ -296,7 +280,7 @@ VALUES(20, '09/03 17:30~17:45', '09/03 17:30~17:45', '20251388', '20252730');
  );
 
 ALTER TABLE group_chat_rooms
-ADD COLUMN authority ENUM('일반','부원','임원진','부회장','회장','admin') NOT NULL DEFAULT '일반';
+CHANGE COLUMN authority authority ENUM('미인증','일반','부원','임원진','부회장','회장','admin') NOT NULL DEFAULT '미인증';
 
 
 -- 정산 테이블의 collation을 Members 테이블과 동일하게 수정
@@ -336,3 +320,52 @@ CREATE TABLE SettlementParticipants (
   FOREIGN KEY (settlement_id) REFERENCES Settlements(id) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (member_id) REFERENCES Members(student_id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE pos_instances (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  instance_name VARCHAR(255) NOT NULL,
+  status ENUM('active', 'inactive') NOT NULL DEFAULT 'inactive'
+);
+
+CREATE TABLE pos_salesmans (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  member_id VARCHAR(20) NOT NULL,
+  instance_id INT NOT NULL,
+  FOREIGN KEY (member_id) REFERENCES members(student_id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (instance_id) REFERENCES pos_instances(id) ON DELETE CASCADE ON UPDATE CASCADE
+)ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE pos_products (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  instance_id INT NOT NULL,
+  product_name VARCHAR(255) NOT NULL,
+  product_price INT NOT NULL,
+  stock INT NOT NULL,
+  FOREIGN KEY (instance_id) REFERENCES pos_instances(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE pos_receipts (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  instance_id INT NOT NULL,
+  total_price INT NOT NULL,
+  salesman_id INT NOT NULL,
+  purchase_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (instance_id) REFERENCES pos_instances(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (salesman_id) REFERENCES pos_salesmans(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE pos_sales_history (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  receipt_id INT NOT NULL,
+  instance_id INT NOT NULL,
+  product_id INT NOT NULL,
+  product_quantity INT NOT NULL,
+  is_service BOOLEAN NOT NULL DEFAULT false,
+  FOREIGN KEY (receipt_id) REFERENCES pos_receipts(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (instance_id) REFERENCES pos_instances(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES pos_products(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+
