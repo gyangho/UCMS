@@ -20,7 +20,7 @@ router.get("/participants", EventController.getEventParticipants);
 router.post("/participate", EventController.addEventParticipant);
 router.post("/cancel", EventController.removeEventParticipant);
 
-// 공휴일 조회
+// 공휴일 삽입
 router.get("/holidays", EventController.insertHolidays);
 
 module.exports = router;

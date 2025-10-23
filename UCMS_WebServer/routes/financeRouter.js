@@ -12,28 +12,16 @@ router.post("/settle/create", FinanceController.createSettlement);
 router.get("/settle/manage", FinanceController.getManagePage);
 
 // 이벤트 참여자 조회
-router.get(
-  "/events/:eventId/participants",
-  FinanceController.getEventParticipants
-);
+router.get("/events/:eventId/participants", FinanceController.getEventParticipants);
 
 // 정산 상세 정보 조회
-router.get(
-  "/settlements/:id",
-  FinanceController.getSettlementDetails
-);
+router.get("/settlements/:id", FinanceController.getSettlementDetails);
 
 // 정산 상태 업데이트
-router.put(
-  "/settlements/:id/status",
-  FinanceController.updateSettlementStatus
-);
+router.put("/settlements/:id/status", FinanceController.updateSettlementStatus);
 
 // 정산 참여자 추가
-router.post(
-  "/settlements/:settlementId/participants",
-  FinanceController.addParticipant
-);
+router.post("/settlements/:settlementId/participants", FinanceController.addParticipant);
 
 // 정산 참여자 제거
 router.delete(

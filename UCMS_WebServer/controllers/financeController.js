@@ -23,21 +23,13 @@ class FinanceController {
   // 정산 생성 처리
   static async createSettlement(req, res) {
     try {
-      const {
-        name,
-        total_amount,
-        deadline,
-        is_dutch_pay,
-        participants,
-        event_id,
-      } = req.body;
+      const { name, total_amount, deadline, is_dutch_pay, participants, event_id } =
+        req.body;
 
       // 사용자 ID로 멤버 정보 찾기
       const member = await Member.findByUserId(req.session.userId);
       if (!member) {
-        return res
-          .status(404)
-          .json({ error: "멤버 정보를 찾을 수 없습니다." });
+        return res.status(404).json({ error: "멤버 정보를 찾을 수 없습니다." });
       }
       const created_by = member.student_id;
 
@@ -64,9 +56,7 @@ class FinanceController {
       res.json({ success: true, settlementId });
     } catch (error) {
       console.error("정산 생성 오류:", error);
-      res
-        .status(500)
-        .json({ error: "정산 생성 중 오류가 발생했습니다." });
+      res.status(500).json({ error: "정산 생성 중 오류가 발생했습니다." });
     }
   }
 
@@ -74,15 +64,11 @@ class FinanceController {
   static async getEventParticipants(req, res) {
     try {
       const { eventId } = req.params;
-      const participants = await Settlement.getEventParticipants(
-        eventId
-      );
+      const participants = await Settlement.getEventParticipants(eventId);
       res.json(participants);
     } catch (error) {
       console.error("이벤트 참여자 조회 오류:", error);
-      res
-        .status(500)
-        .json({ error: "참여자 조회 중 오류가 발생했습니다." });
+      res.status(500).json({ error: "참여자 조회 중 오류가 발생했습니다." });
     }
   }
 
@@ -94,15 +80,11 @@ class FinanceController {
 
       // 각 정산의 참여자 정보 추가
       for (let settlement of activeSettlements) {
-        settlement.participants = await Settlement.getParticipants(
-          settlement.id
-        );
+        settlement.participants = await Settlement.getParticipants(settlement.id);
       }
 
       for (let settlement of completedSettlements) {
-        settlement.participants = await Settlement.getParticipants(
-          settlement.id
-        );
+        settlement.participants = await Settlement.getParticipants(settlement.id);
       }
 
       res.render("finance/manage", {
@@ -128,9 +110,7 @@ class FinanceController {
       });
     } catch (error) {
       console.error("정산 상세 조회 오류:", error);
-      res
-        .status(500)
-        .json({ error: "정산 정보 조회 중 오류가 발생했습니다." });
+      res.status(500).json({ error: "정산 정보 조회 중 오류가 발생했습니다." });
     }
   }
 
@@ -156,17 +136,11 @@ class FinanceController {
       const { settlementId } = req.params;
       const { member_id, amount } = req.body;
 
-      await Settlement.addParticipant(
-        settlementId,
-        member_id,
-        parseInt(amount)
-      );
+      await Settlement.addParticipant(settlementId, member_id, parseInt(amount));
       res.json({ success: true });
     } catch (error) {
       console.error("참여자 추가 오류:", error);
-      res
-        .status(500)
-        .json({ error: "참여자 추가 중 오류가 발생했습니다." });
+      res.status(500).json({ error: "참여자 추가 중 오류가 발생했습니다." });
     }
   }
 
@@ -179,9 +153,7 @@ class FinanceController {
       res.json({ success: true });
     } catch (error) {
       console.error("참여자 제거 오류:", error);
-      res
-        .status(500)
-        .json({ error: "참여자 제거 중 오류가 발생했습니다." });
+      res.status(500).json({ error: "참여자 제거 중 오류가 발생했습니다." });
     }
   }
 
@@ -191,11 +163,7 @@ class FinanceController {
       const { settlementId, memberId } = req.params;
       const { amount } = req.body;
 
-      await Settlement.updateParticipantAmount(
-        settlementId,
-        memberId,
-        parseInt(amount)
-      );
+      await Settlement.updateParticipantAmount(settlementId, memberId, parseInt(amount));
       res.json({ success: true });
     } catch (error) {
       console.error("참여자 금액 업데이트 오류:", error);
@@ -211,11 +179,7 @@ class FinanceController {
       const { settlementId, memberId } = req.params;
       const { status } = req.body;
 
-      await Settlement.updateParticipantStatus(
-        settlementId,
-        memberId,
-        status
-      );
+      await Settlement.updateParticipantStatus(settlementId, memberId, status);
       res.json({ success: true });
     } catch (error) {
       console.error("참여자 상태 업데이트 오류:", error);
@@ -231,20 +195,14 @@ class FinanceController {
       // 사용자 ID로 멤버 정보 찾기
       const member = await Member.findByUserId(req.session.userId);
       if (!member) {
-        return res
-          .status(404)
-          .json({ error: "멤버 정보를 찾을 수 없습니다." });
+        return res.status(404).json({ error: "멤버 정보를 찾을 수 없습니다." });
       }
 
-      const settlements = await Settlement.findByMemberId(
-        member.student_id
-      );
+      const settlements = await Settlement.findByMemberId(member.student_id);
       res.json(settlements);
     } catch (error) {
       console.error("사용자 정산 조회 오류:", error);
-      res
-        .status(500)
-        .json({ error: "정산 조회 중 오류가 발생했습니다." });
+      res.status(500).json({ error: "정산 조회 중 오류가 발생했습니다." });
     }
   }
 
@@ -256,9 +214,7 @@ class FinanceController {
       res.json({ success: true });
     } catch (error) {
       console.error("정산 삭제 오류:", error);
-      res
-        .status(500)
-        .json({ error: "정산 삭제 중 오류가 발생했습니다." });
+      res.status(500).json({ error: "정산 삭제 중 오류가 발생했습니다." });
     }
   }
 }
