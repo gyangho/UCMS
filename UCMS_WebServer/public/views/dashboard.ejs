@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UCMS-대시보드</title>
+  <link rel="stylesheet" href="../styles/dashboard.css" />
+  <style>
+    .settlement-container {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border: 1px solid #e9ecef;
+    }
+
+    .settlement-container h3 {
+      margin: 0 0 15px 0;
+      color: #495057;
+      font-size: 18px;
+    }
+
+    .settlement-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .settlement-info {
+      flex: 1;
+    }
+
+    .settlement-name {
+      font-weight: bold;
+      color: #212529;
+      margin-bottom: 5px;
+    }
+
+    .settlement-details {
+      display: flex;
+      gap: 15px;
+      font-size: 14px;
+    }
+
+    .settlement-details .amount {
+      color: #007bff;
+      font-weight: bold;
+    }
+
+    .settlement-details .deadline {
+      color: #6c757d;
+    }
+
+    .settlement-details .status {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .settlement-details .status.paid {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .settlement-details .status.pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .settlement-actions .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .settlement-actions .btn-primary {
+      background: #007bff;
+      color: white;
+    }
+
+    .settlement-actions .btn:hover {
+      opacity: 0.8;
+    }
+
+    .no-settlements,
+    .error,
+    .loading {
+      text-align: center;
+      color: #6c757d;
+      font-style: italic;
+      padding: 20px;
+    }
+
+    .error {
+      color: #dc3545;
+    }
+
+    /* 정산 생성 모달 스타일 */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: auto;
+    }
+
+    .participants-section {
+      margin-top: 20px;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background-color: #f9f9f9;
+    }
+
+    .participant-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      padding: 10px;
+      background: white;
+      border-radius: 5px;
+    }
+
+    .participant-item select,
+    .participant-item input {
+      flex: 1;
+    }
+
+    .remove-participant {
+      background: #ff4444;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .add-participant {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .btn-primary {
+      background: #007bff;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn:hover {
+      opacity: 0.8;
+    }
+
+    .event-participants {
+      margin-top: 10px;
+      padding: 10px;
+      background: #e9ecef;
+      border-radius: 5px;
+      display: none;
+    }
+
+    .amount-options {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .amount-options button {
+      padding: 5px 10px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .amount-options button.active {
+      background: #007bff;
+      color: white;
+    }
+  </style>
+</head>
+
+<%- include('header') %>
+
+<body>
+<div class="event-container">
+  <%- include('./event/calendar',{calendar_events:calendar_events})%>
+  <div class="myevents-container">
+    <%- include('./event/myevents',{myEvents: myEvents, comment: "내일정" })%>
+    <div class="divider"></div>
+    <%- include('./event/myevents',{myEvents: recruitingEvents, comment:"모집 중인 일정"})%>
+  </div>
+</div>
+
+<!-- 정산 섹션 -->
+<div class="settlement-container">
+  <h3>💰 내 정산</h3>
+  <div id="userSettlements">
+    <div class="loading">정산 정보를 불러오는 중...</div>
+  </div>
+</div>
+<main>
+  <div class="func-btn-container">
+    <span class="category-icon">👨‍👩‍👧‍👦</span>
+    <div class="func-btn" onclick="location.href='/member'">
+      부원 목록
+    </div>
+  </div>
+  <div class="func-btn-container">
+    <span class="category-icon">🐥</span>
+    <div class="func-btn" onclick="location.href='/recruit/responses'">
+      신규부원 지원
+    </div>
+    <div class="func-btn" onclick="location.href='/recruit/responses'">
+      응답 조회
+    </div>
+    <div class="func-btn" onclick="location.href='/public/recruit_result'">
+      결과 조회
+    </div>
+    <div class="func-btn" onclick="location.href='/recruit/interview/activedschedule'">
+      면접 타임테이블
+    </div>
+    <div class="func-btn" onclick="location.href='/recruit/interview/plan'">
+      면접 타임테이블 생성
+    </div>
+    <div class="func-btn" onclick="location.href='/recruit/interview/plans'">
+      면접 계획 관리
+    </div>
+  </div>
+  <div class="func-btn-container">
+    <span class="category-icon">🗓️</span>
+    <div class="func-btn" onclick="location.href='/event/events'">
+      일정 관리
+    </div>
+    <div class="func-btn form">일정 생성</div>
+    <div class="func-btn" onclick="location.href='/event/holidays'">
+      공휴일 업데이트
+    </div>
+  </div>
+  <div class="func-btn-container">
+    <span class="category-icon">💰</span>
+    <div class="func-btn" onclick="location.href='/finance'">
+      회비 장부
+    </div>
+    <div class="func-btn settlement-create">정산 생성</div>
+    <div class="func-btn" onclick="location.href='/finance/settle/manage'">
+      정산 관리
+    </div>
+    <div class="func-btn" onclick="location.href='/pos'">
+      축제부스 POS기
+    </div>
+  </div>
+  <div class="func-btn-container">
+    <span class="category-icon">⁉️</span>
+    <div class="func-btn" onclick="location.href='/member'">
+      공지사항
+    </div>
+    <div class="func-btn" onclick="location.href='/inquiry'">
+      문의
+    </div>
+  </div>
+  <div class="func-btn-container">
+    <span class="category-icon">📁</span>
+    <div class="func-btn" onclick="window.open('https://drive.google.com/drive/folders/14B5qRObeDEQjDJwHK0HkcXVqr2B6WLw5?usp=sharing','_blank')">
+      문서함
+    </div>
+    <div class="func-btn" onclick="location.href='/drive/requestpermission'">
+      권한 요청
+    </div>
+    <div class="func-btn" onclick="location.href='/drive/generateform'">
+      폼 생성
+    </div>
+  </div>
+</main>
+</body>
+<div id="modal-overlay" class="hidden"></div>
+
+<script type="module">
+  import {
+    initEventInfoModal
+  } from "../js/events/info.js";
+  import {
+    initEventFormModal
+  } from "../js/events/form.js";
+  import {
+    initSettlementModal
+  } from "../js/finance/settlement.js";
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const overlay = document.getElementById("modal-overlay");
+    // 일정들이 들어가는 최상위 컨테이너
+    const eventContainer = document.querySelector(
+      ".event-container"
+    );
+    const formButton = document.querySelector(".form");
+    const settlementCreateButton = document.querySelector(".settlement-create");
+
+    // 정산 생성 버튼 이벤트
+    settlementCreateButton.addEventListener("click", async function() {
+      try {
+        const resp = await fetch("/finance/settle/create");
+        if (!resp.ok) throw new Error("서버 응답 에러");
+        const html = await resp.text();
+        overlay.innerHTML = html;
+        overlay.classList.remove("hidden");
+        initSettlementModal();
+      } catch (err) {
+        console.error(err);
+        alert("모달을 불러오는 데 실패했습니다.");
+      }
+    });
+
+    eventContainer.addEventListener("click", async (e) => {
+      // 클릭된 요소 또는 조상 중 .event-card/.event-item 찾기
+      const card = e.target.closest(".event-card, .event-item");
+      if (!card) return; // 해당 클래스가 아니면 무시
+
+      const eventId = card.dataset.eventId;
+      try {
+        const resp = await fetch(`/event/info?id=${eventId}`);
+        if (!resp.ok) throw new Error("서버 응답 에러");
+        const html = await resp.text();
+
+        // ① HTML 삽입
+        overlay.innerHTML = html;
+        overlay.classList.remove("hidden");
+
+        initEventInfoModal();
+      } catch (err) {
+        console.error(err);
+        alert("모달을 불러오는 데 실패했습니다.");
+      }
+    });
+
+    formButton.addEventListener("click", async function() {
+      try {
+        const resp = await fetch("/event/form");
+        if (!resp.ok) throw new Error("서버 응답 에러");
+        const html = await resp.text();
+        overlay.innerHTML = html;
+        overlay.classList.remove("hidden");
+        initEventFormModal();
+      } catch (err) {
+        console.error(err);
+        alert("모달을 불러오는 데 실패했습니다.");
+      }
+    });
+
+    // 사용자 정산 목록 로드
+    loadUserSettlements();
+  });
+
+  // 사용자 정산 목록 로드 함수
+  async function loadUserSettlements() {
+    try {
+      const response = await fetch('/finance/user/settlements');
+      const settlements = await response.json();
+
+      const settlementsContainer = document.getElementById('userSettlements');
+      const settlementSection = document.querySelector('.settlement-container');
+
+      if (settlements.length === 0) {
+        // 정산이 없으면 전체 정산 섹션을 숨김
+        settlementSection.style.display = 'none';
+        return;
+      }
+
+      // 정산이 있으면 섹션을 보이게 하고 내용을 채움
+      settlementSection.style.display = 'block';
+      settlementsContainer.innerHTML = settlements.map(settlement => `
+          <div class="settlement-item">
+            <div class="settlement-info">
+              <div class="settlement-name">${settlement.name}</div>
+              <div class="settlement-details">
+                <span class="amount">${settlement.amount.toLocaleString()}원</span>
+                <span class="deadline">마감: ${new Date(settlement.deadline).toLocaleDateString()}</span>
+                <span class="status ${settlement.payment_status}">${settlement.payment_status === 'paid' ? '결제완료' : '미결제'}</span>
+              </div>
+            </div>
+            <div class="settlement-actions">
+              <button class="btn btn-primary" onclick="location.href='/finance/settle/manage'">관리</button>
+            </div>
+          </div>
+        `).join('');
+    } catch (error) {
+      console.error('정산 목록 로드 오류:', error);
+      // 에러가 발생해도 섹션을 숨김
+      document.querySelector('.settlement-container').style.display = 'none';
+    }
+  }
+
+  // 모달 닫기 메시지 리스너
+  window.addEventListener('message', function(event) {
+    if (event.data.type === 'closeModal') {
+      const overlay = document.getElementById('modal-overlay');
+      overlay.classList.add('hidden');
+      overlay.innerHTML = '';
+      // 정산 생성 후 목록 새로고침
+      loadUserSettlements();
+    }
+  });
+</script>
+
+</html>

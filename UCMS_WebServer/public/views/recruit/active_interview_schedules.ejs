@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>UCMS-활성 면접 스케줄</title>
+    <%- include('../header') %>
+    <link rel="stylesheet" href="/styles/style.css" />
+    <style>
+      body {
+        margin: 0;
+        font-family: "Noto Sans KR", sans-serif;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 30px auto;
+        padding: 20px;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+      }
+
+      .title {
+        font-size: 2rem;
+        color: #333;
+        margin: 0;
+      }
+
+      .back-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: bold;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .back-link:hover {
+        text-decoration: underline;
+      }
+
+      .plan-section {
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 25px;
+      }
+
+      .plan-title {
+        font-size: 1.4rem;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #667eea;
+      }
+
+      .schedule-table-container {
+        overflow-x: auto;
+        margin-top: 15px;
+      }
+
+      .schedule-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 600px;
+      }
+
+      .schedule-table th,
+      .schedule-table td {
+        border: 1px solid #b1b1b1;
+        padding: 12px;
+        text-align: center;
+      }
+
+      .schedule-table th {
+        background: #dee5fa;
+        font-weight: bold;
+        color: #495057;
+      }
+
+      .schedule-table tbody tr:nth-child(even) {
+        background: #f8f9fa;
+      }
+
+      .schedule-table tbody tr:hover {
+        background: #e3f2fd;
+        cursor: pointer;
+      }
+
+      .rating-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: bold;
+      }
+
+      .rating-대기 {
+        background: #f3f4f6;
+        color: #6b7280;
+      }
+
+      .rating-1차합격 {
+        background: #f0f9ff;
+        color: #0369a1;
+      }
+
+      .rating-불합격 {
+        background: #fef2f2;
+        color: #dc2626;
+      }
+
+      .rating-느별 {
+        background: #fffbeb;
+        color: #d97706;
+      }
+
+      .rating-느괜 {
+        background: #eff6ff;
+        color: #2563eb;
+      }
+
+      .rating-느좋 {
+        background: #f7fdf0;
+        color: #64a316;
+      }
+
+      .rating-최종합격 {
+        background: #f0fdf4;
+        color: #047857;
+      }
+
+      .no-schedules {
+        text-align: center;
+        color: #6c757d;
+        padding: 40px;
+        font-size: 1.1rem;
+      }
+
+      @media (max-width: 768px) {
+        .header {
+          flex-direction: column;
+          gap: 15px;
+          align-items: flex-start;
+        }
+
+        .schedule-table {
+          font-size: 0.9rem;
+        }
+
+        .schedule-table th,
+        .schedule-table td {
+          padding: 8px 5px;
+        }
+
+        /* 휴대폰에서 면접 스케줄 표 최적화 */
+        .schedule-table {
+          min-width: 350px;
+          font-size: 0.8rem;
+        }
+
+        .schedule-table th,
+        .schedule-table td {
+          padding: 6px 4px;
+          font-size: 0.8rem;
+        }
+
+        .schedule-table th {
+          font-size: 0.85rem;
+          padding: 8px 4px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        /* 작은 휴대폰에서 추가 최적화 */
+        .schedule-table {
+          min-width: 280px;
+        }
+
+        .schedule-table th,
+        .schedule-table td {
+          padding: 5px 3px;
+          font-size: 0.75rem;
+        }
+
+        .schedule-table th {
+          font-size: 0.8rem;
+          padding: 7px 3px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="header">
+        <div>
+          <a href="/dashboard" class="back-link">← 대시보드로</a>
+          <h1 class="title">활성 면접 스케줄</h1>
+        </div>
+      </div>
+
+      <% if (activeSchedules && activeSchedules.length > 0) { %> <%
+      activeSchedules.forEach(planSchedule => { %>
+      <div class="plan-section">
+        <h2 class="plan-title">
+          <%= planSchedule.plan.title %>
+          <span
+            style="
+              font-size: 0.9rem;
+              color: #28a745;
+              margin-left: 10px;
+            "
+          >
+            (확정됨)
+          </span>
+        </h2>
+
+        <div class="schedule-table-container">
+          <table class="schedule-table">
+            <thead>
+              <tr>
+                <th>면접 날짜</th>
+                <th>시간대</th>
+                <th>면접관</th>
+                <th>피면접자</th>
+                <th>평가</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% const groupedSchedules = {};
+              planSchedule.schedule.forEach(schedule => { const
+              dateTimeStr = schedule.interview_date; const datePart =
+              dateTimeStr.split(' ')[0]; const timePart =
+              dateTimeStr.split(' ')[1] || schedule.time_slot; const
+              key = `${datePart}_${timePart}`; if
+              (!groupedSchedules[key]) { groupedSchedules[key] = {
+              date: datePart, time: timePart, schedules: [] }; }
+              groupedSchedules[key].schedules.push(schedule); });
+              Object.values(groupedSchedules).forEach(group => { %>
+              <tr
+                onclick="openDetailWindow('<%= group.schedules[0].response_id %>', '<%= group.schedules[0].form_id %>')"
+              >
+                <td><%= group.date %></td>
+                <td><%= group.time %></td>
+                <td>
+                  <% const interviewerNames = group.schedules.map(s =>
+                  s.interviewer_name || s.interviewer_id
+                  ).filter((name, index, arr) => arr.indexOf(name) ===
+                  index); %> <%= interviewerNames.join(', ') %>
+                </td>
+                <td>
+                  <% const intervieweeNames = group.schedules.map(s =>
+                  s.interviewee_name || s.interviewee_id
+                  ).filter((name, index, arr) => arr.indexOf(name) ===
+                  index); %> <%= intervieweeNames.join(', ') %>
+                </td>
+                <td>
+                  <% const ratings = group.schedules.map(s =>
+                  s.rating).filter((rating, index, arr) =>
+                  arr.indexOf(rating) === index); %> <%
+                  ratings.forEach((rating, index) => { %> <% if
+                  (rating) { %>
+                  <span class="rating-badge rating-<%= rating %>"
+                    ><%= rating %></span
+                  >
+                  <% } else { %>
+                  <span class="rating-badge rating-대기">대기</span>
+                  <% } %> <% if (index < ratings.length - 1) { %>, <%
+                  } %> <% }) %>
+                </td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <% }) %> <% } else { %>
+      <div class="plan-section">
+        <div class="no-schedules">
+          <h3>활성화된 면접 계획이 없습니다</h3>
+          <p>
+            면접 계획을 생성하고 확정한 후 이 페이지에서 확인할 수
+            있습니다.
+          </p>
+          <a href="/recruit/interview/plans" class="back-link"
+            >면접 계획 목록 보기</a
+          >
+        </div>
+      </div>
+      <% } %>
+    </div>
+
+    <script>
+      function openDetailWindow(responseId, formId) {
+        if (responseId && formId) {
+          const url = `/recruit/detail?responseId=${responseId}&formId=${formId}`;
+          window.open(
+            url,
+            "_blank",
+            "width=800,height=600,scrollbars=yes,resizable=yes"
+          );
+        }
+      }
+    </script>
+  </body>
+</html>

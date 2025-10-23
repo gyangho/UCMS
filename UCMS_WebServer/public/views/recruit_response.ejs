@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>응답 조회 - UCMS</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f5f7fa;
+        color: #333;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+
+      .header h1 {
+        color: #2c3e50;
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        color: #7f8c8d;
+        font-size: 1.1rem;
+      }
+
+      .search-section {
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+      }
+
+      .search-form {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .form-group label {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 0.9rem;
+      }
+
+      .form-group input {
+        padding: 12px 16px;
+        border: 2px solid #e1e8ed;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s;
+        width: 200px;
+      }
+
+      .form-group input:focus {
+        outline: none;
+        border-color: #3498db;
+      }
+
+      .search-btn {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        margin-top: 20px;
+      }
+
+      .search-btn:hover {
+        background: #2980b9;
+      }
+
+      .search-btn:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+      }
+
+      .results-section {
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        min-height: 200px;
+      }
+
+      .results-section h2 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      .no-results {
+        text-align: center;
+        color: #7f8c8d;
+        font-size: 1.1rem;
+        padding: 40px 0;
+      }
+
+      .form-item {
+        border: 1px solid #e1e8ed;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        overflow: hidden;
+      }
+
+      .form-header {
+        background: #f8f9fa;
+        padding: 15px 20px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background-color 0.3s;
+      }
+
+      .form-header:hover {
+        background: #e9ecef;
+      }
+
+      .form-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      .toggle-btn {
+        background: none;
+        border: none;
+        font-size: 1.2rem;
+        cursor: pointer;
+        color: #6c757d;
+        transition: transform 0.3s;
+      }
+
+      .toggle-btn.expanded {
+        transform: rotate(180deg);
+      }
+
+      .form-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+        background: white;
+      }
+
+      .form-content.expanded {
+        max-height: 10000px;
+        transition: max-height 0.3s ease-in;
+      }
+
+      .response-item {
+        padding: 15px 20px;
+        border-top: 1px solid #e1e8ed;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .response-item:first-child {
+        border-top: none;
+      }
+
+      .response-item:last-child {
+        border-bottom: none;
+      }
+
+      .response-content {
+        flex: 1;
+        margin-right: 15px;
+      }
+
+      .response-id {
+        font-size: 0.9rem;
+        color: #6c757d;
+        font-weight: 500;
+      }
+
+      .response-text {
+        margin-top: 5px;
+        color: #2c3e50;
+        line-height: 1.4;
+        word-break: break-word;
+      }
+
+      .error-message {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .loading {
+        text-align: center;
+        color: #7f8c8d;
+        padding: 40px 0;
+      }
+
+      .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #3498db;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 15px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          padding: 15px;
+        }
+
+        .search-form {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .form-group input {
+          width: 100%;
+        }
+
+        .form-header {
+          padding: 12px 15px;
+        }
+
+        .response-item {
+          padding: 12px 15px;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .response-content {
+          margin-right: 0;
+          margin-bottom: 10px;
+        }
+      }
+    </style>
+  </head>
+
+  <%- include('./header') %>
+
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>응답 조회</h1>
+        <p>학번을 입력하여 작성한 응답 내역을 확인하세요</p>
+      </div>
+
+      <div class="search-section">
+        <form class="search-form" id="searchForm">
+          <div class="form-group">
+            <label for="studentId">학번</label>
+            <input
+              type="text"
+              id="studentId"
+              name="studentId"
+              placeholder="학번을 입력하세요"
+              required
+              maxlength="10"
+            />
+          </div>
+          <button type="submit" class="search-btn" id="searchBtn">
+            확인
+          </button>
+        </form>
+      </div>
+
+      <div
+        class="results-section"
+        id="resultsSection"
+        style="display: none"
+      >
+        <h2>응답 내역</h2>
+        <div id="resultsContent"></div>
+      </div>
+    </div>
+
+    <script>
+      document
+        .getElementById("searchForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const studentId = document
+            .getElementById("studentId")
+            .value.trim();
+          if (!studentId) {
+            alert("학번을 입력해주세요.");
+            return;
+          }
+
+          // 검색 버튼 비활성화 및 로딩 표시
+          const searchBtn = document.getElementById("searchBtn");
+          searchBtn.disabled = true;
+          searchBtn.textContent = "검색 중...";
+
+          // 결과 섹션 표시
+          const resultsSection =
+            document.getElementById("resultsSection");
+          const resultsContent =
+            document.getElementById("resultsContent");
+
+          resultsSection.style.display = "block";
+          resultsContent.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>응답 내역을 조회하고 있습니다...</p>
+                </div>
+            `;
+
+          try {
+            const response = await fetch(
+              "/public/recruit/response/search",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ studentId }),
+              }
+            );
+
+            const data = await response.json();
+
+            if (data.success) {
+              displayResults(data.results);
+            } else {
+              displayError(
+                data.error || "응답 내역을 조회할 수 없습니다."
+              );
+            }
+          } catch (error) {
+            console.error("검색 오류:", error);
+            displayError(
+              "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+            );
+          } finally {
+            // 검색 버튼 복원
+            searchBtn.disabled = false;
+            searchBtn.textContent = "확인";
+          }
+        });
+
+      function displayResults(results) {
+        const resultsContent =
+          document.getElementById("resultsContent");
+
+        if (results.length === 0) {
+          resultsContent.innerHTML = `
+                    <div class="no-results">
+                        <p>해당 학번의 응답 내역을 찾을 수 없습니다.</p>
+                    </div>
+                `;
+          return;
+        }
+
+        let html = "";
+        results.forEach((formResult, index) => {
+          html += `
+                    <div class="form-item">
+                        <div class="form-header" onclick="toggleForm(${index})">
+                            <div class="form-title">${
+                              formResult.form_title
+                            }</div>
+                            <button class="toggle-btn" id="toggle-${index}">></button>
+                        </div>
+                        <div class="form-content" id="content-${index}">
+                            ${formResult.responses
+                              .map(
+                                (response) => `
+                                <div class="response-item">
+                                    <div class="response-content">
+                                        <div class="response-id">ID: ${
+                                          response.question
+                                        }</div>
+                                        <div class="response-text">${
+                                          response.answer ||
+                                          "내용 없음"
+                                        }</div>
+                                    </div>
+                                </div>
+                            `
+                              )
+                              .join("")}
+                        </div>
+                    </div>
+                `;
+        });
+
+        resultsContent.innerHTML = html;
+      }
+
+      function displayError(message) {
+        const resultsContent =
+          document.getElementById("resultsContent");
+        resultsContent.innerHTML = `
+                <div class="error-message">
+                    <p>${message}</p>
+                </div>
+            `;
+      }
+
+      function toggleForm(index) {
+        const content = document.getElementById(`content-${index}`);
+        const toggleBtn = document.getElementById(`toggle-${index}`);
+
+        if (content.classList.contains("expanded")) {
+          content.classList.remove("expanded");
+          toggleBtn.classList.remove("expanded");
+        } else {
+          content.classList.add("expanded");
+          toggleBtn.classList.add("expanded");
+        }
+      }
+    </script>
+  </body>
+</html>

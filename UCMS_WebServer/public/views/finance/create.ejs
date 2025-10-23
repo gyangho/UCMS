@@ -1,0 +1,179 @@
+<style>
+    .container {
+        background: #ffffff;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 500px;
+        max-height: 95vh;
+        justify-self: center;
+        margin-top: 30px;
+        overflow-y: auto;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        text-align: center;
+        color: #333;
+    }
+
+    .event-participants {
+        margin-top: 15px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+
+    .event-participants-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .event-participants h4 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .select-all-container {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .select-all-container input[type="checkbox"] {
+        transform: scale(1.1);
+    }
+
+    .select-all-container label {
+        font-size: 13px;
+        color: #6c757d;
+        cursor: pointer;
+        margin: 0;
+    }
+
+    #eventParticipantsList {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    #eventParticipantsList>div {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+
+    #eventParticipantsList>div:hover {
+        background: #f8f9fa;
+        border-color: #007bff;
+    }
+
+    #eventParticipantsList input[type="checkbox"] {
+        margin-right: 10px;
+        transform: scale(1.1);
+    }
+
+    #eventParticipantsList label {
+        margin: 0;
+        font-size: 14px;
+        color: #495057;
+        cursor: pointer;
+        flex: 1;
+    }
+
+    #eventParticipantsList input[type="checkbox"]:checked+label {
+        color: #007bff;
+        font-weight: 500;
+    }
+
+    /* 더치페이가 아닌 경우 금액 입력 필드 스타일 */
+    .participant-item input[type="number"][readonly] {
+        background-color: #f8f9fa;
+        color: #6c757d;
+        cursor: not-allowed;
+    }
+</style>
+
+<div class="container">
+    <!-- 데이터 전달용 hidden div -->
+    <div class="values" style="display: none;" data-members='<%- JSON.stringify(members) %>'
+        data-events='<%- JSON.stringify(events) %>'></div>
+
+    <form id="settlementForm">
+        <h2>정산 생성</h2>
+        <div class="form-group">
+            <label for="name">정산 이름</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+
+        <div class="form-group">
+            <label for="total_amount">총 금액</label>
+            <input type="number" id="total_amount" name="total_amount" required>
+        </div>
+
+        <div class="form-group">
+            <label for="deadline">마감일자</label>
+            <input type="date" id="deadline" name="deadline" required>
+        </div>
+
+        <div class="form-group">
+            <div class="checkbox-group">
+                <input type="checkbox" id="is_dutch_pay" name="is_dutch_pay">
+                <label for="is_dutch_pay">더치페이</label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="event_select">이벤트 참여자 불러오기 (선택사항)</label>
+            <select id="event_select" name="event_select">
+                <option value="">이벤트를 선택하세요</option>
+                <% events.forEach(event=> { %>
+                    <option value="<%= event.id %>">
+                        <%= event.title %>
+                    </option>
+                    <% }); %>
+            </select>
+            <div class="event-participants" id="eventParticipants">
+                <div class="event-participants-header">
+                    <h4>이벤트 참여자</h4>
+                    <div class="select-all-container">
+                        <input type="checkbox" id="selectAllEventParticipants">
+                        <label for="selectAllEventParticipants">전체 선택</label>
+                    </div>
+                </div>
+                <div id="eventParticipantsList"></div>
+            </div>
+        </div>
+
+        <div class="participants-section">
+            <h3>정산 참여자</h3>
+
+            <div class="amount-options">
+                <button type="button" id="equalAmount">동일 금액</button>
+                <button type="button" id="individualAmount">개별 금액</button>
+            </div>
+
+            <div id="participantsList">
+                <!-- 참여자 목록이 여기에 동적으로 추가됩니다 -->
+            </div>
+
+            <button type="button" class="add-participant" id="addParticipant">참여자 추가</button>
+        </div>
+
+        <div class="button-group">
+            <button type="button" class="btn btn-secondary cancel">취소</button>
+            <button type="submit" class="btn btn-primary">정산 생성</button>
+        </div>
+    </form>
+</div>
