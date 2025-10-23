@@ -15,7 +15,7 @@ class GroupChatRooms {
   static async findById(id) {
     try {
       const [rows] = await db.execute(
-        "SELECT * FROM group_chat_rooms WHERE id = ?",
+        "SELECT *, authority+0 AS authority FROM group_chat_rooms WHERE id = ?",
         [id]
       );
       return rows[0];

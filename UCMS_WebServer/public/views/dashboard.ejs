@@ -236,180 +236,192 @@
 
 <%- include('header') %>
 
-  <body>
-    <div class="event-container">
-      <%- include('./event/calendar',{calendar_events:calendar_events})%>
-        <div class="myevents-container">
-          <%- include('./event/myevents',{myEvents: myEvents, comment: "내일정" })%>
-            <div class="divider"></div>
-            <%- include('./event/myevents',{myEvents: recruitingEvents, comment:"모집 중인 일정"})%>
-        </div>
+<body>
+<div class="event-container">
+  <%- include('./event/calendar',{calendar_events:calendar_events})%>
+  <div class="myevents-container">
+    <%- include('./event/myevents',{myEvents: myEvents, comment: "내일정" })%>
+    <div class="divider"></div>
+    <%- include('./event/myevents',{myEvents: recruitingEvents, comment:"모집 중인 일정"})%>
+  </div>
+</div>
+
+<!-- 정산 섹션 -->
+<div class="settlement-container">
+  <h3>💰 내 정산</h3>
+  <div id="userSettlements">
+    <div class="loading">정산 정보를 불러오는 중...</div>
+  </div>
+</div>
+<main>
+  <div class="func-btn-container">
+    <span class="category-icon">👨‍👩‍👧‍👦</span>
+    <div class="func-btn" onclick="location.href='/member'">
+      부원 목록
     </div>
-
-    <!-- 정산 섹션 -->
-    <div class="settlement-container">
-      <h3>💰 내 정산</h3>
-      <div id="userSettlements">
-        <div class="loading">정산 정보를 불러오는 중...</div>
-      </div>
+  </div>
+  <div class="func-btn-container">
+    <span class="category-icon">🐥</span>
+    <div class="func-btn" onclick="location.href='/recruit/responses'">
+      신규부원 지원
     </div>
-    <main>
-      <div class="func-btn-container">
-        <span class="category-icon">👨‍👩‍👧‍👦</span>
-        <div class="func-btn" onclick="location.href='/member'">
-          부원 목록
-        </div>
-      </div>
-      <div class="func-btn-container">
-        <span class="category-icon">🐥</span>
-        <div class="func-btn" onclick="location.href='/recruit/responses'">
-          신규부원 지원
-        </div>
-        <div class="func-btn" onclick="location.href='/recruit/responses'">
-          응답 조회
-        </div>
-        <div class="func-btn" onclick="location.href='/public/recruit_result'">
-          결과 조회
-        </div>
-        <div class="func-btn" onclick="location.href='/recruit/interview/activedschedule'">
-          면접 타임테이블
-        </div>
-        <div class="func-btn" onclick="location.href='/recruit/interview/plan'">
-          면접 타임테이블 생성
-        </div>
-        <div class="func-btn" onclick="location.href='/recruit/interview/plans'">
-          면접 계획 관리
-        </div>
-      </div>
-      <div class="func-btn-container">
-        <span class="category-icon">🗓️</span>
-        <div class="func-btn" onclick="location.href='/event/events'">
-          일정 관리
-        </div>
-        <div class="func-btn form">일정 생성</div>
-        <div class="func-btn" onclick="location.href='/event/holidays'">
-          공휴일 업데이트
-        </div>
-      </div>
-      <div class="func-btn-container">
-        <span class="category-icon">💰</span>
-        <div class="func-btn" onclick="location.href='/finance'">
-          회비 장부
-        </div>
-        <div class="func-btn settlement-create">정산 생성</div>
-        <div class="func-btn" onclick="location.href='/finance/settle/manage'">
-          정산 관리
-        </div>
-      </div>
-      <div class="func-btn-container">
-        <span class="category-icon">⁉️</span>
-        <div class="func-btn" onclick="location.href='/member'">
-          공지사항
-        </div>
-        <div class="func-btn" onclick="location.href='/inquiry'">
-          문의
-        </div>
-      </div>
-      <div class="func-btn-container">
-        <span class="category-icon">📁</span>
-        <div class="func-btn"
-          onclick="window.open('https://drive.google.com/drive/folders/14B5qRObeDEQjDJwHK0HkcXVqr2B6WLw5?usp=sharing','_blank')">
-          문서함
-        </div>
-        <div class="func-btn" onclick="location.href='/drive/requestpermission'">
-          권한 요청
-        </div>
-        <div class="func-btn" onclick="location.href='/drive/generateform'">
-          폼 생성
-        </div>
-      </div>
-    </main>
-  </body>
-  <div id="modal-overlay" class="hidden"></div>
+    <div class="func-btn" onclick="location.href='/recruit/responses'">
+      응답 조회
+    </div>
+    <div class="func-btn" onclick="location.href='/public/recruit_result'">
+      결과 조회
+    </div>
+    <div class="func-btn" onclick="location.href='/recruit/interview/activedschedule'">
+      면접 타임테이블
+    </div>
+    <div class="func-btn" onclick="location.href='/recruit/interview/plan'">
+      면접 타임테이블 생성
+    </div>
+    <div class="func-btn" onclick="location.href='/recruit/interview/plans'">
+      면접 계획 관리
+    </div>
+  </div>
+  <div class="func-btn-container">
+    <span class="category-icon">🗓️</span>
+    <div class="func-btn" onclick="location.href='/event/events'">
+      일정 관리
+    </div>
+    <div class="func-btn form">일정 생성</div>
+    <div class="func-btn" onclick="location.href='/event/holidays'">
+      공휴일 업데이트
+    </div>
+  </div>
+  <div class="func-btn-container">
+    <span class="category-icon">💰</span>
+    <div class="func-btn" onclick="location.href='/finance'">
+      회비 장부
+    </div>
+    <div class="func-btn settlement-create">정산 생성</div>
+    <div class="func-btn" onclick="location.href='/finance/settle/manage'">
+      정산 관리
+    </div>
+    <div class="func-btn" onclick="location.href='/pos'">
+      축제부스 POS기
+    </div>
+  </div>
+  <div class="func-btn-container">
+    <span class="category-icon">⁉️</span>
+    <div class="func-btn" onclick="location.href='/member'">
+      공지사항
+    </div>
+    <div class="func-btn" onclick="location.href='/inquiry'">
+      문의
+    </div>
+  </div>
+  <div class="func-btn-container">
+    <span class="category-icon">📁</span>
+    <div class="func-btn" onclick="window.open('https://drive.google.com/drive/folders/14B5qRObeDEQjDJwHK0HkcXVqr2B6WLw5?usp=sharing','_blank')">
+      문서함
+    </div>
+    <div class="func-btn" onclick="location.href='/drive/requestpermission'">
+      권한 요청
+    </div>
+    <div class="func-btn" onclick="location.href='/drive/generateform'">
+      폼 생성
+    </div>
+  </div>
+</main>
+</body>
+<div id="modal-overlay" class="hidden"></div>
 
-  <script type="module">
-    import { initEventInfoModal } from "../js/events/info.js";
-    import { initEventFormModal } from "../js/events/form.js";
-    import { initSettlementModal } from "../js/finance/settlement.js";
+<script type="module">
+  import {
+    initEventInfoModal
+  } from "../js/events/info.js";
+  import {
+    initEventFormModal
+  } from "../js/events/form.js";
+  import {
+    initSettlementModal
+  } from "../js/finance/settlement.js";
 
-    document.addEventListener("DOMContentLoaded", () => {
-      const overlay = document.getElementById("modal-overlay");
-      // 일정들이 들어가는 최상위 컨테이너
-      const eventContainer = document.querySelector(
-        ".event-container"
-      );
-      const formButton = document.querySelector(".form");
-      const settlementCreateButton = document.querySelector(".settlement-create");
+  document.addEventListener("DOMContentLoaded", () => {
+    const overlay = document.getElementById("modal-overlay");
+    // 일정들이 들어가는 최상위 컨테이너
+    const eventContainer = document.querySelector(
+      ".event-container"
+    );
+    const formButton = document.querySelector(".form");
+    const settlementCreateButton = document.querySelector(".settlement-create");
 
-      // 정산 생성 버튼 이벤트
-      settlementCreateButton.addEventListener("click", async function () {
-        try {
-          const resp = await fetch("/finance/settle/create");
-          if (!resp.ok) throw new Error("서버 응답 에러");
-          const html = await resp.text();
-          overlay.innerHTML = html;
-          overlay.classList.remove("hidden");
-          initSettlementModal();
-        } catch (err) {
-          console.error(err);
-          alert("모달을 불러오는 데 실패했습니다.");
-        }
-      });
-
-      eventContainer.addEventListener("click", async (e) => {
-        // 클릭된 요소 또는 조상 중 .event-card/.event-item 찾기
-        const card = e.target.closest(".event-card, .event-item");
-        if (!card) return; // 해당 클래스가 아니면 무시
-
-        const eventId = card.dataset.eventId;
-        try {
-          const resp = await fetch(`/event/info?id=${eventId}`);
-          if (!resp.ok) throw new Error("서버 응답 에러");
-          const html = await resp.text();
-
-          // ① HTML 삽입
-          overlay.innerHTML = html;
-          overlay.classList.remove("hidden");
-
-          initEventInfoModal();
-        } catch (err) {
-          console.error(err);
-          alert("모달을 불러오는 데 실패했습니다.");
-        }
-      });
-
-      formButton.addEventListener("click", async function () {
-        try {
-          const resp = await fetch("/event/form");
-          if (!resp.ok) throw new Error("서버 응답 에러");
-          const html = await resp.text();
-          overlay.innerHTML = html;
-          overlay.classList.remove("hidden");
-          initEventFormModal();
-        } catch (err) {
-          console.error(err);
-          alert("모달을 불러오는 데 실패했습니다.");
-        }
-      });
-
-      // 사용자 정산 목록 로드
-      loadUserSettlements();
+    // 정산 생성 버튼 이벤트
+    settlementCreateButton.addEventListener("click", async function() {
+      try {
+        const resp = await fetch("/finance/settle/create");
+        if (!resp.ok) throw new Error("서버 응답 에러");
+        const html = await resp.text();
+        overlay.innerHTML = html;
+        overlay.classList.remove("hidden");
+        initSettlementModal();
+      } catch (err) {
+        console.error(err);
+        alert("모달을 불러오는 데 실패했습니다.");
+      }
     });
 
-    // 사용자 정산 목록 로드 함수
-    async function loadUserSettlements() {
+    eventContainer.addEventListener("click", async (e) => {
+      // 클릭된 요소 또는 조상 중 .event-card/.event-item 찾기
+      const card = e.target.closest(".event-card, .event-item");
+      if (!card) return; // 해당 클래스가 아니면 무시
+
+      const eventId = card.dataset.eventId;
       try {
-        const response = await fetch('/finance/user/settlements');
-        const settlements = await response.json();
+        const resp = await fetch(`/event/info?id=${eventId}`);
+        if (!resp.ok) throw new Error("서버 응답 에러");
+        const html = await resp.text();
 
-        const settlementsContainer = document.getElementById('userSettlements');
+        // ① HTML 삽입
+        overlay.innerHTML = html;
+        overlay.classList.remove("hidden");
 
-        if (settlements.length === 0) {
-          settlementsContainer.innerHTML = '<div class="no-settlements">진행해야 할 정산이 없습니다.</div>';
-          return;
-        }
+        initEventInfoModal();
+      } catch (err) {
+        console.error(err);
+        alert("모달을 불러오는 데 실패했습니다.");
+      }
+    });
 
-        settlementsContainer.innerHTML = settlements.map(settlement => `
+    formButton.addEventListener("click", async function() {
+      try {
+        const resp = await fetch("/event/form");
+        if (!resp.ok) throw new Error("서버 응답 에러");
+        const html = await resp.text();
+        overlay.innerHTML = html;
+        overlay.classList.remove("hidden");
+        initEventFormModal();
+      } catch (err) {
+        console.error(err);
+        alert("모달을 불러오는 데 실패했습니다.");
+      }
+    });
+
+    // 사용자 정산 목록 로드
+    loadUserSettlements();
+  });
+
+  // 사용자 정산 목록 로드 함수
+  async function loadUserSettlements() {
+    try {
+      const response = await fetch('/finance/user/settlements');
+      const settlements = await response.json();
+
+      const settlementsContainer = document.getElementById('userSettlements');
+      const settlementSection = document.querySelector('.settlement-container');
+
+      if (settlements.length === 0) {
+        // 정산이 없으면 전체 정산 섹션을 숨김
+        settlementSection.style.display = 'none';
+        return;
+      }
+
+      // 정산이 있으면 섹션을 보이게 하고 내용을 채움
+      settlementSection.style.display = 'block';
+      settlementsContainer.innerHTML = settlements.map(settlement => `
           <div class="settlement-item">
             <div class="settlement-info">
               <div class="settlement-name">${settlement.name}</div>
@@ -424,22 +436,23 @@
             </div>
           </div>
         `).join('');
-      } catch (error) {
-        console.error('정산 목록 로드 오류:', error);
-        document.getElementById('userSettlements').innerHTML = '<div class="error">정산 정보를 불러올 수 없습니다.</div>';
-      }
+    } catch (error) {
+      console.error('정산 목록 로드 오류:', error);
+      // 에러가 발생해도 섹션을 숨김
+      document.querySelector('.settlement-container').style.display = 'none';
     }
+  }
 
-    // 모달 닫기 메시지 리스너
-    window.addEventListener('message', function (event) {
-      if (event.data.type === 'closeModal') {
-        const overlay = document.getElementById('modal-overlay');
-        overlay.classList.add('hidden');
-        overlay.innerHTML = '';
-        // 정산 생성 후 목록 새로고침
-        loadUserSettlements();
-      }
-    });
-  </script>
+  // 모달 닫기 메시지 리스너
+  window.addEventListener('message', function(event) {
+    if (event.data.type === 'closeModal') {
+      const overlay = document.getElementById('modal-overlay');
+      overlay.classList.add('hidden');
+      overlay.innerHTML = '';
+      // 정산 생성 후 목록 새로고침
+      loadUserSettlements();
+    }
+  });
+</script>
 
 </html>

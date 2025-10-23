@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UCMS-판매 페이지</title>
+  <link rel="stylesheet" href="/styles/pos.css" />
+
+</head>
+
+<%- include('../header') %>
+
+  <body>
+    <div class="container">
+      <div class="products panel">
+        <% (products || []).forEach(function(p){ %>
+          <button style="font-size: 21px;" data-product-id="<%= p.id %>" data-name="<%= p.product_name %>" data-price="<%= p.product_price %>">
+            <%= p.product_name %>
+            <div style="font-size: 12px;"><%= p.product_price %>원</div>
+          </button>
+          <% }) %>
+      </div>
+
+      <div class="cart-area" data-instance-status="<%= instance.status %>">
+        <div class="panel">
+          <div id="cart-top">
+            <button style="background-color: rgb(219, 91, 91);" class="btn" id="clear">초기화</button>
+            <button style="background-color: rgb(219, 208, 91);" class="btn" id="close">판매종료</button>
+          </div>
+          <div id="cart"></div>
+          <div id="total">총합: 0원</div>
+          <div style="display:flex; gap:8px;">
+            <button style="background-color: rgb(89 191 100);" class="btn record-button-fixed" onclick="location.href='/pos/records/<%= instance.id %>'">
+              🧾 구매 기록 조회
+            </button>
+            <button class="btn" id="instanceinfobtn" onclick="location.href='/pos/instances/<%= instance.id %>'">인스턴스 상세</button>
+            <button style="background-color: rgb(89, 143, 191); flex:1;" class="btn primary" id="purchase">구매</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="../../js/pos/pos.js"></script>
+  </body>
+
+</html>
