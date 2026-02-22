@@ -571,7 +571,7 @@ setInterval(() => {
       clientSessions.delete(clientId);
     }
   });
-}, 30000); // 30초마다 확인
+}, 60000 * 5); // 5분마다 확인
 
 // 서버 종료 시 정리
 process.on("SIGINT", () => {

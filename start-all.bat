@@ -2,6 +2,7 @@
 title UCMS Service Manager
 
 :menu
+cd C:\Users\dydtk\OneDrive\2025\UCMS
 cls
 echo ========================================
 echo         UCMS Service Manager
@@ -10,20 +11,16 @@ echo.
 echo 1. Start all services (nginx + Node.js)
 echo 2. Stop all services
 echo 3. Restart all services
-echo 4. Start nginx only
-echo 5. Start Node.js servers only
-echo 6. Show service status
-echo 7. Exit
+echo 4. Show service status
+echo 5. Exit
 echo.
-set /p choice="Select option (1-7): "
+set /p choice="Select option (1-5): "
 
 if "%choice%"=="1" goto start_all
 if "%choice%"=="2" goto stop_all
 if "%choice%"=="3" goto restart_all
-if "%choice%"=="4" goto start_nginx
-if "%choice%"=="5" goto start_nodejs
-if "%choice%"=="6" goto status
-if "%choice%"=="7" goto exit
+if "%choice%"=="4" goto status
+if "%choice%"=="5" goto exit
 goto menu
 
 :start_all
@@ -50,7 +47,7 @@ if %errorlevel% neq 0 (
 start "nginx" cmd /c "nginx"
 timeout /t 2 /nobreak > nul
 
-echo 2. Starting Node.js servers...
+echo 2. Starting UCMS Web server...
 cd ..
 cd UCMS_WebServer
 
@@ -71,8 +68,30 @@ if not exist node_modules (
     )
     )
 
-start "UCMS Web Server" cmd /c "npm run dev"
-start "UCMS WebSocket Server" cmd /c "npm run sharedb"
+start "UCMS Web Server" cmd /c "npm run start"
+
+echo 3. Starting UCMS ShareDB server...
+cd ..
+cd UCMS_ShareDB
+
+if not exist package.json (
+    echo ERROR: package.json not found in UCMS_WebServer directory!
+    echo Please check if Node.js project is properly set up.
+    pause
+    goto menu
+)
+
+if not exist node_modules (
+    echo WARNING: node_modules not found. Installing dependencies...
+    npm install
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to install npm dependencies!
+        pause
+        goto menu
+    )
+    )
+
+start "UCMS WebSocket Server" cmd /c "npm run start"
 
 echo.
 echo All services started successfully!
@@ -142,57 +161,6 @@ start "UCMS Web Server" cmd /c "npm run dev"
 start "UCMS WebSocket Server" cmd /c "npm run sharedb"
 
 echo All services restarted successfully!
-pause
-cd ..
-goto menu
-
-:start_nginx
-echo.
-echo Starting nginx only...
-
-cd nginx-1.28.0
-if not exist nginx.exe (
-    echo ERROR: nginx.exe not found!
-    pause
-    goto menu
-)
-
-nginx -t
-if %errorlevel% neq 0 (
-    echo ERROR: nginx configuration test failed!
-    pause
-    goto menu
-)
-
-start "nginx" cmd /c "nginx"
-echo nginx started successfully.
-pause
-cd ..
-goto menu
-
-:start_nodejs
-echo.
-echo Starting Node.js servers only...
-
-cd UCMS_WebServer
-if not exist package.json (
-    echo ERROR: package.json not found in UCMS_WebServer directory!
-    pause
-    goto menu
-)
-
-if not exist node_modules (
-    echo WARNING: node_modules not found. Installing dependencies...
-    npm install
-    if %errorlevel% neq 0 (
-        echo ERROR: Failed to install npm dependencies!
-        pause
-        goto menu
-    )
-)
-
-start "UCMS Servers" cmd /c "npm run dev:all"
-echo Node.js servers started successfully.
 pause
 cd ..
 goto menu
