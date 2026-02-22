@@ -8,11 +8,6 @@ const eventsList = document.getElementById("eventsList");
 
 // 예시 이벤트 데이터
 const events = {
-  "2025-07-21": [
-    { time: "10:00", title: "팀 미팅" },
-    { time: "15:00", title: "코드 리뷰" },
-  ],
-  "2025-07-23": [{ time: "09:00", title: "클라이언트 콜" }],
 };
 
 let today = new Date();
