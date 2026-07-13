@@ -3,6 +3,14 @@
 *.txt
 keys/
 data/certbot/
+prod/**/keys/
+prod/**/*.env
+prod/data/certbot/
+prod/logs/
+prod/initialData.sql
+prod/UCMS_WebServer/keys/
+prod/UCMS_ShareDB/keys/
+prod/MySQL/keys/
 dev/UCMS_WebServer/InterviewScheduler/outputs/
 documents/
 docs/
