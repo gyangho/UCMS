@@ -1,0 +1,21 @@
+{
+  "name": "ucms-sharedb",
+  "version": "1.0.0",
+  "description": "UCMS ShareDB 서버",
+  "main": "sharedb-server.js",
+  "scripts": {
+    "dev": "cross-env NODE_ENV=dev nodemon -L sharedb-server.js",
+    "prod": "node sharedb-server.js"
+  },
+  "dependencies": {
+    "dotenv-expand": "^12.0.3",
+    "mysql2": "^3.17.4",
+    "sharedb": "^3.2.0",
+    "sharedb-mysql": "^1.0.0",
+    "ws": "^8.0.0"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "nodemon": "^3.1.10"
+  }
+}
