@@ -1,0 +1,88 @@
+{
+  "status": "SUCCESS",
+  "is_perfect": true,
+  "extra_slots_count": 0,
+  "extra_slots_needed": [],
+  "schedule": [
+    {
+      "intervieweeId": 20222774,
+      "slot": "03/03;12:00~12:15",
+      "interviewers": [
+        20192854,
+        20251055
+      ]
+    },
+    {
+      "intervieweeId": 20232550,
+      "slot": "03/03;12:15~12:30",
+      "interviewers": [
+        20192854,
+        20251055
+      ]
+    },
+    {
+      "intervieweeId": 20210150,
+      "slot": "03/03;13:00~13:15",
+      "interviewers": [
+        20192854,
+        20251055
+      ]
+    },
+    {
+      "intervieweeId": 20262868,
+      "slot": "03/03;13:15~13:30",
+      "interviewers": [
+        20192854,
+        20251055
+      ]
+    },
+    {
+      "intervieweeId": 20260298,
+      "slot": "03/03;15:00~15:15",
+      "interviewers": [
+        20192854,
+        20251055
+      ]
+    },
+    {
+      "intervieweeId": 20251054,
+      "slot": "03/03;17:00~17:15",
+      "interviewers": [
+        20192854,
+        20251055
+      ]
+    },
+    {
+      "intervieweeId": 20251078,
+      "slot": "03/03;17:15~17:30",
+      "interviewers": [
+        20192854,
+        20251055
+      ]
+    },
+    {
+      "intervieweeId": 20253004,
+      "slot": "03/03;17:30~17:45",
+      "interviewers": [
+        20192854,
+        20251055
+      ]
+    },
+    {
+      "intervieweeId": 20202399,
+      "slot": "03/03;18:00~18:15",
+      "interviewers": [
+        20192854,
+        20251055
+      ]
+    },
+    {
+      "intervieweeId": 20262072,
+      "slot": "03/04;17:00~17:15",
+      "interviewers": [
+        20210589,
+        20251055
+      ]
+    }
+  ]
+}

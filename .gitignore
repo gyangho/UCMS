@@ -17,6 +17,7 @@ docs/
 nginx-1.28.0/
 *.csv
 *.txt
+handoffs/
 
 #intelliJ
 .idea/
