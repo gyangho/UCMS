@@ -11,17 +11,26 @@ prod/initialData.sql
 prod/UCMS_WebServer/keys/
 prod/UCMS_ShareDB/keys/
 prod/MySQL/keys/
-dev/UCMS_WebServer/InterviewScheduler/outputs/
 documents/
 docs/
 nginx-1.28.0/
 *.csv
 *.txt
 handoffs/
+prod/UCMS_WebServer/InterviewScheduler/outputs/
+prod/UCMS_WebServer/InterviewScheduler/inputs/
+
+dev/initialData.sql
+dev/UCMS_WebServer/InterviewScheduler/outputs/
+dev/UCMS_WebServer/InterviewScheduler/inputs/
+
+.agents/
+AGENTS.md
 
 #intelliJ
 .idea/
 
+.gradle/
 
 # Logs
 logs
@@ -151,6 +160,28 @@ dist
 .vscode-test
 
 # yarn v3
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Vite logs files
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Vite logs files
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
 .pnp.*
 .yarn/*
 !.yarn/patches

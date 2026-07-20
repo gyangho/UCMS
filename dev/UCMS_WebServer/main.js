@@ -141,9 +141,29 @@ app.listen(PORT, () => {
 
 async function requireValidSession(req, res, next) {
     try {
-        //세션 정보 검색
+        const isApiRequest = req.path.startsWith("/api");
+        const isPublicApiRequest =
+            req.path.startsWith("/api/public") ||
+            // 2026-07-16: React dashboard must render for anonymous visitors; other contract APIs still require session.
+            req.path === "/api/dashboard" ||
+            req.path.startsWith("/api/auth/member-confirm");
+
         const sessionInfo = await sessionStore.get(req.sessionID);
         if (!sessionInfo || sessionInfo.authority < 3) {
+            if (isPublicApiRequest) {
+                return next();
+            }
+
+            if (isApiRequest) {
+                return res.status(401).json({
+                    success: false,
+                    error: {
+                        code: "UNAUTHORIZED",
+                        message: "Login required.",
+                    },
+                });
+            }
+
             if (
                 req.path === "/" ||
                 req.path.startsWith("/images") ||
@@ -167,6 +187,12 @@ async function requireValidSession(req, res, next) {
         } else if (req.path === "/") {
             return res.redirect("/dashboard");
         } else {
+            if (isApiRequest) {
+                req.session.authority = sessionInfo.authority;
+                req.session.userId = sessionInfo.userId;
+                return next();
+            }
+
             /* 권한 별 분기 적용 */
             if (
                 req.path.startsWith("/member") ||
