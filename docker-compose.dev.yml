@@ -1,0 +1,67 @@
+services:
+  ucms_web:
+    init: true
+    build:
+      context: ./dev/UCMS_WebServer
+      dockerfile: Dockerfile
+      target: dev
+    container_name: dev_ucms_web
+    restart: always
+    environment:
+      NODE_ENV: dev
+      DB_HOST: mysql
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+
+    env_file:
+      - ./dev/UCMS_WebServer/keys/.env.dev
+    volumes:
+      - ./dev/UCMS_WebServer/keys/google:/app/keys/google
+      - ./dev/UCMS_WebServer:/app
+      - /app/node_modules
+
+  ucms_sharedb:
+    init: true
+    build:
+      context: ./dev/UCMS_ShareDB
+      dockerfile: Dockerfile
+      target: dev
+    container_name: dev_ucms_sharedb
+    restart: always
+    environment:
+      NODE_ENV: dev
+      DB_HOST: mysql
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+    env_file:
+      - ./dev/UCMS_ShareDB/keys/.env.dev
+    volumes:
+      - ./dev/UCMS_ShareDB:/app
+      - /app/node_modules
+
+  ucms_react:
+    init: true
+    build:
+      context: ./dev/UCMS_React
+      dockerfile: Dockerfile
+      target: dev
+    container_name: dev_ucms_react
+    restart: always
+    depends_on:
+      - ucms_web
+    environment:
+      NODE_ENV: dev
+      # 2026-07-16: Vite runs inside its own container, so proxy /api to the Compose web service.
+      VITE_API_PROXY_TARGET: http://ucms_web:3000
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./dev/UCMS_React:/app
+      - /app/node_modules
+
+networks:
+  default:
+    name: UCMS-network
+    external: true
