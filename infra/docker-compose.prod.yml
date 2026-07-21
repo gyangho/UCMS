@@ -1,0 +1,43 @@
+services:
+  ucms_web:
+    init: true
+    image: gyangho/ucms_web:latest
+    container_name: ucms_web
+    restart: always
+    env_file:
+      - ./env/prod/web.env
+      - ./env/prod/common.env
+    volumes:
+      - ./env/keys/google:/app/keys/google:/app/keys/google
+      - ../prod/UCMS_WebServer/InterviewScheduler:/app/InterviewScheduler
+      - ../prod/UCMS_WebServer/interview_place.csv:/app/interview_place.csv
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - prod-app
+      - prod-db
+
+  ucms_sharedb:
+    init: true
+    image: gyangho/ucms_sharedb:latest
+    container_name: ucms_sharedb
+    restart: always
+    env_file:
+      - ./env/prod/sharedb.env
+      - ./env/prod/common.env
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - prod-app
+      - prod-db
+
+networks:
+  prod-app:
+    name: ucms-prod-app-network
+    external: true
+
+  prod-db:
+    name: ucms-prod-db-network
+    external: true
