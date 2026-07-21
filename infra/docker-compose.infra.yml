@@ -8,18 +8,23 @@ services:
       - LANG=C.UTF-8
       - LC_ALL=C.UTF-8
     env_file:
-      - ./env/db.env
+      - ./env/infra/db.env
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          'mysql --protocol=TCP -h 127.0.0.1 -u healthcheck -p"$${MYSQL_HEALTHCHECK_PASSWORD}" -e ''SELECT 1'' >/dev/null 2>&1',
-        ]
+        - CMD-SHELL
+        - >-
+          mysql --protocol=socket
+          -u"$${MYSQL_HEALTHCHECK_USER}" 
+          -p"$${MYSQL_HEALTHCHECK_PASSWORD}" 
+          -e "SELECT 1"
+          >/dev/null 2>&1
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
+
     networks:
       - prod-db
       - dev-db
