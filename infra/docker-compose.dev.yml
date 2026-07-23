@@ -55,6 +55,8 @@ services:
       NODE_ENV: dev
       # 2026-07-16: Vite runs inside its own container, so proxy /api to the Compose web service.
       VITE_API_PROXY_TARGET: http://ucms_web:3000
+      # 2026-07-23: Proxy React evaluation-note sockets to the ShareDB service during Vite development.
+      VITE_SHAREDB_PROXY_TARGET: ws://ucms_sharedb:8080
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
     ports:

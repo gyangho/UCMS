@@ -14,6 +14,8 @@ inputs/
 AGENTS.md
 initialData.sql
 
+__pycache__/
+
 #intelliJ
 .idea/
 .gradle/

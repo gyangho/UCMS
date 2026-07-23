@@ -1,4 +1,5 @@
 const db = require("./db");
+const Event = require("./Event");
 
 class Settlement {
   static async findAll() {
@@ -175,10 +176,12 @@ class Settlement {
 
   static async getEventParticipants(eventId) {
     try {
+      // 2026-07-23: Resolve event participants across both deployed and documented event schemas.
+      const storage = await Event.getParticipantStorage();
       const [rows] = await db.execute(
         `SELECT DISTINCT m.student_id, m.name 
          FROM event_participants ep 
-         JOIN Members m ON ep.user_id = m.user_id 
+         JOIN Members m ON ep.${storage.column} = m.${storage.memberColumn}
          WHERE ep.event_id = ?`,
         [eventId]
       );

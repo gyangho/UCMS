@@ -8,12 +8,11 @@ services:
       - ./env/prod/web.env
       - ./env/prod/common.env
     volumes:
-      - ./env/keys/google:/app/keys/google:/app/keys/google
+      # 2026-07-23: Mount Google credentials at the intended container path with valid Compose syntax.
+      - ./env/keys/google:/app/keys/google
       - ../prod/UCMS_WebServer/InterviewScheduler:/app/InterviewScheduler
       - ../prod/UCMS_WebServer/interview_place.csv:/app/interview_place.csv
-    depends_on:
-      mysql:
-        condition: service_healthy
+    # 2026-07-23: MySQL is managed by the separate infra Compose project on prod-db.
     networks:
       - prod-app
       - prod-db
@@ -26,12 +25,25 @@ services:
     env_file:
       - ./env/prod/sharedb.env
       - ./env/prod/common.env
-    depends_on:
-      mysql:
-        condition: service_healthy
+    # 2026-07-23: MySQL is managed by the separate infra Compose project on prod-db.
     networks:
       - prod-app
       - prod-db
+
+  # 2026-07-23: Build React once and serve only the generated static files in production.
+  ucms_react:
+    init: true
+    build:
+      context: ../dev/UCMS_React
+      dockerfile: Dockerfile
+      target: prod
+    image: gyangho/ucms_react:latest
+    container_name: ucms_react
+    restart: always
+    expose:
+      - "80"
+    networks:
+      - prod-app
 
 networks:
   prod-app:

@@ -58,9 +58,10 @@ export function initEventInfoModal() {
     }
   }
 
+  // 2026-07-23: Match the server rule: only the author or executives and above can edit/delete.
   if (
-    currentEvent.authority_num <= sessionAuthority ||
-    currentEvent.author_user_id === currentUserId
+    Number(sessionAuthority) >= 3 ||
+    `${currentEvent.author_id}` === currentUserId
   ) {
     editButton.classList.remove("hidden");
   }

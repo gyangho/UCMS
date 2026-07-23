@@ -154,6 +154,57 @@ class InterviewSchedule {
             [planId]
         );
     };
+
+    // 2026-07-23: Replace a generated schedule in one transaction so failed inserts cannot leave partial rows.
+    static replaceInterviewSchedule = async (planId, schedules) => {
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
+            await connection.execute(
+                "DELETE FROM interview_schedules WHERE plan_id = ?",
+                [planId]
+            );
+            for (const schedule of schedules) {
+                const {interviewDate, timeSlot} = splitScheduleSlot(schedule.slot);
+                for (const interviewerId of schedule.interviewers || []) {
+                    await connection.execute(
+                        `INSERT INTO interview_schedules
+                         (plan_id, interview_date, time_slot, interviewer_id, interviewee_id)
+                         VALUES (?, ?, ?, ?, ?)`,
+                        [
+                            planId,
+                            interviewDate,
+                            timeSlot,
+                            String(interviewerId),
+                            String(schedule.intervieweeId),
+                        ]
+                    );
+                }
+            }
+            await connection.commit();
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    };
+}
+
+function splitScheduleSlot(slot) {
+    const value = String(slot || "").trim();
+    if (value.includes(";")) {
+        const [interviewDate, timeSlot] = value.split(";");
+        return {interviewDate, timeSlot};
+    }
+    const separatorIndex = value.indexOf(" ");
+    if (separatorIndex >= 0) {
+        return {
+            interviewDate: value.slice(0, separatorIndex),
+            timeSlot: value.slice(separatorIndex + 1),
+        };
+    }
+    return {interviewDate: value, timeSlot: value};
 }
 
 module.exports = InterviewSchedule;
