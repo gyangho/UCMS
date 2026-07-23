@@ -60,6 +60,8 @@ class Recruit {
     InterviewSchedule.getGroupedInterviewSchedule;
   static deleteInterviewSchedule =
     InterviewSchedule.deleteInterviewSchedule;
+  static replaceInterviewSchedule =
+    InterviewSchedule.replaceInterviewSchedule;
 
   // 면접 계획 상태 업데이트
   static updateInterviewPlanStatus =

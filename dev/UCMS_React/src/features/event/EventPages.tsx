@@ -1,7 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { navigate } from "../../app/router";
 import { requestData } from "../../shared/api/http";
-import { useCurrentUser } from "../../shared/api/user";
 import { EmptyState } from "../../shared/ui/EmptyState";
 import { ErrorState, LoadingState } from "../../shared/ui/PageState";
 
@@ -12,11 +11,26 @@ interface EventItem {
   start: string;
   end: string;
   color?: string | null;
+  isMultiple?: boolean;
   isRecruiting?: boolean;
+  isRecruitingOpen?: boolean;
+  isParticipating?: boolean;
+  canParticipate?: boolean;
+  authority?: string | null;
+  recruitStart?: string | null;
+  recruitEnd?: string | null;
   authorName?: string | null;
   authorId?: string | number | null;
-  place?: string | null;
-  participants?: Array<{ name: string; role?: string | null; status?: string | null }>;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  participants?: Array<{
+    id: number;
+    userId: number | null;
+    studentId: string;
+    name: string;
+    role?: string | null;
+    status?: string | null;
+  }>;
   settlement?: {
     id: number;
     title: string;
@@ -29,11 +43,22 @@ interface EventItem {
 
 interface EventFormState {
   title: string;
-  place: string;
   start: string;
   end: string;
   description: string;
   color: string;
+  authority: string;
+  isMultiple: boolean;
+  isRecruiting: boolean;
+  recruitStart: string;
+  recruitEnd: string;
+}
+
+interface EventMemberOption {
+  id: string;
+  userId?: number | null;
+  name: string;
+  studentId: string;
 }
 
 export function EventCalendarPage() {
@@ -50,7 +75,7 @@ export function EventCalendarPage() {
       try {
         const [allData, myData] = await Promise.all([
           requestData<{ events: EventItem[] }>("/api/events"),
-          requestData<{ events: EventItem[] }>("/api/events/my")
+          requestData<{ events: EventItem[] }>("/api/events/my"),
         ]);
         if (!ignore) {
           setEvents(allData.events);
@@ -58,7 +83,11 @@ export function EventCalendarPage() {
         }
       } catch (loadError) {
         if (!ignore) {
-          setError(loadError instanceof Error ? loadError.message : "일정을 불러오지 못했습니다.");
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "일정을 불러오지 못했습니다.",
+          );
         }
       } finally {
         if (!ignore) {
@@ -74,8 +103,9 @@ export function EventCalendarPage() {
   }, []);
 
   const recruitingEvents = useMemo(
-    () => events.filter((event) => Boolean(event.isRecruiting)),
-    [events]
+    // 2026-07-23: The recruiting section contains only events whose recruitment window is currently open.
+    () => events.filter((event) => Boolean(event.isRecruitingOpen)),
+    [events],
   );
 
   if (isLoading) {
@@ -102,9 +132,21 @@ export function EventCalendarPage() {
         </div>
       </div>
 
-      <EventSection title="내 일정" events={myEvents} emptyTitle="참여 중인 일정이 없습니다." />
-      <EventSection title="모집 중인 일정" events={recruitingEvents} emptyTitle="모집 중인 일정이 없습니다." />
-      <EventSection title="전체 일정" events={events} emptyTitle="표시할 일정이 없습니다." />
+      <EventSection
+        title="내 일정"
+        events={myEvents}
+        emptyTitle="참여 중인 일정이 없습니다."
+      />
+      <EventSection
+        title="모집 중인 일정"
+        events={recruitingEvents}
+        emptyTitle="모집 중인 일정이 없습니다."
+      />
+      <EventSection
+        title="전체 일정"
+        events={events}
+        emptyTitle="표시할 일정이 없습니다."
+      />
     </section>
   );
 }
@@ -120,13 +162,19 @@ export function MyEventsPage() {
 
     async function loadEvents() {
       try {
-        const data = await requestData<{ events: EventItem[] }>("/api/events/my");
+        const data = await requestData<{ events: EventItem[] }>(
+          "/api/events/my",
+        );
         if (!ignore) {
           setEvents(data.events);
         }
       } catch (loadError) {
         if (!ignore) {
-          setError(loadError instanceof Error ? loadError.message : "내 일정을 불러오지 못했습니다.");
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "내 일정을 불러오지 못했습니다.",
+          );
         }
       } finally {
         if (!ignore) {
@@ -161,7 +209,11 @@ export function MyEventsPage() {
           </button>
         </div>
       </div>
-      <EventSection title="내 일정" events={events} emptyTitle="참여 중인 일정이 없습니다." />
+      <EventSection
+        title="내 일정"
+        events={events}
+        emptyTitle="참여 중인 일정이 없습니다."
+      />
     </section>
   );
 }
@@ -169,7 +221,7 @@ export function MyEventsPage() {
 function EventSection({
   title,
   events,
-  emptyTitle
+  emptyTitle,
 }: {
   title: string;
   events: EventItem[];
@@ -226,10 +278,12 @@ function EventSection({
 
 export function EventDetailPage({ path }: { path: string }) {
   const eventId = Number(path.split("/").at(-1));
-  const { user } = useCurrentUser();
   const [event, setEvent] = useState<EventItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // 2026-07-23: Keep participation actions responsive and report action failures without replacing event details.
+  const [isParticipationSaving, setIsParticipationSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // 2026-07-16: Detail view now fetches the requested event so manage buttons reflect real author/session data.
   useEffect(() => {
@@ -237,13 +291,19 @@ export function EventDetailPage({ path }: { path: string }) {
 
     async function loadEvent() {
       try {
-        const data = await requestData<{ event: EventItem }>(`/api/events/${eventId}`);
+        const data = await requestData<{ event: EventItem }>(
+          `/api/events/${eventId}`,
+        );
         if (!ignore) {
           setEvent(data.event);
         }
       } catch (loadError) {
         if (!ignore) {
-          setError(loadError instanceof Error ? loadError.message : "일정 상세를 불러오지 못했습니다.");
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "일정 상세를 불러오지 못했습니다.",
+          );
         }
       } finally {
         if (!ignore) {
@@ -258,9 +318,32 @@ export function EventDetailPage({ path }: { path: string }) {
     };
   }, [eventId]);
 
-  const canManage = Boolean(
-    event && user && (String(event.authorId) === String(user.userId) || user.authority >= 4)
-  );
+  // 2026-07-23: Use the server-authorized event flags so the UI matches the author/executive access rule.
+  const canManage = Boolean(event?.canEdit);
+
+  async function toggleMyParticipation() {
+    if (!event) return;
+    setIsParticipationSaving(true);
+    setActionError(null);
+    try {
+      await requestData<{ status: string }>(
+        `/api/events/${event.id}/participants/me`,
+        { method: event.isParticipating ? "DELETE" : "POST" },
+      );
+      const refreshed = await requestData<{ event: EventItem }>(
+        `/api/events/${event.id}`,
+      );
+      setEvent(refreshed.event);
+    } catch (participationError) {
+      setActionError(
+        participationError instanceof Error
+          ? participationError.message
+          : "참가 상태를 변경하지 못했습니다.",
+      );
+    } finally {
+      setIsParticipationSaving(false);
+    }
+  }
 
   if (isLoading) {
     return <LoadingState />;
@@ -282,13 +365,37 @@ export function EventDetailPage({ path }: { path: string }) {
           </button>
           {canManage ? (
             <>
-              <button type="button" onClick={() => navigate(`/event/${event.id}/edit`)}>
+              <button
+                type="button"
+                onClick={() => navigate(`/event/${event.id}/edit`)}
+              >
                 수정
               </button>
             </>
           ) : null}
+          {event.canParticipate ? (
+            <button
+              // 2026-07-23: Give participate and cancel actions distinct, high-visibility colors.
+              className={`event-participation-button ${event.isParticipating ? "cancel" : "join"}`}
+              disabled={isParticipationSaving}
+              type="button"
+              onClick={toggleMyParticipation}
+            >
+              {isParticipationSaving
+                ? "처리 중..."
+                : event.isParticipating
+                  ? "참가 취소"
+                  : "참가"}
+            </button>
+          ) : null}
         </div>
       </div>
+
+      {actionError ? (
+        <div className="page-state error" role="alert">
+          {actionError}
+        </div>
+      ) : null}
 
       <section className="data-card">
         <div>
@@ -298,10 +405,22 @@ export function EventDetailPage({ path }: { path: string }) {
         <dl>
           <dt>일시</dt>
           <dd>{formatRange(event.start, event.end)}</dd>
-          <dt>장소</dt>
-          <dd>{event.place ?? "-"}</dd>
           <dt>작성자</dt>
           <dd>{event.authorName ?? "-"}</dd>
+          <dt>공개 범위</dt>
+          <dd>{event.authority ?? "일반"}</dd>
+          <dt>일정 유형</dt>
+          <dd>{event.isMultiple ? "여러 날 일정" : "단일 일정"}</dd>
+          {event.isRecruiting ? (
+            <>
+              <dt>참가 모집</dt>
+              <dd>
+                {event.recruitStart && event.recruitEnd
+                  ? `${formatRange(event.recruitStart, event.recruitEnd)} (${event.isRecruitingOpen ? "모집 중" : "모집 마감"})`
+                  : "모집 중"}
+              </dd>
+            </>
+          ) : null}
           <dt>설명</dt>
           <dd>{event.description ?? "-"}</dd>
         </dl>
@@ -309,20 +428,16 @@ export function EventDetailPage({ path }: { path: string }) {
 
       <div className="two-column">
         <section className="data-card">
-          <h2>참여자</h2>
+          {/* 2026-07-22: Participant details show only names and expose the total count. */}
+          <h2>참여자 ({(event.participants ?? []).length}명)</h2>
           {(event.participants ?? []).length === 0 ? (
             <EmptyState title="참여자가 없습니다." />
           ) : (
-            <dl>
+            <ul className="participant-name-list">
               {(event.participants ?? []).map((participant) => (
-                <div key={`${participant.name}-${participant.role ?? ""}`}>
-                  <dt>{participant.name}</dt>
-                  <dd>
-                    {participant.role ?? "-"} / {participant.status ?? "-"}
-                  </dd>
-                </div>
+                <li key={participant.id}>{participant.name}</li>
               ))}
-            </dl>
+            </ul>
           )}
         </section>
 
@@ -344,7 +459,8 @@ export function EventDetailPage({ path }: { path: string }) {
               <dd>{formatCurrency(event.settlement.amount)}</dd>
               <dt>진행</dt>
               <dd>
-                {event.settlement.paidCount}/{event.settlement.participantCount}명
+                {event.settlement.paidCount}/{event.settlement.participantCount}
+                명
               </dd>
               <dt>상태</dt>
               <dd>{event.settlement.status}</dd>
@@ -360,7 +476,7 @@ export function EventDetailPage({ path }: { path: string }) {
 
 export function EventFormPage({
   mode,
-  path
+  path,
 }: {
   mode: "create" | "edit";
   path?: string;
@@ -368,16 +484,51 @@ export function EventFormPage({
   const eventId = path ? Number(path.match(/\d+/)?.[0]) : null;
   const [form, setForm] = useState<EventFormState>({
     title: "",
-    place: "",
     start: "",
     end: "",
     description: "",
-    color: "#2563eb"
+    color: "#2563eb",
+    authority: "일반",
+    isMultiple: false,
+    isRecruiting: false,
+    recruitStart: "",
+    recruitEnd: "",
   });
+  const [availableMembers, setAvailableMembers] = useState<EventMemberOption[]>(
+    [],
+  );
+  // 2026-07-23: Send linked user IDs; the API resolves them for both deployed and documented participant schemas.
+  const [participantIds, setParticipantIds] = useState<number[]>([]);
+  const [participantQuery, setParticipantQuery] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(mode === "edit");
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  // 2026-07-16: Event form loads/saves through the contract API so create and edit paths can be moved to Spring later.
+  // 2026-07-23: Keep every selected participant visible while showing new candidates only after a name search.
+  const selectedParticipantMembers = useMemo(
+    () =>
+      availableMembers.filter(
+        (member) =>
+          member.userId != null && participantIds.includes(member.userId),
+      ),
+    [availableMembers, participantIds],
+  );
+  const participantSearchResults = useMemo(() => {
+    const normalizedQuery = participantQuery.trim().toLocaleLowerCase("ko-KR");
+    if (!normalizedQuery) return [];
+    return availableMembers
+      .filter(
+        (member) =>
+          member.userId != null &&
+          !participantIds.includes(member.userId) &&
+          member.name.toLocaleLowerCase("ko-KR").includes(normalizedQuery),
+      )
+      .slice(0, 10);
+  }, [availableMembers, participantIds, participantQuery]);
+
+  // 2026-07-23: Load every event column represented in schemalist.sql for the edit form.
   useEffect(() => {
     if (mode !== "edit" || !eventId) {
       return;
@@ -387,21 +538,49 @@ export function EventFormPage({
 
     async function loadEvent() {
       try {
-        const data = await requestData<{ event: EventItem }>(`/api/events/${eventId}`);
+        const data = await requestData<{ event: EventItem }>(
+          `/api/events/${eventId}`,
+        );
         const item = data.event;
+        if (!item.canEdit) {
+          throw new Error("이 일정을 수정할 권한이 없습니다.");
+        }
+        const memberData = await requestData<{ members: EventMemberOption[] }>(
+          "/api/members",
+        );
         if (!ignore) {
           setForm({
             title: item.title,
-            place: item.place ?? "",
             start: toDateTimeLocal(item.start),
             end: toDateTimeLocal(item.end),
             description: item.description ?? "",
-            color: item.color ?? "#2563eb"
+            color: item.color ?? "#2563eb",
+            authority: item.authority ?? "일반",
+            isMultiple: Boolean(item.isMultiple),
+            isRecruiting: Boolean(item.isRecruiting),
+            recruitStart: item.recruitStart
+              ? toDateTimeLocal(item.recruitStart)
+              : "",
+            recruitEnd: item.recruitEnd ? toDateTimeLocal(item.recruitEnd) : "",
           });
+          setAvailableMembers(
+            (memberData.members ?? []).filter(
+              (member) => member.userId != null,
+            ),
+          );
+          setParticipantIds(
+            (item.participants ?? [])
+              .map((participant) => participant.userId)
+              .filter((userId): userId is number => Number.isFinite(userId)),
+          );
         }
       } catch (loadError) {
         if (!ignore) {
-          setError(loadError instanceof Error ? loadError.message : "일정을 불러오지 못했습니다.");
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "일정을 불러오지 못했습니다.",
+          );
         }
       } finally {
         if (!ignore) {
@@ -418,18 +597,62 @@ export function EventFormPage({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = await requestData<{ event: EventItem }>(
-      mode === "edit" && eventId ? `/api/events/${eventId}` : "/api/events",
-      {
-        method: mode === "edit" ? "PUT" : "POST",
-        body: JSON.stringify({
-          ...form,
-          start: new Date(form.start).toISOString(),
-          end: new Date(form.end).toISOString()
-        })
-      }
-    );
-    navigate(`/event/${data.event.id}`);
+    setIsSaving(true);
+    setActionError(null);
+    try {
+      // 2026-07-23: Preserve local event and recruiting times for MySQL DATETIME columns.
+      const data = await requestData<{ id: number }>(
+        mode === "edit" && eventId ? `/api/events/${eventId}` : "/api/events",
+        {
+          method: mode === "edit" ? "PUT" : "POST",
+          body: JSON.stringify({
+            ...form,
+            start: toMysqlDateTime(form.start),
+            end: toMysqlDateTime(form.end),
+            recruitStart: form.recruitStart
+              ? toMysqlDateTime(form.recruitStart)
+              : null,
+            recruitEnd: form.recruitEnd
+              ? toMysqlDateTime(form.recruitEnd)
+              : null,
+            ...(mode === "edit" ? { participantIds } : {}),
+          }),
+        },
+      );
+      navigate(`/event/${data.id}`);
+    } catch (saveError) {
+      setActionError(
+        saveError instanceof Error
+          ? saveError.message
+          : "일정을 저장하지 못했습니다.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function deleteEvent() {
+    if (!eventId || !window.confirm("이 일정을 삭제하시겠습니까?")) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setActionError(null);
+    try {
+      // 2026-07-22: Event owners and managers can delete from the edit page.
+      await requestData<{ message: string }>(`/api/events/${eventId}`, {
+        method: "DELETE",
+      });
+      navigate("/event");
+    } catch (deleteError) {
+      setActionError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "일정을 삭제하지 못했습니다.",
+      );
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   if (isLoading) {
@@ -441,14 +664,17 @@ export function EventFormPage({
   }
 
   return (
-    <section className="stack-page narrow">
+    <section className="stack-page event-form-page">
       <div className="page-heading">
         <div>
           <h1>{mode === "create" ? "일정 생성" : "일정 수정"}</h1>
         </div>
       </div>
 
-      <form className="form-panel" onSubmit={submit}>
+      <form className="form-panel event-form-panel" onSubmit={submit}>
+        {actionError ? (
+          <div className="page-state error">{actionError}</div>
+        ) : null}
         <label>
           제목
           <input
@@ -458,55 +684,228 @@ export function EventFormPage({
             required
           />
         </label>
-        <label>
-          장소
-          <input
-            value={form.place}
-            onChange={(event) => setFormField("place", event.target.value)}
-            placeholder="장소"
-          />
-        </label>
-        <label>
-          시작 일시
-          <input
-            value={form.start}
-            type="datetime-local"
-            onChange={(event) => setFormField("start", event.target.value)}
-            required
-          />
-        </label>
-        <label>
-          종료 일시
-          <input
-            value={form.end}
-            type="datetime-local"
-            onChange={(event) => setFormField("end", event.target.value)}
-            required
-          />
-        </label>
+        <div className="event-form-grid">
+          <label>
+            시작 일시
+            <input
+              value={form.start}
+              type="datetime-local"
+              onChange={(event) => setFormField("start", event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            종료 일시
+            <input
+              value={form.end}
+              type="datetime-local"
+              onChange={(event) => setFormField("end", event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            공개 범위
+            <select
+              value={form.authority}
+              onChange={(event) =>
+                setFormField("authority", event.target.value)
+              }
+            >
+              {["일반", "부원", "임원진", "부회장", "회장", "admin"].map(
+                (authority) => (
+                  <option key={authority}>{authority}</option>
+                ),
+              )}
+            </select>
+          </label>
+          <label>
+            일정 색상
+            <input
+              className="event-color-input"
+              value={form.color}
+              type="color"
+              onChange={(event) => setFormField("color", event.target.value)}
+            />
+          </label>
+        </div>
         <label>
           설명
           <textarea
             value={form.description}
             rows={6}
-            onChange={(event) => setFormField("description", event.target.value)}
+            onChange={(event) =>
+              setFormField("description", event.target.value)
+            }
           />
         </label>
+        <div className="event-option-row">
+          <label className="checkbox-label">
+            <input
+              checked={form.isMultiple}
+              type="checkbox"
+              onChange={(event) =>
+                setFormField("isMultiple", event.target.checked)
+              }
+            />
+            여러 날에 걸친 일정
+          </label>
+          <label className="checkbox-label">
+            <input
+              checked={form.isRecruiting}
+              type="checkbox"
+              onChange={(event) =>
+                setFormField("isRecruiting", event.target.checked)
+              }
+            />
+            참가자 모집
+          </label>
+        </div>
+        {form.isRecruiting ? (
+          <fieldset className="recruit-period-fieldset">
+            <legend>참가자 모집 기간</legend>
+            <div className="event-form-grid">
+              <label>
+                모집 시작
+                <input
+                  required
+                  value={form.recruitStart}
+                  type="datetime-local"
+                  onChange={(event) =>
+                    setFormField("recruitStart", event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                모집 종료
+                <input
+                  required
+                  value={form.recruitEnd}
+                  type="datetime-local"
+                  onChange={(event) =>
+                    setFormField("recruitEnd", event.target.value)
+                  }
+                />
+              </label>
+            </div>
+          </fieldset>
+        ) : null}
+        {mode === "edit" ? (
+          <fieldset className="participant-picker">
+            <legend>참여자 ({participantIds.length}명)</legend>
+            {availableMembers.length === 0 ? (
+              <p>연결된 계정이 있는 회원이 없습니다.</p>
+            ) : (
+              <div className="participant-search-picker">
+                <div className="selected-participant-section">
+                  <strong>현재 참여자</strong>
+                  {selectedParticipantMembers.length === 0 ? (
+                    <p className="muted-copy">선택된 참여자가 없습니다.</p>
+                  ) : (
+                    <div className="selected-participant-list">
+                      {selectedParticipantMembers.map((member) => (
+                        <span key={member.id}>
+                          {member.name}
+                          <button
+                            aria-label={`${member.name} 참여자에서 제거`}
+                            type="button"
+                            onClick={() => removeParticipant(member.userId!)}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <label className="participant-search-label">
+                  새 참여자 이름 검색
+                  <input
+                    autoComplete="off"
+                    placeholder="이름을 입력하세요"
+                    type="search"
+                    value={participantQuery}
+                    onChange={(event) => setParticipantQuery(event.target.value)}
+                  />
+                </label>
+
+                {participantQuery.trim() ? (
+                  participantSearchResults.length === 0 ? (
+                    <p className="participant-search-empty">
+                      추가할 수 있는 검색 결과가 없습니다.
+                    </p>
+                  ) : (
+                    <div className="participant-search-results">
+                      {participantSearchResults.map((member) => (
+                        <button
+                          key={member.id}
+                          type="button"
+                          onClick={() => addParticipant(member.userId!)}
+                        >
+                          <span>
+                            <strong>{member.name}</strong>
+                            <small>{member.id}</small>
+                          </span>
+                          <b>추가</b>
+                        </button>
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  <p className="participant-search-help">
+                    이름을 입력하면 추가할 수 있는 회원만 표시됩니다.
+                  </p>
+                )}
+              </div>
+            )}
+          </fieldset>
+        ) : null}
         <div className="card-actions">
-          <button type="button" onClick={() => navigate(eventId ? `/event/${eventId}` : "/event")}>
+          {mode === "edit" ? (
+            <button
+              className="danger-button"
+              disabled={isDeleting || isSaving}
+              type="button"
+              onClick={deleteEvent}
+            >
+              삭제
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => navigate(eventId ? `/event/${eventId}` : "/event")}
+          >
             취소
           </button>
-          <button type="submit">저장</button>
+          <button disabled={isSaving || isDeleting} type="submit">
+            저장
+          </button>
         </div>
       </form>
     </section>
   );
 
-  function setFormField<K extends keyof EventFormState>(key: K, value: EventFormState[K]) {
+  function setFormField<K extends keyof EventFormState>(
+    key: K,
+    value: EventFormState[K],
+  ) {
     setForm((currentForm) => ({
       ...currentForm,
-      [key]: value
+      [key]: value,
     }));
+  }
+
+  function addParticipant(userId: number) {
+    setParticipantIds((currentIds) =>
+      currentIds.includes(userId) ? currentIds : [...currentIds, userId],
+    );
+    setParticipantQuery("");
+  }
+
+  function removeParticipant(userId: number) {
+    setParticipantIds((currentIds) =>
+      currentIds.filter((participantId) => participantId !== userId),
+    );
   }
 }
 
@@ -516,14 +915,14 @@ function groupEvents(events: EventItem[]) {
   for (const event of events) {
     const month = new Date(event.start).toLocaleDateString("ko-KR", {
       year: "numeric",
-      month: "long"
+      month: "long",
     });
     groups.set(month, [...(groups.get(month) ?? []), event]);
   }
 
   return Array.from(groups.entries()).map(([month, groupEvents]) => ({
     month,
-    events: groupEvents
+    events: groupEvents,
   }));
 }
 
@@ -539,6 +938,14 @@ function formatCurrency(value: number) {
 
 function toDateTimeLocal(value: string) {
   const date = new Date(value);
-  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  const offsetDate = new Date(
+    date.getTime() - date.getTimezoneOffset() * 60_000,
+  );
   return offsetDate.toISOString().slice(0, 16);
+}
+
+function toMysqlDateTime(value: string) {
+  return value.length === 16
+    ? `${value.replace("T", " ")}:00`
+    : value.replace("T", " ");
 }

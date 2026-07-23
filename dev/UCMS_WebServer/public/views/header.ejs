@@ -94,9 +94,14 @@
     window.location.href = "/mypage";
   });
 
-  // 로그인한 사용자 정보 불러오기 (예: /api/user 반환값 사용)
+  // 2026-07-22: 비로그인 HTTP 응답을 성공으로 처리하지 않도록 상태를 확인합니다.
   fetch("/api/user/getUserById")
-    .then((res) => res.json())
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error("Login required");
+      }
+      return res.json();
+    })
     .then((user) => {
       // 로그인 성공 시 사용자 정보 표시
       document.getElementById("userInfo").innerHTML = `

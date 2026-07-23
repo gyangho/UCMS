@@ -3,9 +3,10 @@ import { ApiError } from "../api/http";
 interface ApiIssueBannerProps {
   error: Error | null;
   label: string;
+  message?: string;
 }
 
-export function ApiIssueBanner({ error, label }: ApiIssueBannerProps) {
+export function ApiIssueBanner({ error, label, message }: ApiIssueBannerProps) {
   if (!error) {
     return null;
   }
@@ -14,7 +15,7 @@ export function ApiIssueBanner({ error, label }: ApiIssueBannerProps) {
     <div className="api-issue-banner" role="status">
       {/* 2026-07-16: Auth/API failures should be visible without replacing the page content. */}
       <strong>{label}</strong>
-      <span>{formatApiError(error)}</span>
+      <span>{message ?? formatApiError(error)}</span>
     </div>
   );
 }

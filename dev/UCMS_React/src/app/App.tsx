@@ -9,7 +9,11 @@ import { LoginPage } from "../features/auth/LoginPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { DriveGenerateFormPage } from "../features/drive/DriveGenerateFormPage";
 import { EventCalendarPage, EventDetailPage, EventFormPage, MyEventsPage } from "../features/event/EventPages";
-import { FinanceDetailPage, FinancePage } from "../features/finance/FinancePage";
+import {
+  FinanceDetailPage,
+  FinanceFormPage,
+  FinancePage,
+} from "../features/finance/FinancePage";
 import { LegacyRoutePage } from "../features/legacy/LegacyRoutePage";
 import { NotFoundPage } from "../features/legacy/NotFoundPage";
 import { MemberPage } from "../features/member/MemberPage";
@@ -21,6 +25,8 @@ import { PublicRecruitResponsePage } from "../features/publicRecruit/PublicRecru
 import { PublicRecruitResultPage } from "../features/publicRecruit/PublicRecruitResultPage";
 import { RecruitSharedDocPage } from "../features/recruit/RecruitSharedDocPage";
 import {
+  ActiveInterviewSchedulesPage,
+  InterviewPlanCreatePage,
   InterviewPlanDetailPage,
   InterviewPlansPage
 } from "../features/recruit/InterviewPlansPage";
@@ -91,6 +97,11 @@ function renderPrivateRoute(
       return <RecruitSharedDocPage path={route.path} />;
     case "interview-plans":
       return <InterviewPlansPage />;
+    // 2026-07-23: Render the schema-backed interview workflow and confirmed schedule table.
+    case "interview-active-schedules":
+      return <ActiveInterviewSchedulesPage />;
+    case "interview-plan-create":
+      return <InterviewPlanCreatePage />;
     case "interview-plan-detail":
       return <InterviewPlanDetailPage path={route.path} />;
     case "event-calendar":
@@ -107,8 +118,13 @@ function renderPrivateRoute(
       return <DriveGenerateFormPage />;
     case "finance":
       return <FinancePage />;
+    // 2026-07-23: Render settlement creation and editing as dedicated routes.
+    case "finance-create":
+      return <FinanceFormPage mode="create" />;
     case "finance-detail":
       return <FinanceDetailPage path={route.path} />;
+    case "finance-edit":
+      return <FinanceFormPage mode="edit" path={route.path} />;
     case "pos-instances":
       return <PosInstancesPage />;
     case "pos-instance-detail":

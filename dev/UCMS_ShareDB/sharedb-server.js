@@ -324,6 +324,28 @@ function broadcastLockStatus(
     );
 }
 
+// 2026-07-23: 연결이 끊긴 편집자의 줄 잠금을 즉시 해제해 React 재접속 후 5분 동안 막히지 않게 합니다.
+function releaseClientLocks(clientId) {
+    lineLocks.forEach((docLocks, docId) => {
+        docLocks.forEach((lockInfo, lineNumber) => {
+            if (lockInfo.clientId !== clientId) return;
+            docLocks.delete(lineNumber);
+
+            const session = clientSessions.get(clientId);
+            broadcastLockStatus(
+                docId,
+                session?.formId,
+                lineNumber,
+                null,
+                "unlocked"
+            );
+        });
+        if (docLocks.size === 0) {
+            lineLocks.delete(docId);
+        }
+    });
+}
+
 // 만료된 락 정리 (1분마다)
 setInterval(() => {
     const now = Date.now();
@@ -394,12 +416,14 @@ wss.on("connection", function (ws, req) {
     // 연결 해제 처리
     ws.on("close", function () {
         console.log(`❌ 클라이언트 연결 해제: ${clientId}`);
+        releaseClientLocks(clientId);
         clientSessions.delete(clientId);
     });
 
     // 오류 처리
     ws.on("error", function (error) {
         console.error(`❌ WebSocket 오류 (${clientId}):`, error);
+        releaseClientLocks(clientId);
         clientSessions.delete(clientId);
     });
 });
