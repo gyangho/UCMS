@@ -2,8 +2,13 @@ const db = require("./db");
 
 class Pos {
   static async findAllInstances() {
+    // 2026-07-23: POS 목록에서 생성자와 생성 시각을 함께 표시한다.
     const [rows] = await db.query(
-      "SELECT * FROM pos_instances ORDER BY id DESC"
+      `SELECT pi.*, COALESCE(m.name, u.name) AS creator_name
+         FROM pos_instances pi
+         LEFT JOIN users u ON u.id = pi.created_by
+         LEFT JOIN members m ON m.user_id = u.id
+        ORDER BY pi.created_at DESC, pi.id DESC`
     );
     return rows;
   }
@@ -19,14 +24,15 @@ class Pos {
     instance_name,
     products = [],
     salesmans = [],
+    created_by = null,
   }) {
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
 
       const [instanceResult] = await connection.query(
-        "INSERT INTO pos_instances (instance_name, status) VALUES (?, 'inactive')",
-        [instance_name]
+        "INSERT INTO pos_instances (instance_name, status, created_by) VALUES (?, 'inactive', ?)",
+        [instance_name, created_by]
       );
       const instanceId = instanceResult.insertId;
 
@@ -65,8 +71,13 @@ class Pos {
   }
 
   static async findInstanceInfoById(id) {
+    // 2026-07-23: 상세 화면의 작성자와 판매 상태 전환 정보를 조회한다.
     const [instances] = await db.query(
-      "SELECT * FROM pos_instances WHERE id = ?",
+      `SELECT pi.*, COALESCE(m.name, u.name) AS creator_name
+         FROM pos_instances pi
+         LEFT JOIN users u ON u.id = pi.created_by
+         LEFT JOIN members m ON m.user_id = u.id
+        WHERE pi.id = ?`,
       [id]
     );
     const instance = instances[0] || null;
@@ -89,17 +100,50 @@ class Pos {
   }
 
   static async setActiveInstance(id) {
+    return this.setInstanceStatus(id, "active");
+  }
+
+  static async setInstanceStatus(id, status) {
+    if (!["inactive", "active", "closed"].includes(status)) {
+      const error = new Error("지원하지 않는 POS 상태입니다.");
+      error.code = "INVALID_POS_STATUS";
+      throw error;
+    }
+
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
-      await connection.query(
-        "UPDATE pos_instances SET status = 'inactive'"
-      );
-      await connection.query(
-        "UPDATE pos_instances SET status = 'active' WHERE id = ?",
+      const [instances] = await connection.query(
+        "SELECT status FROM pos_instances WHERE id = ? FOR UPDATE",
         [id]
       );
+      if (!instances[0]) {
+        const error = new Error("POS 인스턴스를 찾을 수 없습니다.");
+        error.code = "POS_NOT_FOUND";
+        throw error;
+      }
+      if (instances[0].status === "closed") {
+        const error = new Error("마감된 POS 인스턴스의 상태는 변경할 수 없습니다.");
+        error.code = "POS_CLOSED";
+        throw error;
+      }
+
+      // 2026-07-23: 동시에 판매 중인 인스턴스는 하나만 유지하고 마감 시각을 기록한다.
+      if (status === "active") {
+        await connection.query(
+          "UPDATE pos_instances SET status = 'inactive' WHERE status = 'active' AND id <> ?",
+          [id]
+        );
+      }
+      await connection.query(
+        `UPDATE pos_instances
+            SET status = ?,
+                closed_at = CASE WHEN ? = 'closed' THEN CURRENT_TIMESTAMP ELSE closed_at END
+          WHERE id = ?`,
+        [status, status, id]
+      );
       await connection.commit();
+      return { status };
     } catch (error) {
       await connection.rollback();
       throw error;
@@ -199,6 +243,17 @@ class Pos {
     try {
       await connection.beginTransaction();
 
+      // 2026-07-23: 판매 중인 인스턴스와 실제 재고를 잠근 뒤 서비스 수량도 재고에서 차감한다.
+      const [instances] = await connection.query(
+        "SELECT status FROM pos_instances WHERE id = ? FOR UPDATE",
+        [instanceId]
+      );
+      if (!instances[0] || instances[0].status !== "active") {
+        const error = new Error("판매 중인 POS 인스턴스가 아닙니다.");
+        error.code = "POS_NOT_ACTIVE";
+        throw error;
+      }
+
       const [receiptResult] = await connection.query(
         `INSERT INTO pos_receipts (instance_id, total_price, salesman_id) VALUES (?, ?, ?)`,
         [instanceId, totalPrice, salesman.salesman_id]
@@ -218,11 +273,16 @@ class Pos {
           ]
         );
 
-        if (!item.is_service) {
-          await connection.query(
-            `UPDATE pos_products SET stock = stock - ? WHERE id = ? AND instance_id = ?`,
-            [item.quantity, item.product_id, instanceId]
-          );
+        const [stockResult] = await connection.query(
+          `UPDATE pos_products
+              SET stock = stock - ?
+            WHERE id = ? AND instance_id = ? AND stock >= ?`,
+          [item.quantity, item.product_id, instanceId, item.quantity]
+        );
+        if (stockResult.affectedRows !== 1) {
+          const error = new Error("재고가 부족한 품목이 있습니다.");
+          error.code = "OUT_OF_STOCK";
+          throw error;
         }
       }
 

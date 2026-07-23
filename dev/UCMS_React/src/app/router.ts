@@ -8,6 +8,8 @@ export type PrivateRouteId =
   | "recruit-forms"
   | "recruit-shared-doc"
   | "interview-plans"
+  | "interview-active-schedules"
+  | "interview-plan-create"
   | "interview-plan-detail"
   | "event-calendar"
   | "event-my-events"
@@ -16,7 +18,9 @@ export type PrivateRouteId =
   | "event-edit"
   | "drive-generate-form"
   | "finance"
+  | "finance-create"
   | "finance-detail"
+  | "finance-edit"
   | "pos-instances"
   | "pos-instance-detail"
   | "pos-sale"
@@ -89,6 +93,12 @@ const routeTable: Array<Exclude<AppRoute, { kind: "not-found" }>> = [
     id: "interview-plans",
     path: "/recruit/interview/plans",
     title: "면접 계획"
+  },
+  {
+    kind: "private",
+    id: "interview-active-schedules",
+    path: "/recruit/interview/schedules",
+    title: "확정 면접 스케줄"
   },
   {
     kind: "private",
@@ -179,6 +189,9 @@ const hiddenNavIds: PrivateRouteId[] = [
   "event-create",
   "event-detail",
   "event-edit",
+  "finance-create",
+  "finance-detail",
+  "finance-edit",
   "pos-records",
   "pos-instance-detail",
   "pos-sale",
@@ -205,6 +218,7 @@ export const navGroups: Array<{
       "member",
       "recruit-forms",
       "interview-plans",
+      "interview-active-schedules",
       "drive-generate-form"
     ])
   },
@@ -277,6 +291,16 @@ function matchRoute(path: string): AppRoute {
     };
   }
 
+  // 2026-07-23: Keep the multi-step interview planner inside the React route table.
+  if (path === "/recruit/interview/new" || path === "/recruit/interview/plan") {
+    return {
+      kind: "private",
+      id: "interview-plan-create",
+      path,
+      title: "면접 계획 생성"
+    };
+  }
+
   if (/^\/recruit\/interview\/plans\/\d+$/.test(path)) {
     return {
       kind: "private",
@@ -310,6 +334,25 @@ function matchRoute(path: string): AppRoute {
       id: "event-detail",
       path,
       title: "일정 상세"
+    };
+  }
+
+  // 2026-07-23: Settlement creation/editing use dedicated React pages.
+  if (path === "/finance/new") {
+    return {
+      kind: "private",
+      id: "finance-create",
+      path,
+      title: "정산 생성"
+    };
+  }
+
+  if (/^\/finance\/\d+\/edit$/.test(path)) {
+    return {
+      kind: "private",
+      id: "finance-edit",
+      path,
+      title: "정산 수정"
     };
   }
 

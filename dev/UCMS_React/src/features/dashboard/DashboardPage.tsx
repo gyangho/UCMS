@@ -1,6 +1,6 @@
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { navigate } from "../../app/router";
-import { requestData } from "../../shared/api/http";
+import { ApiError, requestData } from "../../shared/api/http";
 import { EmptyState } from "../../shared/ui/EmptyState";
 import { ApiIssueBanner } from "../../shared/ui/ApiIssueBanner";
 
@@ -21,8 +21,11 @@ interface DashboardEvent {
 interface NoticePreview {
   id: number;
   title: string;
+  authorName?: string | null;
   category?: string | null;
+  minimumAuthority?: string | null;
   createdAt?: string | null;
+  updatedAt?: string | null;
   pinned?: boolean;
 }
 
@@ -31,6 +34,13 @@ interface DashboardData {
   myEvents: DashboardEvent[];
   recruitingEvents: DashboardEvent[];
   notices: NoticePreview[];
+  issues?: DashboardApiIssue[];
+}
+
+interface DashboardApiIssue {
+  scope: "events" | "notices" | string;
+  code: string;
+  message: string;
 }
 
 const emptyDashboard: DashboardData = {
@@ -63,6 +73,12 @@ interface WeekBar {
 
 const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
 
+// 2026-07-23: 공지 읽기 권한이 미인증부터인 경우 사용자 화면에는 간결하게 '전체'로 표시합니다.
+function formatNoticeAuthority(authority?: string | null) {
+  const label = authority ?? "부원";
+  return label === "미인증" ? "전체" : `${label} 이상`;
+}
+
 export function DashboardPage() {
   const today = useMemo(() => new Date(), []);
   const [visibleMonth, setVisibleMonth] = useState(
@@ -82,6 +98,7 @@ export function DashboardPage() {
         const data = await requestData<DashboardData>("/api/dashboard");
         if (!ignore) {
           setDashboard(data);
+          setError(null);
         }
       } catch (loadError) {
         if (!ignore) {
@@ -144,10 +161,26 @@ export function DashboardPage() {
     );
   }
 
+  const requestIssue = describeDashboardRequestError(error);
+
   return (
     <section className="dashboard-page">
       {isLoading ? <div className="page-state compact">대시보드를 불러오는 중입니다.</div> : null}
-      <ApiIssueBanner error={error} label="/api/dashboard" />
+      {requestIssue ? (
+        <ApiIssueBanner
+          error={error}
+          label={requestIssue.label}
+          message={requestIssue.message}
+        />
+      ) : null}
+      {(dashboard?.issues ?? []).map((issue) => (
+        <ApiIssueBanner
+          error={new Error(issue.message)}
+          key={`${issue.scope}-${issue.code}`}
+          label={dashboardIssueLabel(issue.scope)}
+          message={issue.message}
+        />
+      ))}
       <div className="dashboard-layout">
         <section className="dashboard-calendar" aria-label="월간 일정">
           <div className="dashboard-calendar-header">
@@ -297,6 +330,7 @@ export function DashboardPage() {
         </div>
         {(dashboard?.notices ?? []).length > 0 ? (
           <div className="notice-preview-list">
+            {/* 2026-07-23: Put the pin first and the minimum read authority at the far right. */}
             {(dashboard?.notices ?? []).slice(0, 4).map((post) => (
               <button
                 className="notice-preview-item"
@@ -304,11 +338,26 @@ export function DashboardPage() {
                 type="button"
                 onClick={() => navigate(`/board/notices/${post.id}`)}
               >
-                <span className={post.pinned ? "status-pill active" : "status-pill"}>
-                  {post.pinned ? "고정" : post.category ?? "공지"}
+                <span
+                  aria-label={post.pinned ? "고정 공지" : undefined}
+                  className="notice-preview-pin"
+                >
+                  {post.pinned ? "📌" : ""}
                 </span>
                 <strong>{post.title}</strong>
-                <span>{post.createdAt ? formatDate(post.createdAt) : "-"}</span>
+                <span className="notice-preview-author">
+                  {post.authorName ?? "-"}
+                </span>
+                <span>
+                  {post.updatedAt || post.createdAt
+                    ? formatDateTime(post.updatedAt ?? post.createdAt!)
+                    : "-"}
+                </span>
+                <span className="notice-preview-authority">
+                  {formatNoticeAuthority(
+                    post.minimumAuthority ?? post.category,
+                  )}
+                </span>
               </button>
             ))}
           </div>
@@ -459,6 +508,52 @@ function formatEventRange(event: CalendarEvent) {
   return `${event.startKey} - ${event.endKey}`;
 }
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("ko-KR");
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+// 2026-07-23: Translate transport/auth/server failures into distinct, actionable dashboard messages.
+function describeDashboardRequestError(error: Error | null) {
+  if (!error) return null;
+
+  if (error instanceof ApiError) {
+    if (error.status === 401) {
+      return {
+        label: "세션 확인",
+        message: "로그인 세션을 확인하지 못했습니다. 로그인 기능이 필요하면 다시 로그인해주세요."
+      };
+    }
+    if (error.status === 403) {
+      return {
+        label: "접근 권한",
+        message: "대시보드를 조회할 권한이 없습니다. 계정 권한을 확인해주세요."
+      };
+    }
+    if (error.status >= 500) {
+      return {
+        label: "대시보드 서버",
+        message: "서버에서 대시보드 데이터를 처리하지 못했습니다. 잠시 후 다시 시도해주세요."
+      };
+    }
+    return {
+      label: "대시보드 응답",
+      message: `대시보드 요청을 완료하지 못했습니다. (HTTP ${error.status})`
+    };
+  }
+
+  return {
+    label: "네트워크 연결",
+    message: "서버에 연결하지 못했습니다. 네트워크와 서버 실행 상태를 확인해주세요."
+  };
+}
+
+function dashboardIssueLabel(scope: string) {
+  if (scope === "events") return "일정 데이터";
+  if (scope === "notices") return "공지사항 데이터";
+  return "대시보드 데이터";
 }

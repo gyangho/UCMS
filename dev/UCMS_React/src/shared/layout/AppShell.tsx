@@ -65,7 +65,7 @@ export function AppShell({ children }: PropsWithChildren) {
               onClick={() => setIsMobileMenuOpen((isOpen) => !isOpen)}
               aria-label="전체 메뉴"
             >
-              메뉴
+              ≡
             </button>
           </div>
         </div>
@@ -93,14 +93,17 @@ export function AppShell({ children }: PropsWithChildren) {
                 type="button"
                 onClick={() =>
                   setOpenGroup((currentGroup) =>
-                    currentGroup === group.title ? null : group.title
+                    currentGroup === group.title ? null : group.title,
                   )
                 }
               >
                 {group.title}
               </button>
               <div
-                className={["nav-dropdown", openGroup === group.title ? "open" : ""]
+                className={[
+                  "nav-dropdown",
+                  openGroup === group.title ? "open" : "",
+                ]
                   .filter(Boolean)
                   .join(" ")}
                 onMouseEnter={() => openNavGroup(group.title)}
@@ -189,7 +192,11 @@ export function AppShell({ children }: PropsWithChildren) {
       </header>
 
       <main className="app-main">
-        <ApiIssueBanner error={currentUserError} label="/api/user/me" />
+        <ApiIssueBanner
+          error={currentUserError}
+          label="사용자 정보"
+          message="사용자 정보를 확인하지 못했습니다. 잠시 후 새로고침해주세요."
+        />
         {children}
       </main>
     </div>

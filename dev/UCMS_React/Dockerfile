@@ -20,3 +20,14 @@ RUN npm ci
 COPY . .
 
 RUN npm run build
+
+# 2026-07-23: Production serves the compiled SPA as static files without running Vite.
+FROM nginx:1.28-alpine AS prod
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1

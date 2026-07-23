@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
-import { requestData } from "./http";
+import {
+  API_UNAUTHORIZED_EVENT,
+  ApiError,
+  requestData,
+} from "./http";
 
 const SESSION_USER_KEY = "ucms.currentUser";
+const CURRENT_USER_CHANGED_EVENT = "ucms:current-user-changed";
 const USER_CACHE_TTL_MS = 30 * 60 * 1000;
 
 export interface CurrentUser {
@@ -30,22 +35,40 @@ interface CachedCurrentUser {
   user: CurrentUser;
 }
 
-export async function getCurrentUser() {
-  const cachedUser = readCachedCurrentUser();
+let currentUserRequest: Promise<CurrentUser> | null = null;
 
-  if (cachedUser) {
-    return cachedUser;
+export async function getCurrentUser() {
+  if (currentUserRequest) {
+    return currentUserRequest;
   }
 
-  const response = await requestData<CurrentUserResponse>("/api/user/me");
-  return writeCurrentUser(response.user, response.cacheTtlSeconds);
+  // 2026-07-23: sessionStorage is only an initial rendering cache; every mount revalidates the server session.
+  currentUserRequest = requestData<CurrentUserResponse>("/api/user/me")
+    .then((response) =>
+      writeCurrentUser(response.user, response.cacheTtlSeconds),
+    )
+    .catch((error) => {
+      if (isInvalidSessionError(error)) {
+        clearCurrentUser();
+      }
+      throw error;
+    })
+    .finally(() => {
+      currentUserRequest = null;
+    });
+
+  return currentUserRequest;
 }
 
 export async function logoutCurrentUser() {
-  await requestData<{ message: string }>("/api/auth/logout", {
-    method: "POST"
-  });
-  clearCurrentUser();
+  try {
+    await requestData<{ message: string }>("/api/auth/logout", {
+      method: "POST",
+    });
+  } finally {
+    // 2026-07-23: A failed or already-expired logout request must not leave a stale name in the header.
+    clearCurrentUser();
+  }
 }
 
 export async function withdrawCurrentUser(reason: string) {
@@ -64,6 +87,39 @@ export function useCurrentUser() {
   useEffect(() => {
     let isMounted = true;
 
+    // 2026-07-23: Synchronize every useCurrentUser consumer immediately after login/logout cache changes.
+    function handleCurrentUserChange(event: Event) {
+      if (!isMounted) return;
+      const currentUserEvent = event as CustomEvent<CurrentUser | null>;
+      setUser(currentUserEvent.detail);
+      setError(null);
+      setIsLoading(false);
+    }
+
+    function handleUnauthorized() {
+      if (!isMounted) return;
+      clearCurrentUser();
+    }
+
+    function revalidateCurrentUser() {
+      if (!isMounted) return;
+      getCurrentUser().catch((requestError: Error) => {
+        if (!isMounted || isInvalidSessionError(requestError)) return;
+        setError(requestError);
+      });
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        revalidateCurrentUser();
+      }
+    }
+
+    window.addEventListener(CURRENT_USER_CHANGED_EVENT, handleCurrentUserChange);
+    window.addEventListener(API_UNAUTHORIZED_EVENT, handleUnauthorized);
+    window.addEventListener("focus", revalidateCurrentUser);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     getCurrentUser()
       .then((currentUser) => {
         if (isMounted) {
@@ -73,7 +129,14 @@ export function useCurrentUser() {
       })
       .catch((requestError: Error) => {
         if (isMounted) {
-          setError(requestError);
+          // 2026-07-23: A 401 from /api/user/me means a valid anonymous visit, not a UI error.
+          if (isInvalidSessionError(requestError)) {
+            clearCurrentUser();
+            setUser(null);
+            setError(null);
+          } else {
+            setError(requestError);
+          }
         }
       })
       .finally(() => {
@@ -84,6 +147,10 @@ export function useCurrentUser() {
 
     return () => {
       isMounted = false;
+      window.removeEventListener(CURRENT_USER_CHANGED_EVENT, handleCurrentUserChange);
+      window.removeEventListener(API_UNAUTHORIZED_EVENT, handleUnauthorized);
+      window.removeEventListener("focus", revalidateCurrentUser);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
@@ -97,11 +164,30 @@ export function writeCurrentUser(user: CurrentUser, ttlSeconds = USER_CACHE_TTL_
   };
 
   sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify(cachedUser));
+  notifyCurrentUserChanged(user);
   return user;
 }
 
 export function clearCurrentUser() {
+  removeCurrentUserCache();
+  notifyCurrentUserChanged(null);
+}
+
+function notifyCurrentUserChanged(user: CurrentUser | null) {
+  window.dispatchEvent(
+    new CustomEvent<CurrentUser | null>(CURRENT_USER_CHANGED_EVENT, { detail: user })
+  );
+}
+
+function removeCurrentUserCache() {
   sessionStorage.removeItem(SESSION_USER_KEY);
+}
+
+function isInvalidSessionError(error: unknown) {
+  return (
+    error instanceof ApiError &&
+    (error.status === 401 || error.status === 404)
+  );
 }
 
 // 2026-07-16: Current user must come from /api/user/me; keep only the
@@ -117,13 +203,13 @@ function readCachedCurrentUser() {
     const cachedUser = JSON.parse(rawUser) as CachedCurrentUser;
 
     if (!cachedUser.user || cachedUser.expiresAt <= Date.now()) {
-      clearCurrentUser();
+      removeCurrentUserCache();
       return null;
     }
 
     return cachedUser.user;
   } catch {
-    clearCurrentUser();
+    removeCurrentUserCache();
     return null;
   }
 }
