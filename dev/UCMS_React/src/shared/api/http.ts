@@ -9,6 +9,8 @@ export class ApiError extends Error {
   }
 }
 
+export const API_UNAUTHORIZED_EVENT = "ucms:api-unauthorized";
+
 interface ApiEnvelope<T> {
   success: boolean;
   data?: T;
@@ -36,6 +38,10 @@ export async function request<T>(
 
   if (!response.ok) {
     const body = await readResponseBody(response);
+    // 2026-07-23: Any API 401 invalidates the client-side identity immediately.
+    if (response.status === 401 && typeof window !== "undefined") {
+      window.dispatchEvent(new Event(API_UNAUTHORIZED_EVENT));
+    }
     const message =
       typeof body === "object" &&
       body !== null &&

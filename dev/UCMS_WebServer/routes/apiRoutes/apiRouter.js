@@ -10,6 +10,7 @@ const posApi = require("./posApiRouter");
 const recordsApi = require("./recordsApiRouter");
 const driveApi = require("./driveApiRouter");
 const eventApi = require("./eventApiRouter");
+const boardApi = require("./boardApiRouter");
 
 router.get("/", (req, res) => {
   res.json({ message: "UCMS API Server" });
@@ -25,5 +26,7 @@ router.use("/pos", posApi);
 router.use("/records", recordsApi);
 router.use("/drive", driveApi);
 router.use("/event", eventApi);
+// 2026-07-23: Route the React notice and inquiry pages to the schema-backed board API.
+router.use("/boards", boardApi);
 
 module.exports = router;

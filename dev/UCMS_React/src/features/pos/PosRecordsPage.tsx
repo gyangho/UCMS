@@ -1,36 +1,57 @@
 import { useEffect, useMemo, useState } from "react";
+import { navigate } from "../../app/router";
 import { requestData } from "../../shared/api/http";
 import { EmptyState } from "../../shared/ui/EmptyState";
 import { ErrorState, LoadingState } from "../../shared/ui/PageState";
 
-type PosRecord = Record<string, string | number | boolean | null>;
+interface PosRecordItem {
+  productId: number;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  isService: boolean;
+}
+
+interface PosRecord {
+  id: number;
+  purchaseTime: string;
+  items: PosRecordItem[];
+  totalPrice: number;
+}
 
 export function PosRecordsPage({ path }: { path: string }) {
   const instanceId = Number(path.match(/\d+/)?.[0] ?? 0);
   const [records, setRecords] = useState<PosRecord[]>([]);
+  const [instanceName, setInstanceName] = useState(`POS #${instanceId}`);
+  const [canManage, setCanManage] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 2026-07-16: POS records now come from /api/pos/instances/:id/records and destructive actions call the contract API.
   useEffect(() => {
     let ignore = false;
 
     async function loadRecords() {
       try {
-        const data = await requestData<{ records: PosRecord[] }>(
-          `/api/pos/instances/${instanceId}/records`
-        );
+        const data = await requestData<{
+          instance?: { name?: string };
+          records: PosRecord[];
+          canManage?: boolean;
+        }>(`/api/pos/instances/${instanceId}/records`);
         if (!ignore) {
-          setRecords(data.records);
+          setRecords(data.records ?? []);
+          setInstanceName(data.instance?.name ?? `POS #${instanceId}`);
+          setCanManage(Boolean(data.canManage));
         }
       } catch (loadError) {
         if (!ignore) {
-          setError(loadError instanceof Error ? loadError.message : "판매 기록을 불러오지 못했습니다.");
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "판매 기록을 불러오지 못했습니다.",
+          );
         }
       } finally {
-        if (!ignore) {
-          setIsLoading(false);
-        }
+        if (!ignore) setIsLoading(false);
       }
     }
 
@@ -40,54 +61,57 @@ export function PosRecordsPage({ path }: { path: string }) {
     };
   }, [instanceId]);
 
-  const productColumns = useMemo(() => {
-    const ignored = new Set(["id", "purchaseTime", "purchase_time", "totalPrice", "total_price", "paid"]);
-    return Array.from(new Set(records.flatMap((record) => Object.keys(record)))).filter(
-      (key) => !ignored.has(key)
-    );
-  }, [records]);
+  const totalPrice = useMemo(
+    () =>
+      records.reduce(
+        (sum, record) => sum + Number(record.totalPrice || 0),
+        0,
+      ),
+    [records],
+  );
 
-  const summary = useMemo(() => {
-    return records.reduce<Record<string, number>>((accumulator, record) => {
-      for (const column of productColumns) {
-        accumulator[column] = (accumulator[column] ?? 0) + Number(record[column] ?? 0);
-      }
-      accumulator.totalPrice =
-        (accumulator.totalPrice ?? 0) + Number(record.totalPrice ?? record.total_price ?? 0);
-      return accumulator;
-    }, {});
-  }, [productColumns, records]);
-
-  async function deleteRecord(id: string | number) {
+  async function deleteRecord(id: number) {
+    if (!window.confirm("이 판매 기록을 삭제하시겠습니까?")) return;
     await requestData(`/api/pos/records/${id}`, { method: "DELETE" });
-    setRecords((currentRecords) =>
-      currentRecords.filter((record) => String(record.id) !== String(id))
-    );
+    setRecords((current) => current.filter((record) => record.id !== id));
   }
 
   async function clearRecords() {
-    await requestData(`/api/pos/instances/${instanceId}/records/clear`, { method: "POST" });
+    if (!window.confirm("이 인스턴스의 판매 기록을 모두 삭제하시겠습니까?")) {
+      return;
+    }
+    await requestData(`/api/pos/instances/${instanceId}/records/clear`, {
+      method: "POST",
+    });
     setRecords([]);
   }
 
-  if (isLoading) {
-    return <LoadingState />;
-  }
-
-  if (error) {
-    return <ErrorState message={error} />;
-  }
+  if (isLoading) return <LoadingState />;
+  if (error) return <ErrorState message={error} />;
 
   return (
-    <section className="stack-page">
+    <section className="stack-page pos-page">
       <div className="page-heading">
         <div>
-          <h1>POS #{instanceId} 판매 기록</h1>
+          <h1>{instanceName} 판매 기록</h1>
+          <p>서비스 품목은 결제 금액에서 제외됩니다.</p>
         </div>
         <div className="toolbar">
-          <button type="button" onClick={clearRecords}>
-            전체 삭제
+          <button
+            type="button"
+            onClick={() => navigate(`/pos/instances/${instanceId}`)}
+          >
+            인스턴스 상세
           </button>
+          {canManage && records.length ? (
+            <button
+              className="danger-button"
+              type="button"
+              onClick={clearRecords}
+            >
+              전체 삭제
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -95,41 +119,53 @@ export function PosRecordsPage({ path }: { path: string }) {
         <EmptyState title="판매 기록이 없습니다." />
       ) : (
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table pos-record-table">
             <thead>
               <tr>
-                <th>시간</th>
-                {productColumns.map((column) => (
-                  <th key={column}>{column}</th>
-                ))}
-                <th>합계</th>
-                <th>관리</th>
+                <th>판매 시각</th>
+                <th>품목</th>
+                <th>결제 금액</th>
+                {canManage ? <th>관리</th> : null}
               </tr>
             </thead>
             <tbody>
+              {/* 2026-07-23: 영수증별 품목과 서비스 여부를 한 행에서 확인할 수 있게 표시한다. */}
               {records.map((record) => (
-                <tr key={String(record.id)}>
-                  <td>{formatDate(String(record.purchaseTime ?? record.purchase_time ?? ""))}</td>
-                  {productColumns.map((column) => (
-                    <td key={column}>{String(record[column] ?? 0)}</td>
-                  ))}
-                  <td>{formatCurrency(Number(record.totalPrice ?? record.total_price ?? 0))}</td>
+                <tr key={record.id}>
+                  <td>{formatDate(record.purchaseTime)}</td>
                   <td>
-                    <button type="button" onClick={() => deleteRecord(String(record.id))}>
-                      삭제
-                    </button>
+                    <div className="pos-record-items">
+                      {record.items.map((item, index) => (
+                        <span
+                          className={item.isService ? "service" : ""}
+                          key={`${record.id}-${item.productId}-${index}`}
+                        >
+                          {item.name} × {item.quantity}
+                          {item.isService ? " · 서비스" : ""}
+                        </span>
+                      ))}
+                    </div>
                   </td>
+                  <td>{formatCurrency(record.totalPrice)}</td>
+                  {canManage ? (
+                    <td>
+                      <button
+                        className="danger-button"
+                        type="button"
+                        onClick={() => deleteRecord(record.id)}
+                      >
+                        삭제
+                      </button>
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
-                <th>합계</th>
-                {productColumns.map((column) => (
-                  <th key={column}>{summary[column] ?? 0}</th>
-                ))}
-                <th>{formatCurrency(summary.totalPrice ?? 0)}</th>
-                <th />
+                <th colSpan={2}>총 판매 금액</th>
+                <th>{formatCurrency(totalPrice)}</th>
+                {canManage ? <th /> : null}
               </tr>
             </tfoot>
           </table>
@@ -144,5 +180,5 @@ function formatDate(value: string) {
 }
 
 function formatCurrency(value: number) {
-  return `${value.toLocaleString("ko-KR")}원`;
+  return `${Number(value || 0).toLocaleString("ko-KR")}원`;
 }

@@ -7,6 +7,12 @@
     "dev": "cross-env NODE_ENV=dev nodemon -L main.js",
     "prod": "node main.js"
   },
+  "nodemonConfig": {
+    "ignore": [
+      "InterviewScheduler/inputs/**",
+      "InterviewScheduler/outputs/**"
+    ]
+  },
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -25,7 +31,7 @@
     "mysql": "^2.18.1",
     "mysql2": "^3.14.1",
     "util": "^0.12.5",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",

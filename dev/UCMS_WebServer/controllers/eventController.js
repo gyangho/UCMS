@@ -3,6 +3,20 @@ const Member = require("../models/Member");
 const {getHolidays} = require("../extern_apis/holidays");
 
 class EventController {
+    // 2026-07-23: Event changes are restricted to the author or executive members and above.
+    static canManageEvent(event, req) {
+        return Number(event.author_id) === Number(req.session.userId) ||
+            Number(req.session.authority) >= 3;
+    }
+
+    // 2026-07-23: Participation endpoints accept changes only during the configured recruitment window.
+    static isRecruitmentOpen(event) {
+        const now = new Date();
+        return Boolean(event?.isRecruiting) &&
+            new Date(event.recruit_start) <= now &&
+            now <= new Date(event.recruit_end);
+    }
+
     static checkValidEvent(start, end) {
         if (new Date(start) - new Date(end) > 0) {
             return false;
@@ -117,6 +131,14 @@ class EventController {
                 );
             }
 
+            const currentEvent = await Event.findById(id);
+            if (!currentEvent) {
+                return res.status(404).json({error: "Event not found"});
+            }
+            if (!EventController.canManageEvent(currentEvent, req)) {
+                return res.status(403).json({error: "일정을 수정할 권한이 없습니다."});
+            }
+
             if (
                 !EventController.checkValidEvent(
                     eventData.start,
@@ -168,6 +190,14 @@ class EventController {
                     .json({error: "Event ID is required"});
             }
 
+            const currentEvent = await Event.findById(id);
+            if (!currentEvent) {
+                return res.status(404).json({error: "Event not found"});
+            }
+            if (!EventController.canManageEvent(currentEvent, req)) {
+                return res.status(403).json({error: "일정을 삭제할 권한이 없습니다."});
+            }
+
             await Event.delete(id);
             res.status(204).send(
                 `<script>alert("이벤트 삭제 완료");
@@ -213,6 +243,14 @@ class EventController {
                 return res.status(400).json({error: "User ID is required"});
             }
 
+            const event = await Event.findById(eventId);
+            if (!event) {
+                return res.status(404).json({error: "Event not found"});
+            }
+            if (!EventController.isRecruitmentOpen(event)) {
+                return res.status(409).json({error: "참가 모집 기간이 아닙니다."});
+            }
+
             await Event.addParticipant(eventId, userId);
             res
                 .status(200)
@@ -236,6 +274,14 @@ class EventController {
 
             if (!userId) {
                 return res.status(400).json({error: "User ID is required"});
+            }
+
+            const event = await Event.findById(eventId);
+            if (!event) {
+                return res.status(404).json({error: "Event not found"});
+            }
+            if (!EventController.isRecruitmentOpen(event)) {
+                return res.status(409).json({error: "참가 모집 기간이 아닙니다."});
             }
 
             await Event.removeParticipant(eventId, userId);

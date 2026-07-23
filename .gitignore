@@ -1,35 +1,23 @@
 #personal
-.vscode/
-*.txt
-keys/
-data/certbot/
-prod/**/keys/
-prod/**/*.env
-prod/data/certbot/
-prod/logs/
-prod/initialData.sql
-prod/UCMS_WebServer/keys/
-prod/UCMS_ShareDB/keys/
-prod/MySQL/keys/
 documents/
 docs/
-nginx-1.28.0/
 *.csv
 *.txt
+.vscode/
+keys/
+certbot/
+logs/
 handoffs/
-prod/UCMS_WebServer/InterviewScheduler/outputs/
-prod/UCMS_WebServer/InterviewScheduler/inputs/
-
-dev/initialData.sql
-dev/UCMS_WebServer/InterviewScheduler/outputs/
-dev/UCMS_WebServer/InterviewScheduler/inputs/
-
+outputs/
+inputs/
 .agents/
 AGENTS.md
+initialData.sql
+
+__pycache__/
 
 #intelliJ
 .idea/
-
 .gradle/
 
 # Logs
@@ -100,7 +88,7 @@ web_modules/
 .yarn-integrity
 
 # dotenv environment variable files
-.env
+*.env
 .env.*
 !.env.example
 

@@ -2,28 +2,26 @@ services:
   ucms_web:
     init: true
     build:
-      context: ./dev/UCMS_WebServer
+      context: ../dev/UCMS_WebServer
       dockerfile: Dockerfile
       target: dev
     container_name: dev_ucms_web
     restart: always
-    environment:
-      NODE_ENV: dev
-      DB_HOST: mysql
-      LANG: C.UTF-8
-      LC_ALL: C.UTF-8
-
     env_file:
-      - ./dev/UCMS_WebServer/keys/.env.dev
+      - ./env/dev/web.env
+      - ./env/dev/common.env
     volumes:
-      - ./dev/UCMS_WebServer/keys/google:/app/keys/google
-      - ./dev/UCMS_WebServer:/app
+      - ./env/keys/google:/app/keys/google
+      - ../dev/UCMS_WebServer:/app
       - /app/node_modules
+    networks:
+      - dev-app
+      - dev-db
 
   ucms_sharedb:
     init: true
     build:
-      context: ./dev/UCMS_ShareDB
+      context: ../dev/UCMS_ShareDB
       dockerfile: Dockerfile
       target: dev
     container_name: dev_ucms_sharedb
@@ -34,15 +32,19 @@ services:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
     env_file:
-      - ./dev/UCMS_ShareDB/keys/.env.dev
+      - ./env/dev/sharedb.env
+      - ./env/dev/common.env
     volumes:
-      - ./dev/UCMS_ShareDB:/app
+      - ../dev/UCMS_ShareDB:/app
       - /app/node_modules
+    networks:
+      - dev-app
+      - dev-db
 
   ucms_react:
     init: true
     build:
-      context: ./dev/UCMS_React
+      context: ../dev/UCMS_React
       dockerfile: Dockerfile
       target: dev
     container_name: dev_ucms_react
@@ -53,15 +55,23 @@ services:
       NODE_ENV: dev
       # 2026-07-16: Vite runs inside its own container, so proxy /api to the Compose web service.
       VITE_API_PROXY_TARGET: http://ucms_web:3000
+      # 2026-07-23: Proxy React evaluation-note sockets to the ShareDB service during Vite development.
+      VITE_SHAREDB_PROXY_TARGET: ws://ucms_sharedb:8080
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
     ports:
       - "5173:5173"
     volumes:
-      - ./dev/UCMS_React:/app
+      - ../dev/UCMS_React:/app
       - /app/node_modules
+    networks:
+      - dev-app
 
 networks:
-  default:
-    name: UCMS-network
+  dev-app:
+    name: ucms-dev-app-network
+    external: true
+
+  dev-db:
+    name: ucms-dev-db-network
     external: true

@@ -43,6 +43,32 @@ class IntervieweeTimeSlots {
     const result = await db.query(query, values);
     return result;
   }
+
+  // 2026-07-23: Rebuild applicant availability atomically before running the scheduler.
+  static async replaceIntervieweeTimeSlots(planId, slots) {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.execute(
+        "DELETE FROM interviewee_time_slots WHERE plan_id = ?",
+        [planId]
+      );
+      for (const slot of slots) {
+        await connection.execute(
+          `INSERT INTO interviewee_time_slots
+           (plan_id, interviewee_id, interview_date, time_slot)
+           VALUES (?, ?, ?, ?)`,
+          [planId, slot.studentId, slot.interviewDate, slot.timeSlot]
+        );
+      }
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
 }
 
 module.exports = IntervieweeTimeSlots;
