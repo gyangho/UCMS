@@ -4,7 +4,8 @@ WORKDIR /app
 
 COPY package*.json ./
 
-EXPOSE 8080
+# 2026-07-24: SHAREDB_PORT is injected from infra/env/ports.env; this value is the standalone default.
+ENV SHAREDB_PORT=3001
 
 FROM base AS dev
 RUN npm install

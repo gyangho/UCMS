@@ -30,15 +30,19 @@ services:
       - dev-db
 
   nginx:
-    image: nginx:latest
+    # 2026-07-24: Build environment-aware upstream templates using the shared internal ports.
+    build:
+      context: ./nginx-1.28.0
+      dockerfile: Dockerfile
+    image: ucms_nginx:1.28
     container_name: ucms_nginx
     restart: always
+    env_file:
+      - ./env/ports.env
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx-1.28.0/conf/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx-1.28.0/conf/conf.d:/etc/nginx/conf.d
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
       - ./logs:/var/log/nginx
