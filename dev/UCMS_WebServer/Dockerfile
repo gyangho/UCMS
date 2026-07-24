@@ -13,7 +13,8 @@ RUN pip3 install --no-cache-dir --break-system-packages -r InterviewScheduler/re
 
 COPY package*.json ./
 
-EXPOSE 3000
+# 2026-07-24: WEB_PORT is injected from infra/env/ports.env; this value is the standalone default.
+ENV WEB_PORT=3000
 
 FROM base AS dev
 RUN npm install

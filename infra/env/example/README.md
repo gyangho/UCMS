@@ -7,6 +7,7 @@
 다음 파일을 같은 상대 경로로 복사한 뒤 `CHANGE_ME` 값을 변경합니다.
 
 ```text
+example/ports.env.example -> ../ports.env
 example/dev/common.env    -> dev/common.env
 example/dev/web.env       -> dev/web.env
 example/dev/sharedb.env   -> dev/sharedb.env
@@ -15,6 +16,9 @@ example/prod/web.env      -> prod/web.env
 example/prod/sharedb.env  -> prod/sharedb.env
 example/infra/db.env      -> infra/db.env
 ```
+
+# 2026-07-24: `ports.env`는 WebServer, ShareDB, React의 Docker 내부 포트를 한 번에 관리합니다.
+서비스별 환경 파일에는 `PORT`를 중복해서 두지 않으며, 애플리케이션 컨테이너 포트는 호스트에 게시하지 않습니다.
 
 실제 `dev`, `prod`, `infra`, `keys` 파일은 커밋하지 않습니다.
 

@@ -28,7 +28,11 @@ const app = express();
 app.set("trust proxy", 1);
 
 const DOMAIN = process.env.DOMAIN;
-const PORT = process.env.PORT;
+// 2026-07-24: Docker deployments use the shared infra port file while local legacy env files remain compatible.
+const PORT = Number(process.env.WEB_PORT ?? 3000);
+if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
+  throw new Error("WEB_PORT or PORT must be an integer between 1 and 65535.");
+}
 const sessionStore = new mySQLSessionStore(
   {
     clearExpired: true,
@@ -149,12 +153,9 @@ async function requireValidSession(req, res, next) {
     const isPublicNoticeRequest =
       req.method === "GET" &&
       /^\/api\/boards\/notices(?:\/\d+)?$/.test(req.path);
-    const isInquiryApiRequest = req.path.startsWith(
-      "/api/boards/inquiries",
-    );
+    const isInquiryApiRequest = req.path.startsWith("/api/boards/inquiries");
     const isGeneralAccountApiRequest =
-      req.path === "/api/user/me" ||
-      req.path === "/api/auth/logout";
+      req.path === "/api/user/me" || req.path === "/api/auth/logout";
     const isPublicApiRequest =
       req.path.startsWith("/api/public") ||
       // 2026-07-16: React dashboard must render for anonymous visitors; other contract APIs still require session.

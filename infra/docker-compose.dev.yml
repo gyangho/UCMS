@@ -8,6 +8,8 @@ services:
     container_name: dev_ucms_web
     restart: always
     env_file:
+      # 2026-07-24: Read the internal WebServer port from the shared infrastructure port file.
+      - ./env/ports.env
       - ./env/dev/web.env
       - ./env/dev/common.env
     volumes:
@@ -32,6 +34,8 @@ services:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
     env_file:
+      # 2026-07-24: Read the internal ShareDB port from the shared infrastructure port file.
+      - ./env/ports.env
       - ./env/dev/sharedb.env
       - ./env/dev/common.env
     volumes:
@@ -51,16 +55,16 @@ services:
     restart: always
     depends_on:
       - ucms_web
+    env_file:
+      # 2026-07-24: Vite receives all three internal ports without publishing its port to the host.
+      - ./env/ports.env
     environment:
       NODE_ENV: dev
-      # 2026-07-16: Vite runs inside its own container, so proxy /api to the Compose web service.
-      VITE_API_PROXY_TARGET: http://ucms_web:3000
-      # 2026-07-23: Proxy React evaluation-note sockets to the ShareDB service during Vite development.
-      VITE_SHAREDB_PROXY_TARGET: ws://ucms_sharedb:8080
+      # 2026-07-24: Vite combines Docker DNS names with WEB_PORT and SHAREDB_PORT.
+      VITE_API_PROXY_HOST: ucms_web
+      VITE_SHAREDB_PROXY_HOST: ucms_sharedb
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
-    ports:
-      - "5173:5173"
     volumes:
       - ../dev/UCMS_React:/app
       - /app/node_modules
