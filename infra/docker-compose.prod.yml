@@ -1,0 +1,60 @@
+services:
+  ucms_web:
+    init: true
+    image: gyangho/ucms_web:latest
+    container_name: ucms_web
+    restart: always
+    env_file:
+      # 2026-07-24: Keep the internal application port in one infrastructure-owned file.
+      - ./env/ports.env
+      - ./env/prod/web.env
+      - ./env/prod/common.env
+    volumes:
+      # 2026-07-23: Mount Google credentials at the intended container path with valid Compose syntax.
+      - ./env/keys/google:/app/keys/google
+      - ../prod/UCMS_WebServer/InterviewScheduler:/app/InterviewScheduler
+      - ../prod/UCMS_WebServer/interview_place.csv:/app/interview_place.csv
+    # 2026-07-23: MySQL is managed by the separate infra Compose project on prod-db.
+    networks:
+      - prod-app
+      - prod-db
+
+  ucms_sharedb:
+    init: true
+    image: gyangho/ucms_sharedb:latest
+    container_name: ucms_sharedb
+    restart: always
+    env_file:
+      # 2026-07-24: Keep the internal WebSocket port synchronized with the reverse proxy.
+      - ./env/ports.env
+      - ./env/prod/sharedb.env
+      - ./env/prod/common.env
+    # 2026-07-23: MySQL is managed by the separate infra Compose project on prod-db.
+    networks:
+      - prod-app
+      - prod-db
+
+  # 2026-07-23: Build React once and serve only the generated static files in production.
+  ucms_react:
+    init: true
+    build:
+      context: ../dev/UCMS_React
+      dockerfile: Dockerfile
+      target: prod
+    image: gyangho/ucms_react:latest
+    container_name: ucms_react
+    restart: always
+    env_file:
+      # 2026-07-24: The static Nginx listener is rendered from REACT_PORT at startup.
+      - ./env/ports.env
+    networks:
+      - prod-app
+
+networks:
+  prod-app:
+    name: ucms-prod-app-network
+    external: true
+
+  prod-db:
+    name: ucms-prod-db-network
+    external: true
