@@ -47,6 +47,7 @@ services:
     env_file:
       # 2026-07-24: The static Nginx listener is rendered from REACT_PORT at startup.
       - ./env/ports.env
+      - ./env/react.env
     networks:
       - prod-app
 

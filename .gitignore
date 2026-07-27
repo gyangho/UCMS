@@ -12,7 +12,9 @@ outputs/
 inputs/
 .agents/
 AGENTS.md
-initialData.sql
+*.sql
+!infra/data/schemalist.sql
+dbbkp/
 
 __pycache__/
 
