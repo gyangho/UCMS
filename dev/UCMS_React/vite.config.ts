@@ -34,7 +34,11 @@ export default defineConfig(({ mode }) => {
     server: {
       host: "0.0.0.0",
       port: reactPort,
-      allowedHosts: ["${env.DEV_HOST}"],
+      allowedHosts: env.DEV_HOST
+        ? env.DEV_HOST.split(",")
+            .map((host) => host.trim())
+            .filter(Boolean)
+        : [],
       watch: {
         usePolling: true,
         interval: 250,
