@@ -58,7 +58,7 @@ services:
     env_file:
       # 2026-07-24: Vite receives all three internal ports without publishing its port to the host.
       - ./env/ports.env
-      - ./env/react.env
+      - ./env/dev/react.env
     environment:
       NODE_ENV: dev
       # 2026-07-24: Vite combines Docker DNS names with WEB_PORT and SHAREDB_PORT.
