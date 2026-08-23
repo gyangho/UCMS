@@ -71,6 +71,12 @@ function inquiryPermissions(row, req) {
   return { canEdit: canManage, canDelete: canManage };
 }
 
+// 2026-08-24: FAQ entries are public, but executives exclusively manage their lifecycle.
+function faqPermissions(req) {
+  const canManage = viewerRank(req) >= NOTICE_MANAGER_RANK;
+  return { canEdit: canManage, canDelete: canManage };
+}
+
 function mapNotice(row, req) {
   return {
     id: Number(row.id),
@@ -101,6 +107,19 @@ function mapInquiry(row, req) {
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
     ...inquiryPermissions(row, req),
+  };
+}
+
+function mapFaq(row, req) {
+  return {
+    id: Number(row.id),
+    title: row.title,
+    content: row.content,
+    authorId: row.author_id === null ? null : Number(row.author_id),
+    authorName: row.author_name,
+    createdAt: toIso(row.created_at),
+    updatedAt: toIso(row.updated_at),
+    ...faqPermissions(req),
   };
 }
 
@@ -166,7 +185,12 @@ const listPosts = asyncHandler(async (req, res) => {
   }
 
   if (req.params.boardType === "faqs") {
-    return ok(res, { posts: [], canCreate: false, visibilityOptions: [] });
+    const posts = await Board.listFaqs();
+    return ok(res, {
+      posts: posts.map((post) => mapFaq(post, req)),
+      canCreate: viewerRank(req) >= NOTICE_MANAGER_RANK,
+      visibilityOptions: [],
+    });
   }
   return fail(res, 404, "BOARD_NOT_FOUND", "게시판을 찾을 수 없습니다.");
 });
@@ -175,6 +199,22 @@ const createPost = asyncHandler(async (req, res) => {
   const payload = validatePost(req.body);
   if (payload.error) {
     return fail(res, 400, "INVALID_REQUEST", payload.error);
+  }
+
+  if (req.params.boardType === "faqs") {
+    if (viewerRank(req) < NOTICE_MANAGER_RANK) {
+      return fail(res, 403, "FORBIDDEN", "임원진 이상의 권한이 필요합니다.");
+    }
+    const author = await resolveAuthor(req, res);
+    if (!author) return undefined;
+    const id = await Board.createFaq({
+      ...payload,
+      authorId: author.id,
+      authorName: author.name,
+    });
+    return created(res, {
+      post: mapFaq(await Board.getFaqById(id), req),
+    });
   }
 
   if (req.params.boardType === "notices") {
@@ -236,6 +276,19 @@ const createPost = asyncHandler(async (req, res) => {
 });
 
 const getPost = asyncHandler(async (req, res) => {
+  if (req.params.boardType === "faqs") {
+    const post = await Board.getFaqById(req.params.id);
+    if (!post) {
+      return fail(res, 404, "NOT_FOUND", "FAQ를 찾을 수 없습니다.");
+    }
+    return ok(res, {
+      post: mapFaq(post, req),
+      comments: [],
+      canComment: false,
+      visibilityOptions: [],
+    });
+  }
+
   if (req.params.boardType === "notices") {
     const post = await Board.getNoticeById(req.params.id);
     if (!post) {
@@ -286,6 +339,20 @@ const updatePost = asyncHandler(async (req, res) => {
   const payload = validatePost(req.body);
   if (payload.error) {
     return fail(res, 400, "INVALID_REQUEST", payload.error);
+  }
+
+  if (req.params.boardType === "faqs") {
+    if (viewerRank(req) < NOTICE_MANAGER_RANK) {
+      return fail(res, 403, "FORBIDDEN", "임원진 이상의 권한이 필요합니다.");
+    }
+    const post = await Board.getFaqById(req.params.id);
+    if (!post) {
+      return fail(res, 404, "NOT_FOUND", "FAQ를 찾을 수 없습니다.");
+    }
+    await Board.updateFaq(post.id, payload);
+    return ok(res, {
+      post: mapFaq(await Board.getFaqById(post.id), req),
+    });
   }
 
   if (req.params.boardType === "notices") {
@@ -343,6 +410,17 @@ const updatePost = asyncHandler(async (req, res) => {
 });
 
 const deletePost = asyncHandler(async (req, res) => {
+  if (req.params.boardType === "faqs") {
+    if (viewerRank(req) < NOTICE_MANAGER_RANK) {
+      return fail(res, 403, "FORBIDDEN", "임원진 이상의 권한이 필요합니다.");
+    }
+    const deleted = await Board.deleteFaq(req.params.id);
+    if (!deleted) {
+      return fail(res, 404, "NOT_FOUND", "FAQ를 찾을 수 없습니다.");
+    }
+    return ok(res, { message: "FAQ가 삭제되었습니다." });
+  }
+
   if (req.params.boardType === "notices") {
     if (viewerRank(req) < NOTICE_MANAGER_RANK) {
       return fail(

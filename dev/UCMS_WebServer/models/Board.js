@@ -76,6 +76,38 @@ async function deleteNotice(id) {
   return result[0].affectedRows;
 }
 
+// 2026-08-24: Persist FAQ entries separately so only executives can curate public answers.
+async function listFaqs() {
+  return query("SELECT * FROM faq_posts ORDER BY updated_at DESC, id DESC");
+}
+
+async function getFaqById(id) {
+  const rows = await query("SELECT * FROM faq_posts WHERE id = ?", [id]);
+  return rows[0] || null;
+}
+
+async function createFaq({ title, content, authorId, authorName }) {
+  const result = await db.execute(
+    `INSERT INTO faq_posts (title, content, author_id, author_name)
+     VALUES (?, ?, ?, ?)`,
+    [title, content, authorId, authorName],
+  );
+  return result[0].insertId;
+}
+
+async function updateFaq(id, { title, content }) {
+  const result = await db.execute(
+    "UPDATE faq_posts SET title = ?, content = ? WHERE id = ?",
+    [title, content, id],
+  );
+  return result[0].affectedRows;
+}
+
+async function deleteFaq(id) {
+  const result = await db.execute("DELETE FROM faq_posts WHERE id = ?", [id]);
+  return result[0].affectedRows;
+}
+
 async function listInquiries() {
   return query(
     `SELECT ip.*,
@@ -172,17 +204,22 @@ async function deleteInquiryComment(id) {
 module.exports = {
   createInquiry,
   createInquiryComment,
+  createFaq,
   createNotice,
+  deleteFaq,
   deleteInquiry,
   deleteInquiryComment,
   deleteNotice,
   getAuthorIdentity,
+  getFaqById,
   getInquiryById,
   getInquiryCommentById,
   getNoticeById,
   listInquiries,
   listInquiryComments,
+  listFaqs,
   listNotices,
+  updateFaq,
   updateInquiry,
   updateInquiryComment,
   updateNotice,
