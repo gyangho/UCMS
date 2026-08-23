@@ -29,6 +29,11 @@ services:
 
   ucms_web:
     init: true
+    # 2026-08-24: Production must build the Node API from this release so newly added contract routes are deployed.
+    build:
+      context: ../dev/UCMS_WebServer
+      dockerfile: Dockerfile
+      target: prod
     image: gyangho/ucms_web:latest
     # 2026-08-23: Prevent the dev service alias from receiving production requests.
     container_name: prod_ucms_web
