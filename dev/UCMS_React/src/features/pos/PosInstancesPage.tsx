@@ -4,6 +4,7 @@ import { requestData } from "../../shared/api/http";
 import { EmptyState } from "../../shared/ui/EmptyState";
 import { ErrorState, LoadingState } from "../../shared/ui/PageState";
 import { BusyLabel } from "../../shared/ui/BusyLabel";
+import { TenMinuteDateTimeInput } from "../../shared/ui/TenMinuteDateTimeInput";
 
 const MAX_POS_POSTER_BYTES = 10 * 1024 * 1024;
 
@@ -249,16 +250,7 @@ export function PosInstancesPage() {
               />
               {posterFile ? <span className="selected-file-summary">선택: {posterFile.name}</span> : null}
             </label>
-            <label>
-              자동 판매 종료 시간
-              {/* 2026-08-23: Match the shared ten-minute date-time selection interval. */}
-              <input
-                type="datetime-local"
-                step={600}
-                value={autoCloseAt}
-                onChange={(event) => setAutoCloseAt(event.target.value)}
-              />
-            </label>
+            <TenMinuteDateTimeInput label="자동 판매 종료 시간" value={autoCloseAt} onChange={setAutoCloseAt} />
           </div>
 
           <label className="pos-full-field">홍보 문구<textarea rows={4} value={promotionCopy} placeholder="대시보드에 포스터와 함께 표시할 문구" onChange={(event) => setPromotionCopy(event.target.value)} /></label>

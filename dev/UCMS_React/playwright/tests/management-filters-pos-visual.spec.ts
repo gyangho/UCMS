@@ -88,7 +88,7 @@ test("recruitment planning opens the linked plan at interviewer assignment", asy
   await page.route("**/api/recruit/responses", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({ success: true, data: { responses: [] } }) }));
   await page.goto("/recruit/8");
   await expect(page.getByRole("button", { name: "면접 계획하기" })).toBeVisible();
-  await expect(page.getByLabel("면접 시작")).toBeVisible();
+  await expect(page.getByRole("group", { name: "면접 시작" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Google Form 수정 화면 열기" })).toHaveAttribute("href", "https://docs.google.com/forms/d/form-8/edit");
   await capture(page, testInfo.outputPath("recruitment-planning-detail.png"));
 });
@@ -152,19 +152,22 @@ test("executive navigation exposes form management", async ({ page }, testInfo) 
   await expect(page.getByRole("heading", { name: "양식 관리" })).toBeVisible();
 });
 
-test("all React date-time pickers use ten-minute increments", async ({ page }) => {
-  // 2026-08-23: Verify schedule, recruitment, interview, and POS date-time controls at the DOM contract level.
+test("all React date-time pickers expose only ten-minute choices", async ({ page }) => {
+  // 2026-08-23: Verify that unsupported native minute choices such as 32 are absent from the shared control.
   await page.route("**/api/members", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({ success: true, data: { members: [] } }) }));
   await page.goto("/event/new");
-  await expect(page.locator('input[type="datetime-local"]')).toHaveCount(2);
-  for (const input of await page.locator('input[type="datetime-local"]').all()) {
-    await expect(input).toHaveAttribute("step", "600");
+  await expect(page.locator(".ten-minute-datetime")).toHaveCount(2);
+  for (const minuteSelect of await page.locator('.ten-minute-datetime select[aria-label$="분"]').all()) {
+    await expect(minuteSelect.locator("option")).toHaveCount(6);
+    await expect(minuteSelect.locator('option[value="32"]')).toHaveCount(0);
   }
 
   await page.route("**/api/pos/instances", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({ success: true, data: { instances: [], canCreate: true } }) }));
   await page.goto("/pos/instances");
   await page.getByRole("button", { name: "새 인스턴스" }).click();
-  await expect(page.getByLabel("자동 판매 종료 시간")).toHaveAttribute("step", "600");
+  const posPicker = page.getByRole("group", { name: "자동 판매 종료 시간" });
+  await expect(posPicker).toBeVisible();
+  await expect(posPicker.getByLabel("자동 판매 종료 시간 분").locator("option")).toHaveCount(6);
 });
 
 test("recruit poster size error and save progress are visible", async ({ page }, testInfo) => {

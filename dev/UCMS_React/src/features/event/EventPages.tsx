@@ -3,6 +3,7 @@ import { navigate } from "../../app/router";
 import { requestData } from "../../shared/api/http";
 import { EmptyState } from "../../shared/ui/EmptyState";
 import { ErrorState, LoadingState } from "../../shared/ui/PageState";
+import { TenMinuteDateTimeInput } from "../../shared/ui/TenMinuteDateTimeInput";
 
 interface EventItem {
   id: number;
@@ -682,26 +683,8 @@ export function EventFormPage({
         </label>
         {/* 2026-08-23: Native date-time pickers offer ten-minute increments across UCMS. */}
         <div className="event-form-grid">
-          <label>
-            시작 일시
-            <input
-              value={form.start}
-              type="datetime-local"
-              step={600}
-              onChange={(event) => setFormField("start", event.target.value)}
-              required
-            />
-          </label>
-          <label>
-            종료 일시
-            <input
-              value={form.end}
-              type="datetime-local"
-              step={600}
-              onChange={(event) => setFormField("end", event.target.value)}
-              required
-            />
-          </label>
+          <TenMinuteDateTimeInput label="시작 일시" value={form.start} onChange={(value) => setFormField("start", value)} required />
+          <TenMinuteDateTimeInput label="종료 일시" value={form.end} onChange={(value) => setFormField("end", value)} required />
           <label>
             공개 범위
             <select
@@ -754,30 +737,8 @@ export function EventFormPage({
           <fieldset className="recruit-period-fieldset">
             <legend>참가자 모집 기간</legend>
             <div className="event-form-grid">
-              <label>
-                모집 시작
-                <input
-                  required
-                  value={form.recruitStart}
-                  type="datetime-local"
-                  step={600}
-                  onChange={(event) =>
-                    setFormField("recruitStart", event.target.value)
-                  }
-                />
-              </label>
-              <label>
-                모집 종료
-                <input
-                  required
-                  value={form.recruitEnd}
-                  type="datetime-local"
-                  step={600}
-                  onChange={(event) =>
-                    setFormField("recruitEnd", event.target.value)
-                  }
-                />
-              </label>
+              <TenMinuteDateTimeInput label="모집 시작" value={form.recruitStart} onChange={(value) => setFormField("recruitStart", value)} required />
+              <TenMinuteDateTimeInput label="모집 종료" value={form.recruitEnd} onChange={(value) => setFormField("recruitEnd", value)} required />
             </div>
           </fieldset>
         ) : null}

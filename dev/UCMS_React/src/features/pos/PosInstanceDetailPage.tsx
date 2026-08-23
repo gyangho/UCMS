@@ -4,6 +4,7 @@ import { requestData } from "../../shared/api/http";
 import { EmptyState } from "../../shared/ui/EmptyState";
 import { ErrorState, LoadingState } from "../../shared/ui/PageState";
 import { BusyLabel } from "../../shared/ui/BusyLabel";
+import { TenMinuteDateTimeInput } from "../../shared/ui/TenMinuteDateTimeInput";
 
 const MAX_POS_POSTER_BYTES = 10 * 1024 * 1024;
 
@@ -517,8 +518,7 @@ export function PosInstanceDetailPage({
           <label>인스턴스 이름<input required value={editName} onChange={(event) => setEditName(event.target.value)} /></label>
           <div className="form-grid">
             <label>새 홍보 포스터(A4 PDF)<span className="field-help">PDF, 10MB 이하</span><input accept="application/pdf" type="file" onChange={(event) => selectEditPoster(event.target.files?.[0], event.currentTarget)} />{editPoster ? <span className="selected-file-summary">선택: {editPoster.name}</span> : null}</label>
-            {/* 2026-08-23: Offer the same ten-minute time selection interval across UCMS forms. */}
-            <label>자동 판매 종료 시간<input type="datetime-local" step={600} value={editAutoCloseAt} onChange={(event) => setEditAutoCloseAt(event.target.value)} /></label>
+            <TenMinuteDateTimeInput label="자동 판매 종료 시간" value={editAutoCloseAt} onChange={setEditAutoCloseAt} />
           </div>
           <label>홍보 문구<textarea rows={4} value={editPromotionCopy} onChange={(event) => setEditPromotionCopy(event.target.value)} /></label>
 

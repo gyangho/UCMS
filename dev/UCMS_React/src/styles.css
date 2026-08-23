@@ -325,6 +325,41 @@ button::-moz-focus-inner {
   margin: 32px auto;
 }
 
+/* 2026-08-23: Use explicit hour/minute choices because native datetime pickers ignore step on some browsers. */
+.ten-minute-datetime {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(86px, .42fr) minmax(86px, .42fr);
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ten-minute-datetime legend {
+  grid-column: 1 / -1;
+  margin-bottom: 7px;
+  padding: 0;
+  color: var(--brand-muted);
+  font-weight: 800;
+}
+
+.ten-minute-datetime input,
+.ten-minute-datetime select {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .ten-minute-datetime {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ten-minute-datetime input[type="date"] {
+    grid-column: 1 / -1;
+  }
+}
+
 .page-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
