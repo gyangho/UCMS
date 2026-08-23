@@ -44,7 +44,8 @@ server {
 
     # 2026-08-19: Route JSON APIs and server-side OAuth actions to Express using shared port configuration.
     location = /api {
-        set $upstream "http://ucms_web:${WEB_PORT}";
+        # 2026-08-23: Use production-unique container names because Nginx joins dev and prod networks.
+        set $upstream "http://prod_ucms_web:${WEB_PORT}";
         proxy_pass $upstream;
 
         proxy_read_timeout 1800;
@@ -53,7 +54,7 @@ server {
     }
 
     location ^~ /api/ {
-        set $upstream "http://ucms_web:${WEB_PORT}";
+        set $upstream "http://prod_ucms_web:${WEB_PORT}";
         proxy_pass $upstream;
 
         proxy_read_timeout 1800;
@@ -62,7 +63,7 @@ server {
     }
 
     location ~ ^/auth/(authorize|redirect|oauth2callback|logout)$ {
-        set $upstream "http://ucms_web:${WEB_PORT}";
+        set $upstream "http://prod_ucms_web:${WEB_PORT}";
         proxy_pass $upstream;
 
         proxy_read_timeout 1800;
@@ -71,14 +72,14 @@ server {
     }
 
     location = /health {
-        set $upstream "http://ucms_web:${WEB_PORT}";
+        set $upstream "http://prod_ucms_web:${WEB_PORT}";
         proxy_pass $upstream;
         proxy_intercept_errors off;
     }
 
     # [2] WebSocket (ShareDB)
     location /sharedb {
-        set $upstream "http://ucms_sharedb:${SHAREDB_PORT}";
+        set $upstream "http://prod_ucms_sharedb:${SHAREDB_PORT}";
         proxy_pass $upstream;
 
         proxy_http_version 1.1;
@@ -102,7 +103,7 @@ server {
 
     # 2026-08-19: Serve the production SPA for every remaining route using the shared React port.
     location / {
-        set $upstream "http://ucms_react:${REACT_PORT}";
+        set $upstream "http://prod_ucms_react:${REACT_PORT}";
         proxy_pass $upstream;
 
         proxy_read_timeout 1800;

@@ -7,7 +7,8 @@ services:
       dockerfile: Dockerfile
       target: prod
     image: gyangho/ucms_spring:latest
-    container_name: ucms_spring
+    # 2026-08-23: Distinguish production DNS names from dev services on Nginx's dual-network proxy.
+    container_name: prod_ucms_spring
     restart: always
     env_file:
       - ./env/prod/web.env
@@ -26,7 +27,8 @@ services:
   ucms_web:
     init: true
     image: gyangho/ucms_web:latest
-    container_name: ucms_web
+    # 2026-08-23: Prevent the dev service alias from receiving production requests.
+    container_name: prod_ucms_web
     restart: always
     env_file:
       # 2026-08-19: Read shared infrastructure values from their relocated env file.
@@ -46,7 +48,8 @@ services:
   ucms_sharedb:
     init: true
     image: gyangho/ucms_sharedb:latest
-    container_name: ucms_sharedb
+    # 2026-08-23: Prevent the dev service alias from receiving production WebSocket requests.
+    container_name: prod_ucms_sharedb
     restart: always
     env_file:
       # 2026-08-19: Read shared infrastructure values from their relocated env file.
@@ -66,7 +69,8 @@ services:
       dockerfile: Dockerfile
       target: prod
     image: gyangho/ucms_react:latest
-    container_name: ucms_react
+    # 2026-08-23: Prevent the dev Vite service alias from receiving production SPA requests.
+    container_name: prod_ucms_react
     restart: always
     env_file:
       # 2026-08-19: Read shared infrastructure values from their relocated env file.
