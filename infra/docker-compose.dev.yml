@@ -1,4 +1,30 @@
 services:
+  # 2026-08-23: New backend mail delivery runs in Spring and is reachable only on internal app networks.
+  ucms_spring:
+    init: true
+    build:
+      context: ../dev/UCMS_Spring/ucms
+      dockerfile: Dockerfile
+      target: dev
+    container_name: dev_ucms_spring
+    restart: always
+    env_file:
+      - ./env/dev/web.env
+      - ./env/dev/common.env
+      - path: ./env/dev/spring.env
+        required: false
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+    volumes:
+      - ../dev/UCMS_Spring/ucms:/app
+      - /home/gradle/.gradle
+    networks:
+      dev-app:
+        # 2026-08-23: Tomcat rejects underscores in HTTP Host, so Node uses this RFC-compliant alias.
+        aliases:
+          - ucms-spring
+      dev-db: {}
+
   ucms_web:
     init: true
     build:
@@ -8,8 +34,8 @@ services:
     container_name: dev_ucms_web
     restart: always
     env_file:
-      # 2026-07-24: Read the internal WebServer port from the shared infrastructure port file.
-      - ./env/ports.env
+      # 2026-08-19: Read shared infrastructure values from their relocated env file.
+      - ./env/infra/ports.env
       - ./env/dev/web.env
       - ./env/dev/common.env
     volumes:
@@ -34,8 +60,8 @@ services:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
     env_file:
-      # 2026-07-24: Read the internal ShareDB port from the shared infrastructure port file.
-      - ./env/ports.env
+      # 2026-08-19: Read shared infrastructure values from their relocated env file.
+      - ./env/infra/ports.env
       - ./env/dev/sharedb.env
       - ./env/dev/common.env
     volumes:
@@ -53,11 +79,13 @@ services:
       target: dev
     container_name: dev_ucms_react
     restart: always
+    # 2026-08-19: Start Vite after the API and database-backed health endpoint are ready.
     depends_on:
-      - ucms_web
+      ucms_web:
+        condition: service_healthy
     env_file:
-      # 2026-07-24: Vite receives all three internal ports without publishing its port to the host.
-      - ./env/ports.env
+      # 2026-08-19: Read shared infrastructure values from their relocated env file.
+      - ./env/infra/ports.env
       - ./env/dev/react.env
     environment:
       NODE_ENV: dev

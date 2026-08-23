@@ -14,6 +14,8 @@ class Pos {
   }
 
   static async findActiveInstance() {
+    // 2026-08-20: Expired sales are closed before any active-instance decision is made.
+    await this.closeExpiredInstances();
     const [rows] = await db.query(
       "SELECT * FROM pos_instances WHERE status = 'active' ORDER BY id DESC LIMIT 1"
     );
@@ -25,14 +27,20 @@ class Pos {
     products = [],
     salesmans = [],
     created_by = null,
+    poster_file_name = null,
+    poster_pdf = null,
+    promotion_copy = null,
+    auto_close_at = null,
   }) {
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
 
       const [instanceResult] = await connection.query(
-        "INSERT INTO pos_instances (instance_name, status, created_by) VALUES (?, 'inactive', ?)",
-        [instance_name, created_by]
+        `INSERT INTO pos_instances
+          (instance_name, status, created_by, poster_file_name, poster_mime_type, poster_pdf, promotion_copy, auto_close_at)
+         VALUES (?, 'inactive', ?, ?, ?, ?, ?, ?)`,
+        [instance_name, created_by, poster_file_name, poster_pdf ? "application/pdf" : null, poster_pdf, promotion_copy, auto_close_at]
       );
       const instanceId = instanceResult.insertId;
 
@@ -42,9 +50,10 @@ class Pos {
           p.product_name,
           p.product_price,
           p.stock ?? 0,
+          p.stock ?? 0,
         ]);
         await connection.query(
-          "INSERT INTO pos_products (instance_id, product_name, product_price, stock) VALUES ?",
+          "INSERT INTO pos_products (instance_id, product_name, product_price, stock, initial_stock) VALUES ?",
           [values]
         );
       }
@@ -101,6 +110,37 @@ class Pos {
 
   static async setActiveInstance(id) {
     return this.setInstanceStatus(id, "active");
+  }
+
+  static async closeExpiredInstances() {
+    const [result] = await db.query(
+      `UPDATE pos_instances
+          SET status = 'closed', closed_at = COALESCE(closed_at, CURRENT_TIMESTAMP)
+        WHERE status = 'active'
+          AND auto_close_at IS NOT NULL
+          AND auto_close_at <= CURRENT_TIMESTAMP`
+    );
+    return result.affectedRows || 0;
+  }
+
+  static async getActivePromotion() {
+    const instance = await this.findActiveInstance();
+    if (!instance) return null;
+    const [totals] = await db.query(
+      `SELECT COALESCE(SUM(initial_stock), 0) AS initial_stock,
+              COALESCE(SUM(stock), 0) AS remaining_stock
+         FROM pos_products
+        WHERE instance_id = ?`,
+      [instance.id]
+    );
+    const initialStock = Number(totals[0]?.initial_stock || 0);
+    const remainingStock = Number(totals[0]?.remaining_stock || 0);
+    return {
+      ...instance,
+      initial_stock: initialStock,
+      sold_quantity: Math.max(0, initialStock - remainingStock),
+      sale_rate: initialStock > 0 ? Math.max(0, initialStock - remainingStock) / initialStock : 0,
+    };
   }
 
   static async setInstanceStatus(id, status) {
@@ -180,9 +220,10 @@ class Pos {
           p.product_name,
           p.product_price,
           p.stock ?? 0,
+          p.stock ?? 0,
         ]);
         await connection.query(
-          "INSERT INTO pos_products (instance_id, product_name, product_price, stock) VALUES ?",
+          "INSERT INTO pos_products (instance_id, product_name, product_price, stock, initial_stock) VALUES ?",
           [values]
         );
       }
@@ -228,6 +269,8 @@ class Pos {
     items,
     totalPrice,
   }) {
+    // 2026-08-21: Persist automatic closure before opening the purchase transaction so rejection cannot roll it back.
+    await this.closeExpiredInstances();
     // items: [{ product_id, quantity, is_service }]
     const salesman = await this.isUserSalesmanForInstance(
       userId,
@@ -245,11 +288,20 @@ class Pos {
 
       // 2026-07-23: 판매 중인 인스턴스와 실제 재고를 잠근 뒤 서비스 수량도 재고에서 차감한다.
       const [instances] = await connection.query(
-        "SELECT status FROM pos_instances WHERE id = ? FOR UPDATE",
+        "SELECT status, auto_close_at FROM pos_instances WHERE id = ? FOR UPDATE",
         [instanceId]
       );
       if (!instances[0] || instances[0].status !== "active") {
         const error = new Error("판매 중인 POS 인스턴스가 아닙니다.");
+        error.code = "POS_NOT_ACTIVE";
+        throw error;
+      }
+      if (instances[0].auto_close_at && new Date(instances[0].auto_close_at) <= new Date()) {
+        await connection.query(
+          "UPDATE pos_instances SET status = 'closed', closed_at = COALESCE(closed_at, CURRENT_TIMESTAMP) WHERE id = ?",
+          [instanceId]
+        );
+        const error = new Error("자동 판매 종료 시간이 지났습니다.");
         error.code = "POS_NOT_ACTIVE";
         throw error;
       }

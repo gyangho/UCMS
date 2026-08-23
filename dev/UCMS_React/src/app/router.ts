@@ -6,10 +6,12 @@ export type PrivateRouteId =
   | "mypage"
   | "member"
   | "recruit-forms"
+  | "recruit-detail"
   | "recruit-shared-doc"
   | "interview-plans"
   | "interview-active-schedules"
   | "interview-plan-create"
+  | "interview-plan-edit"
   | "interview-plan-detail"
   | "event-calendar"
   | "event-my-events"
@@ -30,11 +32,12 @@ export type PrivateRouteId =
   | "board-inquiries"
   | "board-inquiry-detail"
   | "board-faqs"
-  | "board-faq-detail"
-  | "auth";
+  | "board-faq-detail";
 
 export type PublicRouteId =
   | "login"
+  | "register"
+  | "forgot-password"
   | "public-recruit-result"
   | "public-recruit-response";
 
@@ -56,6 +59,7 @@ export type AppRoute =
       path: string;
     };
 
+// 2026-08-23: Retired Kakao, auth-code, and fixed /recruit/apply routes are intentionally absent.
 // 2026-07-16: Route labels were normalized while preserving paths used by the Node API-backed React pages.
 const routeTable: Array<Exclude<AppRoute, { kind: "not-found" }>> = [
   {
@@ -116,7 +120,7 @@ const routeTable: Array<Exclude<AppRoute, { kind: "not-found" }>> = [
     kind: "private",
     id: "drive-generate-form",
     path: "/drive",
-    title: "구글 폼 생성"
+    title: "양식 관리"
   },
   {
     kind: "private",
@@ -155,16 +159,22 @@ const routeTable: Array<Exclude<AppRoute, { kind: "not-found" }>> = [
     title: "FAQ"
   },
   {
-    kind: "private",
-    id: "auth",
-    path: "/auth/member-confirm",
-    title: "회원 확인"
-  },
-  {
     kind: "public",
     id: "login",
     path: "/login",
     title: "로그인"
+  },
+  {
+    kind: "public",
+    id: "register",
+    path: "/register",
+    title: "회원가입"
+  },
+  {
+    kind: "public",
+    id: "forgot-password",
+    path: "/forgot-password",
+    title: "비밀번호 찾기"
   },
   {
     kind: "public",
@@ -184,7 +194,7 @@ const hiddenNavIds: PrivateRouteId[] = [
   "dashboard",
   "admin",
   "mypage",
-  "auth",
+  "recruit-detail",
   "event-my-events",
   "event-create",
   "event-detail",
@@ -251,6 +261,11 @@ export function useCurrentRoute(): AppRoute {
 }
 
 function matchRoute(path: string): AppRoute {
+  // 2026-08-23: Do not let retired application URLs fall back to the broader /recruit section route.
+  if (path === "/recruit/apply" || path === "/recurit/apply") {
+    return { kind: "not-found", path };
+  }
+
   if (path === "/dashboard") {
     return routeTable.find((route) => route.id === "dashboard")!;
   }
@@ -291,6 +306,15 @@ function matchRoute(path: string): AppRoute {
     };
   }
 
+  if (/^\/recruit\/\d+$/.test(path)) {
+    return {
+      kind: "private",
+      id: "recruit-detail",
+      path,
+      title: "모집 상세"
+    };
+  }
+
   // 2026-07-23: Keep the multi-step interview planner inside the React route table.
   if (path === "/recruit/interview/new" || path === "/recruit/interview/plan") {
     return {
@@ -298,6 +322,16 @@ function matchRoute(path: string): AppRoute {
       id: "interview-plan-create",
       path,
       title: "면접 계획 생성"
+    };
+  }
+
+  // 2026-08-23: Linked plans open directly at interviewer assignment for editing.
+  if (/^\/recruit\/interview\/plans\/\d+\/edit\/interviewers$/.test(path)) {
+    return {
+      kind: "private",
+      id: "interview-plan-edit",
+      path,
+      title: "면접 계획 수정"
     };
   }
 

@@ -48,7 +48,6 @@ interface EventFormState {
   description: string;
   color: string;
   authority: string;
-  isMultiple: boolean;
   isRecruiting: boolean;
   recruitStart: string;
   recruitEnd: string;
@@ -426,8 +425,9 @@ export function EventDetailPage({ path }: { path: string }) {
         </dl>
       </section>
 
-      <div className="two-column">
-        <section className="data-card">
+      {event.isRecruiting || event.settlement ? (
+      <div className={event.isRecruiting && event.settlement ? "two-column" : "data-grid single"}>
+        {event.isRecruiting ? <section className="data-card">
           {/* 2026-07-22: Participant details show only names and expose the total count. */}
           <h2>참여자 ({(event.participants ?? []).length}명)</h2>
           {(event.participants ?? []).length === 0 ? (
@@ -439,11 +439,11 @@ export function EventDetailPage({ path }: { path: string }) {
               ))}
             </ul>
           )}
-        </section>
+        </section> : null}
 
-        <section className="data-card">
+        {event.settlement ? <section className="data-card">
+          {/* 2026-08-23: Hide empty settlement chrome when the event has no linked settlement. */}
           <h2>관련 정산</h2>
-          {event.settlement ? (
             <dl>
               <dt>제목</dt>
               <dd>
@@ -465,11 +465,9 @@ export function EventDetailPage({ path }: { path: string }) {
               <dt>상태</dt>
               <dd>{event.settlement.status}</dd>
             </dl>
-          ) : (
-            <p>연결된 정산이 없습니다.</p>
-          )}
-        </section>
+        </section> : null}
       </div>
+      ) : null}
     </section>
   );
 }
@@ -489,7 +487,6 @@ export function EventFormPage({
     description: "",
     color: "#2563eb",
     authority: "일반",
-    isMultiple: false,
     isRecruiting: false,
     recruitStart: "",
     recruitEnd: "",
@@ -556,7 +553,6 @@ export function EventFormPage({
             description: item.description ?? "",
             color: item.color ?? "#2563eb",
             authority: item.authority ?? "일반",
-            isMultiple: Boolean(item.isMultiple),
             isRecruiting: Boolean(item.isRecruiting),
             recruitStart: item.recruitStart
               ? toDateTimeLocal(item.recruitStart)
@@ -684,12 +680,14 @@ export function EventFormPage({
             required
           />
         </label>
+        {/* 2026-08-23: Native date-time pickers offer ten-minute increments across UCMS. */}
         <div className="event-form-grid">
           <label>
             시작 일시
             <input
               value={form.start}
               type="datetime-local"
+              step={600}
               onChange={(event) => setFormField("start", event.target.value)}
               required
             />
@@ -699,6 +697,7 @@ export function EventFormPage({
             <input
               value={form.end}
               type="datetime-local"
+              step={600}
               onChange={(event) => setFormField("end", event.target.value)}
               required
             />
@@ -739,16 +738,7 @@ export function EventFormPage({
           />
         </label>
         <div className="event-option-row">
-          <label className="checkbox-label">
-            <input
-              checked={form.isMultiple}
-              type="checkbox"
-              onChange={(event) =>
-                setFormField("isMultiple", event.target.checked)
-              }
-            />
-            여러 날에 걸친 일정
-          </label>
+          {/* 2026-08-23: The API derives multi-day status from the selected start and end dates. */}
           <label className="checkbox-label">
             <input
               checked={form.isRecruiting}
@@ -770,6 +760,7 @@ export function EventFormPage({
                   required
                   value={form.recruitStart}
                   type="datetime-local"
+                  step={600}
                   onChange={(event) =>
                     setFormField("recruitStart", event.target.value)
                   }
@@ -781,6 +772,7 @@ export function EventFormPage({
                   required
                   value={form.recruitEnd}
                   type="datetime-local"
+                  step={600}
                   onChange={(event) =>
                     setFormField("recruitEnd", event.target.value)
                   }

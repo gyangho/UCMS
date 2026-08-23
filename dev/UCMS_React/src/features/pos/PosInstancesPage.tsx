@@ -3,6 +3,9 @@ import { navigate } from "../../app/router";
 import { requestData } from "../../shared/api/http";
 import { EmptyState } from "../../shared/ui/EmptyState";
 import { ErrorState, LoadingState } from "../../shared/ui/PageState";
+import { BusyLabel } from "../../shared/ui/BusyLabel";
+
+const MAX_POS_POSTER_BYTES = 10 * 1024 * 1024;
 
 interface PosInstance {
   id: number;
@@ -36,6 +39,10 @@ export function PosInstancesPage() {
   const [memberQuery, setMemberQuery] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<MemberOption[]>([]);
   const [instanceName, setInstanceName] = useState("");
+  const [promotionCopy, setPromotionCopy] = useState("");
+  const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [autoCloseAt, setAutoCloseAt] = useState("");
   const [products, setProducts] = useState<ProductDraft[]>([]);
   const [productForm, setProductForm] = useState({
     name: "",
@@ -134,7 +141,10 @@ export function PosInstancesPage() {
       return;
     }
 
+    setIsCreating(true);
+    setMessage(null);
     try {
+      const posterDataUrl = posterFile ? await fileToDataUrl(posterFile) : null;
       const data = await requestData<{ id: number; path?: string }>(
         "/api/pos/instances",
         {
@@ -149,6 +159,10 @@ export function PosInstancesPage() {
             salesmans: selectedMembers.map((member) => ({
               member_id: member.studentId,
             })),
+            posterFileName: posterFile?.name ?? null,
+            posterDataUrl,
+            promotionCopy: promotionCopy.trim(),
+            autoCloseAt: autoCloseAt ? new Date(autoCloseAt).toISOString() : null,
           }),
         },
       );
@@ -159,7 +173,27 @@ export function PosInstancesPage() {
           ? saveError.message
           : "POS 인스턴스를 만들지 못했습니다.",
       );
+    } finally {
+      setIsCreating(false);
     }
+  }
+
+  function selectPosterFile(file: File | undefined, input: HTMLInputElement) {
+    // 2026-08-23: Validate POS PDFs before base64 conversion and nginx upload.
+    if (file && file.type !== "application/pdf") {
+      setPosterFile(null);
+      setMessage("홍보 포스터는 PDF 파일만 업로드할 수 있습니다.");
+      input.value = "";
+      return;
+    }
+    if (file && file.size > MAX_POS_POSTER_BYTES) {
+      setPosterFile(null);
+      setMessage("홍보 포스터 PDF는 10MB 이하여야 합니다.");
+      input.value = "";
+      return;
+    }
+    setMessage(null);
+    setPosterFile(file ?? null);
   }
 
   if (isLoading) return <LoadingState />;
@@ -187,7 +221,7 @@ export function PosInstancesPage() {
       {message ? <div className="page-state notice">{message}</div> : null}
 
       {showCreate ? (
-        <form className="pos-create-panel" onSubmit={createInstance}>
+        <form aria-busy={isCreating} className="pos-create-panel" onSubmit={createInstance}>
           <div className="section-heading-row">
             <h2>인스턴스 생성</h2>
             <span>판매자 {selectedMembers.length}명</span>
@@ -202,6 +236,32 @@ export function PosInstancesPage() {
               onChange={(event) => setInstanceName(event.target.value)}
             />
           </label>
+
+          {/* 2026-08-20: Store the A4 promotion PDF with an optional automatic sale closing time. */}
+          <div className="form-grid">
+            <label>
+              홍보 포스터(A4 PDF)
+              <span className="field-help">PDF, 10MB 이하</span>
+              <input
+                accept="application/pdf"
+                type="file"
+                onChange={(event) => selectPosterFile(event.target.files?.[0], event.currentTarget)}
+              />
+              {posterFile ? <span className="selected-file-summary">선택: {posterFile.name}</span> : null}
+            </label>
+            <label>
+              자동 판매 종료 시간
+              {/* 2026-08-23: Match the shared ten-minute date-time selection interval. */}
+              <input
+                type="datetime-local"
+                step={600}
+                value={autoCloseAt}
+                onChange={(event) => setAutoCloseAt(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <label className="pos-full-field">홍보 문구<textarea rows={4} value={promotionCopy} placeholder="대시보드에 포스터와 함께 표시할 문구" onChange={(event) => setPromotionCopy(event.target.value)} /></label>
 
           <section className="pos-create-section">
             <h3>판매자</h3>
@@ -325,10 +385,12 @@ export function PosInstancesPage() {
           </section>
 
           <div className="card-actions">
-            <button type="button" onClick={() => setShowCreate(false)}>
+            <button disabled={isCreating} type="button" onClick={() => setShowCreate(false)}>
               취소
             </button>
-            <button type="submit">인스턴스 생성</button>
+            <button disabled={isCreating} type="submit">
+              {isCreating ? <BusyLabel /> : "인스턴스 생성"}
+            </button>
           </div>
         </form>
       ) : null}
@@ -377,4 +439,13 @@ function formatDate(value?: string | null) {
 
 function formatCurrency(value: number) {
   return `${Number(value || 0).toLocaleString("ko-KR")}원`;
+}
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }

@@ -61,6 +61,10 @@ async function getOAuthConnectionStatus() {
     try {
         const oauth2 = buildOAuthClient();
         const tokens = JSON.parse(fs.readFileSync(TOKEN_PATH, "utf8"));
+        const grantedScopes = new Set(String(tokens.scope || "").split(/\s+/).filter(Boolean));
+        if (!SCOPES.every((scope) => grantedScopes.has(scope))) {
+            return {connected: false, reason: "RECONNECT_REQUIRED_FOR_FORMS"};
+        }
         oauth2.setCredentials(tokens);
         await oauth2.getAccessToken();
         return {connected: true, reason: null};
@@ -102,7 +106,7 @@ async function saveOAuthTokens(code) {
     console.log("[Google OAuth] token.json 생성 완료");
 }
 
-/* 매 요청에 쓰는 OAuth-drive/ forms 클라이언트 */
+/* 매 요청에 쓰는 OAuth Drive/Forms 클라이언트 */
 function getOAuthClients() {
     const oauth2 = buildOAuthClient();
     const tokens = JSON.parse(fs.readFileSync(TOKEN_PATH, "utf8"));

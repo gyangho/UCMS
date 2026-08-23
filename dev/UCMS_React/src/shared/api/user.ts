@@ -20,9 +20,19 @@ export interface CurrentUser {
   phone: string | null;
   role: string | null;
   authority: number;
+  accountType: "human" | "system";
+  systemKey: string | null;
   profileImage: string | null;
   thumbnailImage: string | null;
   joinedAt: string | null;
+  impersonation: {
+    active: true;
+    actorName: string;
+    targetName: string;
+    readOnly: boolean;
+    systemTestAccount: boolean;
+    startedAt: string;
+  } | null;
 }
 
 interface CurrentUserResponse {

@@ -3,6 +3,9 @@ import { navigate } from "../../app/router";
 import { requestData } from "../../shared/api/http";
 import { EmptyState } from "../../shared/ui/EmptyState";
 import { ErrorState, LoadingState } from "../../shared/ui/PageState";
+import { BusyLabel } from "../../shared/ui/BusyLabel";
+
+const MAX_POS_POSTER_BYTES = 10 * 1024 * 1024;
 
 interface PosInstance {
   id: number;
@@ -11,6 +14,9 @@ interface PosInstance {
   creatorName?: string | null;
   createdAt?: string | null;
   closedAt?: string | null;
+  autoCloseAt?: string | null;
+  promotionCopy?: string | null;
+  posterUrl?: string | null;
 }
 
 interface PosProduct {
@@ -24,6 +30,12 @@ interface PosSalesman {
   id: number;
   studentId: string;
   name: string;
+}
+
+interface MemberOption {
+  id: string;
+  name: string;
+  studentId: string;
 }
 
 interface CartLine {
@@ -55,6 +67,15 @@ export function PosInstanceDetailPage({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPromotionCopy, setEditPromotionCopy] = useState("");
+  const [editAutoCloseAt, setEditAutoCloseAt] = useState("");
+  const [editPoster, setEditPoster] = useState<File | null>(null);
+  const [editProducts, setEditProducts] = useState<PosProduct[]>([]);
+  const [editSalesmans, setEditSalesmans] = useState<PosSalesman[]>([]);
+  const [members, setMembers] = useState<MemberOption[]>([]);
+  const [memberQuery, setMemberQuery] = useState("");
 
   const loadInstance = useCallback(async () => {
     try {
@@ -93,6 +114,84 @@ export function PosInstanceDetailPage({
       ),
     [cart],
   );
+
+  const memberResults = useMemo(() => {
+    const keyword = memberQuery.trim().toLocaleLowerCase("ko-KR");
+    if (!keyword) return [];
+    const selected = new Set(editSalesmans.map((salesman) => salesman.studentId));
+    return members.filter((member) => !selected.has(member.studentId) && `${member.name} ${member.studentId}`.toLocaleLowerCase("ko-KR").includes(keyword)).slice(0, 8);
+  }, [editSalesmans, memberQuery, members]);
+
+  async function startEditing() {
+    if (!instance) return;
+    setEditName(instance.instanceName);
+    setEditPromotionCopy(instance.promotionCopy ?? "");
+    setEditAutoCloseAt(toLocalInput(instance.autoCloseAt));
+    setEditProducts(products.map((product) => ({ ...product })));
+    setEditSalesmans(salesmans.map((salesman) => ({ ...salesman })));
+    setEditPoster(null);
+    setMemberQuery("");
+    setIsEditing(true);
+    if (!members.length) {
+      try {
+        const data = await requestData<{ members: MemberOption[] }>("/api/members");
+        setMembers(data.members ?? []);
+      } catch (loadError) {
+        setMessage(loadError instanceof Error ? loadError.message : "판매자 목록을 불러오지 못했습니다.");
+      }
+    }
+  }
+
+  async function saveInstanceEdit() {
+    if (!editName.trim() || !editProducts.length || !editSalesmans.length) {
+      setMessage("인스턴스 이름, 판매자, 품목을 모두 입력해 주세요.");
+      return;
+    }
+    if (editProducts.some((product) => !product.name.trim() || product.price < 0 || product.stock < 0)) {
+      setMessage("품목명, 가격, 재고를 올바르게 입력해 주세요.");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await requestData(`/api/pos/instances/${instanceId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: editName.trim(),
+          promotionCopy: editPromotionCopy.trim(),
+          autoCloseAt: editAutoCloseAt ? new Date(editAutoCloseAt).toISOString() : null,
+          posterFileName: editPoster?.name ?? null,
+          posterDataUrl: editPoster ? await fileToDataUrl(editPoster) : null,
+          products: editProducts.map(({ id, name, price, stock }) => ({ id: id > 0 ? id : null, name: name.trim(), price: Number(price), stock: Number(stock) })),
+          salesmanStudentIds: editSalesmans.map((salesman) => salesman.studentId),
+        }),
+      });
+      setMessage("POS 인스턴스를 수정했습니다.");
+      setIsEditing(false);
+      await loadInstance();
+    } catch (saveError) {
+      setMessage(saveError instanceof Error ? saveError.message : "POS 인스턴스를 수정하지 못했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function selectEditPoster(file: File | undefined, input: HTMLInputElement) {
+    // 2026-08-23: Keep POS edit uploads within the same limit as creation and the API.
+    if (file && file.type !== "application/pdf") {
+      setEditPoster(null);
+      setMessage("홍보 포스터는 PDF 파일만 업로드할 수 있습니다.");
+      input.value = "";
+      return;
+    }
+    if (file && file.size > MAX_POS_POSTER_BYTES) {
+      setEditPoster(null);
+      setMessage("홍보 포스터 PDF는 10MB 이하여야 합니다.");
+      input.value = "";
+      return;
+    }
+    setMessage(null);
+    setEditPoster(file ?? null);
+  }
 
   function cartQuantity(productId: number, lines = cart) {
     return lines
@@ -368,7 +467,7 @@ export function PosInstanceDetailPage({
                 type="button"
                 onClick={checkout}
               >
-                {isSaving ? "처리 중..." : "판매 완료"}
+                {isSaving ? <BusyLabel /> : "판매 완료"}
               </button>
             </aside>
           </div>
@@ -385,6 +484,9 @@ export function PosInstanceDetailPage({
           <p>{instance.instanceName}</p>
         </div>
         <div className="toolbar">
+          {canManage && instance.status !== "active" && !isEditing ? (
+            <button className="secondary-button" type="button" onClick={startEditing}>수정</button>
+          ) : null}
           {instance.status === "active" ? (
             <button
               className="success-button"
@@ -407,6 +509,32 @@ export function PosInstanceDetailPage({
       </div>
 
       {message ? <div className="page-state notice">{message}</div> : null}
+
+      {isEditing ? (
+        <section className="pos-instance-edit-panel" aria-label="POS 인스턴스 수정">
+          {/* 2026-08-23: Non-selling instances can be safely revised from their detail screen. */}
+          <div className="section-heading-row"><h2>인스턴스 수정</h2><span>판매 중에는 수정할 수 없습니다.</span></div>
+          <label>인스턴스 이름<input required value={editName} onChange={(event) => setEditName(event.target.value)} /></label>
+          <div className="form-grid">
+            <label>새 홍보 포스터(A4 PDF)<span className="field-help">PDF, 10MB 이하</span><input accept="application/pdf" type="file" onChange={(event) => selectEditPoster(event.target.files?.[0], event.currentTarget)} />{editPoster ? <span className="selected-file-summary">선택: {editPoster.name}</span> : null}</label>
+            {/* 2026-08-23: Offer the same ten-minute time selection interval across UCMS forms. */}
+            <label>자동 판매 종료 시간<input type="datetime-local" step={600} value={editAutoCloseAt} onChange={(event) => setEditAutoCloseAt(event.target.value)} /></label>
+          </div>
+          <label>홍보 문구<textarea rows={4} value={editPromotionCopy} onChange={(event) => setEditPromotionCopy(event.target.value)} /></label>
+
+          <section className="pos-create-section">
+            <h3>판매자</h3>
+            <div className="pos-selected-members">{editSalesmans.map((salesman) => <span key={salesman.studentId}>{salesman.name} · {salesman.studentId}<button aria-label={`${salesman.name} 판매자 삭제`} type="button" onClick={() => setEditSalesmans((current) => current.filter((item) => item.studentId !== salesman.studentId))}>×</button></span>)}</div>
+            <div className="pos-member-search"><input value={memberQuery} placeholder="이름 또는 학번 검색" onChange={(event) => setMemberQuery(event.target.value)} />{memberResults.length ? <div className="pos-member-results">{memberResults.map((member) => <button key={member.studentId} type="button" onClick={() => { setEditSalesmans((current) => [...current, { id: 0, name: member.name, studentId: member.studentId }]); setMemberQuery(""); }}><strong>{member.name}</strong><span>{member.studentId}</span></button>)}</div> : null}</div>
+          </section>
+
+          <section className="pos-create-section">
+            <div className="section-heading-row"><h3>판매 품목</h3><button type="button" onClick={() => setEditProducts((current) => [...current, { id: -Date.now(), name: "", price: 0, stock: 0 }])}>품목 추가</button></div>
+            <div className="pos-edit-product-list">{editProducts.map((product) => <div key={product.id}><label>품목명<input value={product.name} onChange={(event) => setEditProducts((current) => current.map((item) => item.id === product.id ? { ...item, name: event.target.value } : item))} /></label><label>가격<input min={0} type="number" value={product.price} onChange={(event) => setEditProducts((current) => current.map((item) => item.id === product.id ? { ...item, price: Number(event.target.value) } : item))} /></label><label>재고<input min={0} type="number" value={product.stock} onChange={(event) => setEditProducts((current) => current.map((item) => item.id === product.id ? { ...item, stock: Number(event.target.value) } : item))} /></label><button className="danger-button" disabled={editProducts.length === 1} type="button" onClick={() => setEditProducts((current) => current.filter((item) => item.id !== product.id))}>삭제</button></div>)}</div>
+          </section>
+          <div className="card-actions"><button className="secondary-button" disabled={isSaving} type="button" onClick={() => setIsEditing(false)}>취소</button><button disabled={isSaving} type="button" onClick={saveInstanceEdit}>{isSaving ? <BusyLabel text="저장 중..." /> : "수정 저장"}</button></div>
+        </section>
+      ) : null}
 
       <section className="pos-instance-summary">
         <div>
@@ -451,7 +579,7 @@ export function PosInstanceDetailPage({
                 type="button"
                 onClick={() => changeStatus("active")}
               >
-                판매 시작
+                {isSaving ? <BusyLabel /> : "판매 시작"}
               </button>
             ) : (
               <button
@@ -459,7 +587,7 @@ export function PosInstanceDetailPage({
                 type="button"
                 onClick={() => changeStatus("inactive")}
               >
-                판매 종료
+                {isSaving ? <BusyLabel /> : "판매 종료"}
               </button>
             )}
             <button
@@ -468,7 +596,7 @@ export function PosInstanceDetailPage({
               type="button"
               onClick={() => changeStatus("closed")}
             >
-              마감
+              {isSaving ? <BusyLabel /> : "마감"}
             </button>
           </div>
         ) : null}
@@ -542,4 +670,19 @@ function formatCurrency(value: number) {
 
 function formatDate(value?: string | null) {
   return value ? new Date(value).toLocaleString("ko-KR") : "-";
+}
+
+function toLocalInput(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }

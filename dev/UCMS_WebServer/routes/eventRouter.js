@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const EventController = require("../controllers/eventController");
 const { getHolidays } = require("../extern_apis/holidays");
+const { requireAuthority } = require("./apiRoutes/apiResponse");
 
 // 페이지 렌더링
 router.get("/calendar", EventController.renderCalendar);
@@ -20,7 +21,7 @@ router.get("/participants", EventController.getEventParticipants);
 router.post("/participate", EventController.addEventParticipant);
 router.post("/cancel", EventController.removeEventParticipant);
 
-// 공휴일 삽입
-router.get("/holidays", EventController.insertHolidays);
+// 2026-08-19: Holiday import mutates shared events, so require POST, same-origin validation, and administrator authority.
+router.post("/holidays", requireAuthority(4), EventController.insertHolidays);
 
 module.exports = router;

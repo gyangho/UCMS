@@ -30,7 +30,7 @@ services:
       - dev-db
 
   nginx:
-    # 2026-07-24: Build environment-aware upstream templates using the shared internal ports.
+    # 2026-08-19: Render Nginx upstream ports, public hosts, and certificate name from the shared infrastructure env file.
     build:
       context: ./nginx-1.28.0
       dockerfile: Dockerfile
@@ -38,25 +38,17 @@ services:
     container_name: ucms_nginx
     restart: always
     env_file:
-      - ./env/ports.env
+      - ./env/infra/ports.env
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./data/certbot/conf:/etc/letsencrypt
-      - ./data/certbot/www:/var/www/certbot
+      # 2026-08-19: The proxy only reads Cloudflare Origin certificate material.
+      - ./data/cloudflare:/etc/ssl/cloudflare:ro
       - ./logs:/var/log/nginx
     networks:
       - prod-app
       - dev-app
-
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
-    volumes:
-      - ../prod/data/certbot/conf:/etc/letsencrypt
-      - ../prod/data/certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
 # docker 내부 mysql 저장소 설정
 volumes:

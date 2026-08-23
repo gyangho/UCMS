@@ -1,0 +1,120 @@
+/* 2026-08-21: Keep legacy EJS screens visually aligned with the logo-based React theme. */
+:root {
+  --ucms-cream-canvas: #fffaf0;
+  --ucms-cream-surface: #fffdf7;
+  --ucms-cream-soft: #fff4d8;
+  --ucms-cream-strong: #f5dfaa;
+  --ucms-gold: #c38f36;
+  --ucms-brown: #5a3a1d;
+  --ucms-brown-hover: #432913;
+  --ucms-ink: #3d2a1a;
+  --ucms-border: #e7d3a3;
+}
+
+html,
+body,
+button,
+input,
+select,
+textarea {
+  font-family: "Nanum Gothic", "Noto Sans KR", "Malgun Gothic", Gulim,
+    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+body {
+  color: var(--ucms-ink) !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(245, 223, 170, 0.62), transparent 28rem),
+    linear-gradient(180deg, #fffdf8 0%, var(--ucms-cream-canvas) 100%) !important;
+}
+
+header {
+  color: var(--ucms-ink);
+  background: rgba(255, 253, 247, 0.96) !important;
+  border-bottom: 1px solid var(--ucms-border);
+  box-shadow: 0 4px 18px rgba(88, 58, 29, 0.08) !important;
+}
+
+.small-logo {
+  content: url("/images/ucms-logo.png");
+  width: 42px;
+  height: 42px !important;
+  object-fit: contain;
+}
+
+.card,
+.panel,
+.content-wrapper,
+.modal-content,
+.form-container,
+.confirm-container,
+.info-card,
+.summary-card,
+.response-card {
+  color: var(--ucms-ink);
+  background-color: var(--ucms-cream-surface) !important;
+  border-color: var(--ucms-border) !important;
+  box-shadow: 0 10px 28px rgba(93, 62, 25, 0.09) !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  color: var(--ucms-ink) !important;
+  background: #fffef9 !important;
+  border-color: #d8b86d !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--ucms-gold) !important;
+  box-shadow: 0 0 0 3px rgba(195, 143, 54, 0.16) !important;
+  outline: none;
+}
+
+table,
+th,
+td {
+  border-color: var(--ucms-border) !important;
+}
+
+th,
+.table-header,
+.section-header {
+  color: var(--ucms-brown) !important;
+  background: var(--ucms-cream-soft) !important;
+}
+
+.login-btn,
+.primary-btn,
+.btn-primary,
+button[type="submit"] {
+  color: #fffaf0 !important;
+  background: var(--ucms-brown) !important;
+  border-color: var(--ucms-brown) !important;
+}
+
+.login-btn:hover,
+.primary-btn:hover,
+.btn-primary:hover,
+button[type="submit"]:hover {
+  background: var(--ucms-brown-hover) !important;
+}
+
+.logout-btn,
+.secondary-btn,
+.btn-secondary {
+  color: var(--ucms-brown) !important;
+  background: var(--ucms-cream-strong) !important;
+  border-color: #d8b86d !important;
+}
+
+a {
+  color: var(--ucms-brown);
+}
+
+::selection {
+  color: #fffaf0;
+  background: var(--ucms-brown);
+}

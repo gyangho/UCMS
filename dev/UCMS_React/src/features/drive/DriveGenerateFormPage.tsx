@@ -36,6 +36,7 @@ export function DriveGenerateFormPage() {
   const [deletingTemplateId, setDeletingTemplateId] = useState<number | null>(
     null,
   );
+  const [editingTemplate, setEditingTemplate] = useState<FormTemplate | null>(null);
 
   // 2026-07-16: Google Form templates now come from /api/drive/templates instead of hard-coded demo URLs.
   useEffect(() => {
@@ -169,6 +170,24 @@ export function DriveGenerateFormPage() {
     }
   }
 
+  async function updateTemplate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingTemplate) return;
+    setActionError(null);
+    try {
+      const data = await requestData<{ template: FormTemplate }>(`/api/drive/templates/${editingTemplate.id}`, {
+        method: "PUT",
+        body: JSON.stringify(editingTemplate),
+      });
+      // 2026-08-23: UCMS edits template metadata; the linked Google Form button edits its actual questions.
+      setTemplates((current) => current.map((item) => item.id === data.template.id ? data.template : item));
+      setEditingTemplate(null);
+      setMessage("양식 정보를 수정했습니다.");
+    } catch (templateError) {
+      setActionError(templateError instanceof Error ? templateError.message : "양식을 수정하지 못했습니다.");
+    }
+  }
+
   if (isLoading) {
     return <LoadingState />;
   }
@@ -181,7 +200,8 @@ export function DriveGenerateFormPage() {
     <section className="stack-page">
       <div className="page-heading">
         <div>
-          <h1>구글 폼 생성</h1>
+          <h1>양식 관리</h1>
+          <p>Google Form 원본 양식과 UCMS에서 복사할 양식 정보를 관리합니다.</p>
         </div>
       </div>
 
@@ -192,11 +212,11 @@ export function DriveGenerateFormPage() {
           <EmptyState title="등록된 템플릿이 없습니다." />
         ) : (
           <div className="table-wrap">
-            <table className="data-table">
+            <table className="data-table template-management-table">
               <thead>
                 <tr>
                   <th>제목</th>
-                  <th aria-label="삭제" className="template-delete-heading" />
+                  <th>관리</th>
                 </tr>
               </thead>
               <tbody>
@@ -204,16 +224,11 @@ export function DriveGenerateFormPage() {
                   <tr
                     className="clickable-row"
                     key={template.id}
-                    onClick={() => window.location.assign(template.formUrl)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        window.location.assign(template.formUrl);
-                      }
-                    }}
-                    tabIndex={0}
                   >
                     <td>{template.title}</td>
                     <td className="template-delete-cell">
+                      <a className="secondary-button" href={template.formUrl} rel="noreferrer" target="_blank">Google Form에서 질문 수정</a>
+                      <button className="secondary-button" type="button" onClick={() => setEditingTemplate({ ...template })}>정보 수정</button>
                       <button
                         aria-label={`${template.title} 템플릿 삭제`}
                         className="template-delete-button"
@@ -257,9 +272,16 @@ export function DriveGenerateFormPage() {
         </div>
       ) : null}
 
+      {editingTemplate ? <form className="form-panel" onSubmit={updateTemplate}>
+        <h2>양식 정보 수정</h2>
+        <label>양식 이름<input required value={editingTemplate.title} onChange={(event) => setEditingTemplate({ ...editingTemplate, title: event.target.value })} /></label>
+        <label>Google Form URL<input required type="url" value={editingTemplate.formUrl} onChange={(event) => setEditingTemplate({ ...editingTemplate, formUrl: event.target.value })} /></label>
+        <div className="toolbar"><button type="submit">저장</button><button className="secondary-button" type="button" onClick={() => setEditingTemplate(null)}>취소</button></div>
+      </form> : null}
+
       <div className="two-column">
         <form className="form-panel" onSubmit={createForm}>
-          <h2>폼 생성</h2>
+          <h2>양식으로 폼 생성</h2>
           <label>
             템플릿
             <select

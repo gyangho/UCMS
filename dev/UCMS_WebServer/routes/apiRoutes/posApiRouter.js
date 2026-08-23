@@ -2,6 +2,9 @@ const express = require("express");
 const router = express.Router();
 const Pos = require("../../models/Pos");
 const db = require("../../models/db");
+const { requireAuthority } = require("./apiResponse");
+// 2026-08-21: POS management starts at the normalized executive rank.
+const requirePosManager = requireAuthority(3);
 
 // List instances
 router.get("/instances", async (req, res) => {
@@ -15,7 +18,7 @@ router.get("/instances", async (req, res) => {
 });
 
 // Create instance
-router.post("/instances", async (req, res) => {
+router.post("/instances", requirePosManager, async (req, res) => {
   try {
     const { instance_name, products, salesmans } = req.body;
     if (!instance_name)
@@ -48,7 +51,7 @@ router.get("/instances/:id", async (req, res) => {
 });
 
 // Update instance
-router.put("/instances/:id", async (req, res) => {
+router.put("/instances/:id", requirePosManager, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const { instance_name, products, salesmans } = req.body;
@@ -66,7 +69,7 @@ router.put("/instances/:id", async (req, res) => {
 });
 
 // Delete instance
-router.delete("/instances/:id", async (req, res) => {
+router.delete("/instances/:id", requirePosManager, async (req, res) => {
   try {
     const id = req.params.id;
     await db.query("DELETE FROM pos_instances WHERE id = ?", [id]);
@@ -78,7 +81,7 @@ router.delete("/instances/:id", async (req, res) => {
 });
 
 // Open instance (set active) and return active info
-router.post("/instances/:id/open", async (req, res) => {
+router.post("/instances/:id/open", requirePosManager, async (req, res) => {
   try {
     await Pos.setActiveInstance(req.params.id);
     const instance = await Pos.findActiveInstance();
@@ -127,7 +130,7 @@ router.post("/purchase", async (req, res) => {
 });
 
 // Search members by student_id (for salesman picker)
-router.get("/members", async (req, res) => {
+router.get("/members", requirePosManager, async (req, res) => {
   try {
     const studentId = (req.query.student_id || "").trim();
     if (!studentId) return res.json({ members: [] });
@@ -142,7 +145,7 @@ router.get("/members", async (req, res) => {
   }
 });
 
-router.post("/close", async (req, res) => {
+router.post("/close", requirePosManager, async (req, res) => {
   const instanceId = req.body.instanceId;
   const id = parseInt(instanceId);
 

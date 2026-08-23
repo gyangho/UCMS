@@ -1,19 +1,43 @@
 services:
+  # 2026-08-23: Gmail SMTP is isolated in the Spring backend and is not published by Nginx.
+  ucms_spring:
+    init: true
+    build:
+      context: ../dev/UCMS_Spring/ucms
+      dockerfile: Dockerfile
+      target: prod
+    image: gyangho/ucms_spring:latest
+    container_name: ucms_spring
+    restart: always
+    env_file:
+      - ./env/prod/web.env
+      - ./env/prod/common.env
+      - path: ./env/prod/spring.env
+        required: false
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+    networks:
+      prod-app:
+        # 2026-08-23: Keep the internal HTTP host valid for Tomcat in production too.
+        aliases:
+          - ucms-spring
+      prod-db: {}
+
   ucms_web:
     init: true
     image: gyangho/ucms_web:latest
     container_name: ucms_web
     restart: always
     env_file:
-      # 2026-07-24: Keep the internal application port in one infrastructure-owned file.
-      - ./env/ports.env
+      # 2026-08-19: Read shared infrastructure values from their relocated env file.
+      - ./env/infra/ports.env
       - ./env/prod/web.env
       - ./env/prod/common.env
     volumes:
       # 2026-07-23: Mount Google credentials at the intended container path with valid Compose syntax.
       - ./env/keys/google:/app/keys/google
       - ../prod/UCMS_WebServer/InterviewScheduler:/app/InterviewScheduler
-      - ../prod/UCMS_WebServer/interview_place.csv:/app/interview_place.csv
+      # 2026-08-19: The removed legacy EJS result page no longer needs its missing CSV bind mount.
     # 2026-07-23: MySQL is managed by the separate infra Compose project on prod-db.
     networks:
       - prod-app
@@ -25,8 +49,8 @@ services:
     container_name: ucms_sharedb
     restart: always
     env_file:
-      # 2026-07-24: Keep the internal WebSocket port synchronized with the reverse proxy.
-      - ./env/ports.env
+      # 2026-08-19: Read shared infrastructure values from their relocated env file.
+      - ./env/infra/ports.env
       - ./env/prod/sharedb.env
       - ./env/prod/common.env
     # 2026-07-23: MySQL is managed by the separate infra Compose project on prod-db.
@@ -45,8 +69,8 @@ services:
     container_name: ucms_react
     restart: always
     env_file:
-      # 2026-07-24: The static Nginx listener is rendered from REACT_PORT at startup.
-      - ./env/ports.env
+      # 2026-08-19: Read shared infrastructure values from their relocated env file.
+      - ./env/infra/ports.env
       - ./env/prod/react.env
     networks:
       - prod-app

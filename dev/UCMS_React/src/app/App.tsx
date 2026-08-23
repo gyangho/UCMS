@@ -6,6 +6,7 @@ import {
 } from "../features/board/BoardPages";
 import { AdminPage } from "../features/admin/AdminPage";
 import { LoginPage } from "../features/auth/LoginPage";
+import { ForgotPasswordPage } from "../features/auth/ForgotPasswordPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { DriveGenerateFormPage } from "../features/drive/DriveGenerateFormPage";
 import { EventCalendarPage, EventDetailPage, EventFormPage, MyEventsPage } from "../features/event/EventPages";
@@ -30,7 +31,7 @@ import {
   InterviewPlanDetailPage,
   InterviewPlansPage
 } from "../features/recruit/InterviewPlansPage";
-import { RecruitFormsPage } from "../features/recruit/RecruitFormsPage";
+import { RecruitFormsPage, RecruitInstanceDetailPage } from "../features/recruit/RecruitFormsPage";
 import { AppShell } from "../shared/layout/AppShell";
 import { PublicShell } from "../shared/layout/PublicShell";
 import { useCurrentRoute } from "./router";
@@ -41,9 +42,11 @@ export function App() {
   if (route.kind === "public") {
     return (
       <PublicShell>
-        {/* 2026-07-16: Anonymous users enter the legacy Kakao OAuth flow from a React login page. */}
-        {route.id === "login" ? (
-          <LoginPage />
+        {/* 2026-08-22: Anonymous users enter the UCMS email/password and email-2FA flow. */}
+        {route.id === "forgot-password" ? (
+          <ForgotPasswordPage />
+        ) : route.id === "login" || route.id === "register" ? (
+          <LoginPage initialMode={route.id === "register" ? "register" : "login"} />
         ) : route.id === "public-recruit-result" ? (
           <PublicRecruitResultPage />
         ) : route.id === "public-recruit-response" ? (
@@ -74,7 +77,7 @@ function renderPrivateRoute(
     case "dashboard":
       return <DashboardPage />;
     case "admin":
-      return <AdminPage />;
+      return <AdminPage path={route.path} />;
     case "mypage":
       return <MypagePage />;
     case "board-notices":
@@ -93,6 +96,8 @@ function renderPrivateRoute(
       return <MemberPage />;
     case "recruit-forms":
       return <RecruitFormsPage />;
+    case "recruit-detail":
+      return <RecruitInstanceDetailPage path={route.path} />;
     case "recruit-shared-doc":
       return <RecruitSharedDocPage path={route.path} />;
     case "interview-plans":
@@ -101,7 +106,9 @@ function renderPrivateRoute(
     case "interview-active-schedules":
       return <ActiveInterviewSchedulesPage />;
     case "interview-plan-create":
-      return <InterviewPlanCreatePage />;
+      return <InterviewPlanCreatePage path={route.path} />;
+    case "interview-plan-edit":
+      return <InterviewPlanCreatePage path={route.path} />;
     case "interview-plan-detail":
       return <InterviewPlanDetailPage path={route.path} />;
     case "event-calendar":

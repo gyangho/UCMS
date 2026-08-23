@@ -11,23 +11,26 @@ interface RecruitResult {
     planTitle?: string | null;
     interviewDate?: string | null;
     timeSlot?: string | null;
+    location?: string | null;
   } | null;
 }
 
 export function PublicRecruitResultPage() {
   const [studentId, setStudentId] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [results, setResults] = useState<RecruitResult[]>([]);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 2026-07-16: Public result lookup now posts to the contract API instead of returning demo pass data.
+  // 2026-08-20: Anonymous result lookup proves ownership with the three applicant fields recorded by the form.
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     try {
       const data = await requestData<{ results: RecruitResult[] }>("/api/public/recruit-results/search", {
         method: "POST",
-        body: JSON.stringify({ studentId })
+        body: JSON.stringify({ studentId, name, phone })
       });
       setResults(data.results);
       setSearched(true);
@@ -56,6 +59,14 @@ export function PublicRecruitResultPage() {
             inputMode="numeric"
             placeholder="학번을 입력하세요"
           />
+        </label>
+        <label>
+          이름
+          <input value={name} onChange={(event) => setName(event.target.value)} required autoComplete="name" />
+        </label>
+        <label>
+          지원서 전화번호
+          <input value={phone} onChange={(event) => setPhone(event.target.value)} required inputMode="tel" autoComplete="tel" placeholder="01012345678" />
         </label>
         <button type="submit">조회</button>
       </form>
@@ -93,5 +104,5 @@ function formatSchedule(result: RecruitResult) {
   }
 
   const schedule = result.interviewSchedule;
-  return `${schedule.planTitle ?? "-"} / ${schedule.interviewDate ?? "-"} ${schedule.timeSlot ?? ""}`;
+  return `${schedule.planTitle ?? "-"} / ${schedule.interviewDate ?? "-"} ${schedule.timeSlot ?? ""} / ${schedule.location ?? "장소 미정"}`;
 }

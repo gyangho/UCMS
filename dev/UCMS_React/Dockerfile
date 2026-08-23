@@ -7,6 +7,10 @@ COPY package*.json ./
 # 2026-07-24: Use one React port for Vite development and the production static server.
 ENV REACT_PORT=3002
 
+# 2026-08-19: Development images expose Vite on the same configured port and report readiness to Compose.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=5 \
+    CMD node -e "fetch('http://127.0.0.1:' + (process.env.REACT_PORT || 3002) + '/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+
 FROM base AS dev
 RUN npm install
 

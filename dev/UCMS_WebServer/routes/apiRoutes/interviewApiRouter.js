@@ -1,6 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const RecruitController = require("../../controllers/recruitController");
+const { requireAuthority } = require("./apiResponse");
+
+// 2026-08-19: Interview plans, scheduler execution, and schedule reads expose recruiting data.
+// 2026-08-21: Interview management starts at the normalized executive rank.
+router.use(requireAuthority(3));
 
 router.get("/plans", RecruitController.getInterviewPlans);
 router.delete("/plans/:id", RecruitController.deleteInterviewPlan);

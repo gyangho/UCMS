@@ -10,11 +10,14 @@ const path = require("path");
 const { ensureOAuthTokens } = require("./extern_apis/googleapis");
 
 const db = require("./models/db"); // MVC 구조에 맞게 모델 디렉토리 사용
+const Pos = require("./models/Pos");
+const {
+  isImpersonationMutationBlocked,
+} = require("./services/UserImpersonationService");
 const defaultRouter = require("./routes/defaultRouter");
 const apiRouter = require("./routes/apiRoutes/apiRouter");
 const authRouter = require("./routes/authRouter");
 const memberRouter = require("./routes/memberRouter");
-const botRouter = require("./routes/botRouter");
 const recruitRouter = require("./routes/recruitRouter");
 const eventRouter = require("./routes/eventRouter");
 const driveRouter = require("./routes/driveRouter");
@@ -70,7 +73,8 @@ app.use(ignoreChromeDevTools);
 
 /* 1. body-parser (json, form 데이터 파싱) */
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+// 2026-08-20: Recruitment images and the A4 POS PDF are uploaded as bounded base64 JSON payloads.
+app.use(bodyParser.json({ limit: "15mb" }));
 
 /* 2. 세션 설정 */
 app.use(
@@ -81,19 +85,31 @@ app.use(
     resave: false,
     saveUninitialized: false,
     store: sessionStore,
+    // 2026-08-19: Apply security attributes at the actual cookie level and honor HTTPS forwarded by the trusted proxy.
     cookie: {
       maxAge: 1000 * 60 * 60 * 2,
-      cookie: {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-      },
+      httpOnly: true,
+      secure: "auto",
+      sameSite: "lax",
     },
   }),
 );
 
+// 2026-08-19: Reject cross-origin browser mutations while keeping same-origin EJS forms and React fetch calls compatible.
+app.use(requireSameOriginMutation);
+
 // 3. 로그 찍기 - 모든 요청 로깅 (세션 설정 후)
 app.use(logger);
+
+// 2026-08-19: Container and reverse-proxy health checks include a lightweight database round trip.
+app.get("/health", async (req, res) => {
+  try {
+    await db.execute("SELECT 1");
+    return res.status(200).json({ status: "ok" });
+  } catch (error) {
+    return res.status(503).json({ status: "unavailable" });
+  }
+});
 
 /* 4. 세션 유효성 검사 미들웨어 (로그인된 사용자만 접근 가능하도록) */
 app.use(requireValidSession);
@@ -111,7 +127,7 @@ app.use("/public", publicRouter);
 app.use("/api", apiRouter);
 app.use("/auth", authRouter);
 app.use("/member", memberRouter);
-app.use("/bot", botRouter);
+// 2026-08-19: The unauthenticated legacy bot integration is retired; a future Kakao Business chatbot API will replace it.
 app.use("/recruit", recruitRouter);
 app.use("/event", eventRouter);
 app.use("/drive", driveRouter);
@@ -119,22 +135,46 @@ app.use("/finance", financeRouter);
 app.use("/pos", posRouter);
 
 app.use((err, req, res, next) => {
-  if (err.status === 401 || err.code) {
-    console.error("[" + new Date() + "]" + "\t" + "Error: " + err.stack);
-    return res.send(`
-      <script>
-        alert("잘못된 접근입니다.");
-        window.location.href = "/"; 
-      </script>
-    `);
+  // 2026-08-19: Preserve HTTP failures and return JSON for APIs instead of masking errors as successful HTML responses.
+  const requestedStatus = Number(err.status ?? err.statusCode);
+  const status =
+    Number.isInteger(requestedStatus) &&
+    requestedStatus >= 400 &&
+    requestedStatus <= 599
+      ? requestedStatus
+      : 500;
+  console.error("[" + new Date() + "]" + "\t" + "Error: " + err.stack);
+
+  if (req.path.startsWith("/api")) {
+    const code =
+      typeof err.code === "string" && /^[A-Z0-9_]+$/.test(err.code)
+        ? err.code
+        : status === 401
+          ? "UNAUTHORIZED"
+          : status === 403
+            ? "FORBIDDEN"
+            : "INTERNAL_SERVER_ERROR";
+    const message =
+      status >= 500
+        ? "Internal server error."
+        : err.message || "Request failed.";
+    return res.status(status).json({
+      success: false,
+      error: { code, message },
+    });
   }
 
-  console.error("[" + new Date() + "]" + "\t" + "Error: " + err.code);
-  console.error(err.stack);
-  return res.send(`
+  const message =
+    status === 401 || status === 403
+      ? "잘못된 접근입니다."
+      : status >= 500
+        ? "서버 오류가 발생했습니다."
+        : err.message || "요청을 처리하지 못했습니다.";
+  const safeMessage = JSON.stringify(message).replace(/</g, "\\u003c");
+  return res.status(status).type("html").send(`
     <script>
-      alert("${err.message}");
-      window.location.href = "/"; 
+      alert(${safeMessage});
+      window.location.href = "/";
     </script>
   `);
 });
@@ -146,6 +186,14 @@ app.listen(PORT, () => {
   })();
 });
 
+// 2026-08-20: Enforce POS automatic closing even when no client is currently polling the active sale.
+const POS_CLOSE_INTERVAL_MS = 30 * 1000;
+setInterval(() => {
+  Pos.closeExpiredInstances().catch((error) =>
+    console.error("POS automatic close failed:", error),
+  );
+}, POS_CLOSE_INTERVAL_MS).unref();
+
 async function requireValidSession(req, res, next) {
   try {
     const isApiRequest = req.path.startsWith("/api");
@@ -156,16 +204,56 @@ async function requireValidSession(req, res, next) {
     const isInquiryApiRequest = req.path.startsWith("/api/boards/inquiries");
     const isGeneralAccountApiRequest =
       req.path === "/api/user/me" || req.path === "/api/auth/logout";
+    // 2026-08-22: Registration, password validation, and email-code verification must be reachable before a session exists.
+    const isPublicEmailAuthRequest =
+      req.method === "POST" &&
+      ["/api/auth/register/start", "/api/auth/login/start", "/api/auth/email/verify", "/api/auth/password/temporary"].includes(req.path);
+    const isImpersonationExitApiRequest =
+      req.method === "POST" && req.path === "/api/admin/impersonation/exit";
+    // 2026-08-22: Application answers require a verified UCMS account identity instead of anonymous lookup.
+    const isOwnRecruitResponseRequest =
+      req.path === "/api/public/recruit-responses/search" ||
+      req.path === "/public/recruit/response" ||
+      req.path === "/public/recruit/response/search";
+    // 2026-08-21: Dashboard promotion assets are public only when their route-level lifecycle query allows them.
+    const isPublicPromotionAssetRequest =
+      req.method === "GET" &&
+      (/^\/api\/recruit\/instances\/\d+\/posters\/\d+$/.test(req.path) ||
+        /^\/api\/pos\/instances\/\d+\/poster$/.test(req.path));
     const isPublicApiRequest =
-      req.path.startsWith("/api/public") ||
+      (req.path.startsWith("/api/public") && !isOwnRecruitResponseRequest) ||
       // 2026-07-16: React dashboard must render for anonymous visitors; other contract APIs still require session.
       req.path === "/api/dashboard" ||
-      isPublicNoticeRequest ||
-      req.path.startsWith("/api/auth/member-confirm");
+      isPublicEmailAuthRequest ||
+      isPublicPromotionAssetRequest ||
+      isPublicNoticeRequest;
 
     const sessionInfo = await sessionStore.get(req.sessionID);
+    // 2026-08-22: Human targets are read-only; identity and external-account mutations stay blocked for every impersonation.
+    if (
+      sessionInfo &&
+      isImpersonationMutationBlocked(
+        req.method,
+        req.path,
+        sessionInfo.impersonation,
+      )
+    ) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: "IMPERSONATION_READ_ONLY",
+          message: "This action is not allowed while impersonating another account.",
+        },
+      });
+    }
     const minimumSessionAuthority =
-      isInquiryApiRequest || isGeneralAccountApiRequest ? 1 : 3;
+      isImpersonationExitApiRequest && sessionInfo?.impersonation
+        ? 0
+        : isInquiryApiRequest ||
+      isGeneralAccountApiRequest ||
+      isOwnRecruitResponseRequest
+        ? 1
+        : 3;
     if (
       !sessionInfo ||
       Number(sessionInfo.authority) < minimumSessionAuthority
@@ -188,14 +276,17 @@ async function requireValidSession(req, res, next) {
         });
       }
 
+      if (isOwnRecruitResponseRequest) {
+        return res.redirect("/auth/authorize");
+      }
+
       if (
         req.path === "/" ||
         req.path.startsWith("/images") ||
         req.path.startsWith("/styles") ||
         req.path.startsWith("/js") ||
         req.path.startsWith("/auth") ||
-        req.path.startsWith("/bot") ||
-        req.path.startsWith("/public")
+        (req.path.startsWith("/public") && !isOwnRecruitResponseRequest)
       ) {
         return next();
       }
@@ -255,6 +346,26 @@ function ignoreChromeDevTools(req, res, next) {
     return res.end();
   }
   return next();
+}
+
+function requireSameOriginMutation(req, res, next) {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
+
+  const origin = req.get("origin");
+  const expectedOrigin = `${req.protocol}://${req.get("host")}`;
+  const fetchSite = req.get("sec-fetch-site");
+  const isAllowed = origin
+    ? origin === expectedOrigin
+    : !fetchSite || fetchSite === "same-origin";
+  if (isAllowed) return next();
+
+  if (req.path.startsWith("/api")) {
+    return res.status(403).json({
+      success: false,
+      error: { code: "CSRF_REJECTED", message: "Cross-origin request rejected." },
+    });
+  }
+  return res.status(403).send("Cross-origin request rejected.");
 }
 
 function logger(req, res, next) {

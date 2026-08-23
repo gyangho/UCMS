@@ -16,6 +16,14 @@ function authorityRank(authority) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
+// 2026-08-21: MySQL ENUM numeric sessions are one-based from 일반 onward; convert them before semantic rank checks.
+function sessionAuthorityRank(authority) {
+  if (typeof authority === "number") {
+    return authority <= 1 ? Math.max(0, authority) : authority - 1;
+  }
+  return authorityRank(authority);
+}
+
 function authorityLabel(authority) {
   if (typeof authority === "string" && AUTHORITY_RANKS[authority] !== undefined) {
     return authority;
@@ -53,7 +61,7 @@ function asyncHandler(handler) {
 
 function requireAuthority(minAuthority = 4) {
   return (req, res, next) => {
-    if (authorityRank(req.session?.authority) < minAuthority) {
+    if (sessionAuthorityRank(req.session?.authority) < minAuthority) {
       return fail(res, 403, "FORBIDDEN", "Authority is required.");
     }
     return next();
@@ -80,6 +88,7 @@ module.exports = {
   fail,
   ok,
   requireAuthority,
+  sessionAuthorityRank,
   toDate,
   toIso,
 };

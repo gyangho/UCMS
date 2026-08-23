@@ -1,5 +1,9 @@
 const WebSocket = require("ws");
 const mysql = require("mysql2/promise");
+const {
+  requireAuthSecret,
+  verifyShareDbTicket,
+} = require("./authTicket");
 require("dotenv-expand").expand(
   require("dotenv").config({
     path:
@@ -15,6 +19,20 @@ if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
   );
 }
 
+// 2026-08-19: Fail closed unless realtime authentication and browser origins are explicitly configured.
+const SHAREDB_AUTH_SECRET = requireAuthSecret();
+const ALLOWED_ORIGINS = new Set(
+  String(process.env.SHAREDB_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
+if (ALLOWED_ORIGINS.size === 0) {
+  throw new Error("SHAREDB_ALLOWED_ORIGINS must list at least one origin.");
+}
+const AUTHENTICATION_TIMEOUT_MS = 5000;
+const MAX_MESSAGE_BYTES = 1024 * 1024;
+
 // MySQL 연결 설정
 const db = mysql.createPool({
   host: process.env.DB_HOST,
@@ -27,7 +45,15 @@ const db = mysql.createPool({
 });
 
 // WebSocket 서버 생성
-const wss = new WebSocket.Server({ port: PORT });
+const wss = new WebSocket.Server({
+  port: PORT,
+  maxPayload: MAX_MESSAGE_BYTES,
+  verifyClient(info, done) {
+    const allowed = Boolean(info.origin && ALLOWED_ORIGINS.has(info.origin));
+    if (allowed) return done(true);
+    return done(false, 403, "Origin denied");
+  },
+});
 
 // 클라이언트 세션 관리
 const clientSessions = new Map();
@@ -175,6 +201,18 @@ async function handleUpdateLine(clientId, message) {
   const { docId, formId, lineNumber, content, version } = message;
 
   try {
+    if (
+      !Number.isInteger(lineNumber) ||
+      lineNumber < 0 ||
+      typeof content !== "string" ||
+      !Number.isInteger(version) ||
+      version < 2
+    ) {
+      return closeWithPolicyError(
+        clientSessions.get(clientId)?.ws,
+        "Line update payload is invalid.",
+      );
+    }
     console.log(`📝 줄 업데이트: ${docId} 줄 ${lineNumber} by ${clientId}`);
 
     // 락 확인
@@ -199,46 +237,58 @@ async function handleUpdateLine(clientId, message) {
       }
     }
 
-    // 현재 문서 내용 가져오기
-    const [rows] = await db.execute(
-      "SELECT content, version FROM evaluation_notes WHERE response_id = ? AND form_id = ?",
-      [docId, formId],
-    );
+    // 2026-08-19: Serialize line edits with a row lock so content and version cannot be overwritten by a racing writer.
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [rows] = await connection.execute(
+        "SELECT content, version FROM evaluation_notes WHERE response_id = ? AND form_id = ? FOR UPDATE",
+        [docId, formId],
+      );
+      if (rows.length === 0) {
+        await connection.rollback();
+        return sendLatestConflict(clientId, docId, formId);
+      }
 
-    if (rows.length === 0) {
-      console.log(`❌ 문서를 찾을 수 없음: ${docId}`);
-      return;
+      const currentContent = rows[0].content || "";
+      const currentVersion = Number(rows[0].version || 1);
+      if (version !== currentVersion + 1) {
+        await connection.rollback();
+        return sendLatestConflict(clientId, docId, formId);
+      }
+
+      const lines = currentContent.split("\n");
+      if (lineNumber >= 0 && lineNumber < lines.length) {
+        lines[lineNumber] = content;
+      } else if (lineNumber === lines.length) {
+        lines.push(content);
+      } else {
+        await connection.rollback();
+        return closeWithPolicyError(
+          clientSessions.get(clientId)?.ws,
+          "Line number is outside the document.",
+        );
+      }
+
+      const newContent = lines.join("\n");
+      if (Buffer.byteLength(newContent, "utf8") > MAX_MESSAGE_BYTES) {
+        await connection.rollback();
+        return closeWithPolicyError(
+          clientSessions.get(clientId)?.ws,
+          "Document is too large.",
+        );
+      }
+      await connection.execute(
+        "UPDATE evaluation_notes SET content = ?, version = ?, updated_at = NOW() WHERE response_id = ? AND form_id = ?",
+        [newContent, version, docId, formId],
+      );
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
     }
-
-    const currentContent = rows[0].content || "";
-    const currentVersion = rows[0].version || 1;
-
-    // 버전 충돌 체크
-    if (version <= currentVersion) {
-      console.log(`⚠️ 버전 충돌: 요청 ${version} <= 현재 ${currentVersion}`);
-      return;
-    }
-
-    // 줄별로 내용 업데이트
-    const lines = currentContent.split("\n");
-
-    if (lineNumber >= 0 && lineNumber < lines.length) {
-      lines[lineNumber] = content;
-    } else if (lineNumber === lines.length) {
-      // 새 줄 추가
-      lines.push(content);
-    } else {
-      console.log(`   - 잘못된 줄 번호: ${lineNumber}`);
-      return;
-    }
-
-    const newContent = lines.join("\n");
-
-    // DB 업데이트
-    await db.execute(
-      "UPDATE evaluation_notes SET content = ?, version = ?, updated_at = NOW() WHERE response_id = ? AND form_id = ?",
-      [newContent, version, docId, formId],
-    );
 
     console.log(`✅ 줄 업데이트 완료: ${docId} 줄 ${lineNumber}`);
 
@@ -257,6 +307,8 @@ async function handleUpdateLine(clientId, message) {
     clientSessions.forEach((session, sessionClientId) => {
       if (
         sessionClientId !== clientId &&
+        session.authenticated &&
+        session.subscribed &&
         session.docId === docId &&
         session.formId === formId &&
         session.ws.readyState === WebSocket.OPEN
@@ -287,6 +339,8 @@ function broadcastLockStatus(docId, formId, lineNumber, clientId, status) {
   let broadcastCount = 0;
   clientSessions.forEach((session, sessionClientId) => {
     if (
+      session.authenticated &&
+      session.subscribed &&
       session.docId === docId &&
       session.formId === formId &&
       session.ws.readyState === WebSocket.OPEN
@@ -335,19 +389,79 @@ wss.on("connection", function (ws, req) {
 
   console.log(`✅ 클라이언트 연결됨: ${clientIP} ID: ${clientId}`);
 
-  // 클라이언트 세션 저장
+  // 2026-08-19: A connection is inert until a signed, document-scoped ticket is verified.
+  const authenticationTimer = setTimeout(() => {
+    ws.close(4401, "Authentication timeout");
+  }, AUTHENTICATION_TIMEOUT_MS);
   clientSessions.set(clientId, {
     ws: ws,
     clientId: clientId,
+    authenticated: false,
+    userId: null,
+    authority: 0,
     docId: null,
     formId: null,
+    subscribed: false,
+    expiresAt: 0,
+    authenticationTimer,
+    expirationTimer: null,
     connectedAt: Date.now(),
   });
 
   // 메시지 처리
   ws.on("message", async function (data) {
     try {
-      const message = JSON.parse(data);
+      const message = JSON.parse(data.toString("utf8"));
+      const session = clientSessions.get(clientId);
+      if (!session || typeof message?.type !== "string") {
+        return closeWithPolicyError(ws, "Invalid message.");
+      }
+
+      if (!session.authenticated) {
+        if (message.type !== "authenticate") {
+          return closeWithPolicyError(ws, "Authentication is required.");
+        }
+
+        let credential;
+        try {
+          credential = verifyShareDbTicket(
+            message.ticket,
+            SHAREDB_AUTH_SECRET,
+          );
+        } catch (error) {
+          console.warn(`ShareDB authentication rejected for ${clientId}.`);
+          return closeWithPolicyError(ws, error.message);
+        }
+
+        clearTimeout(session.authenticationTimer);
+        session.authenticationTimer = null;
+        session.authenticated = true;
+        session.userId = credential.userId;
+        session.authority = credential.authority;
+        session.docId = credential.documentId;
+        session.formId = credential.formId;
+        session.expiresAt = credential.expiresAt;
+        session.expirationTimer = setTimeout(
+          () => ws.close(4401, "Authentication expired"),
+          Math.max(1, credential.expiresAt * 1000 - Date.now()),
+        );
+        ws.send(
+          JSON.stringify({
+            type: "authenticated",
+            docId: session.docId,
+            formId: session.formId,
+            expiresAt: session.expiresAt * 1000,
+          }),
+        );
+        return;
+      }
+
+      if (message.type === "authenticate") {
+        return closeWithPolicyError(ws, "Connection is already authenticated.");
+      }
+      if (!isMessageInAuthenticatedScope(session, message)) {
+        return closeWithPolicyError(ws, "Document scope does not match.");
+      }
       console.log(`📨 메시지 수신: ${message.type} from ${clientId}`);
 
       switch (message.type) {
@@ -373,16 +487,18 @@ wss.on("connection", function (ws, req) {
           await handleUpdateLine(clientId, message);
           break;
         default:
-          console.log(`⚠️ 알 수 없는 메시지 타입: ${message.type}`);
+          closeWithPolicyError(ws, "Unsupported message type.");
       }
     } catch (error) {
       console.error("❌ 메시지 처리 오류:", error);
+      closeWithPolicyError(ws, "Message could not be processed.");
     }
   });
 
   // 연결 해제 처리
   ws.on("close", function () {
     console.log(`❌ 클라이언트 연결 해제: ${clientId}`);
+    clearClientTimers(clientId);
     releaseClientLocks(clientId);
     clientSessions.delete(clientId);
   });
@@ -390,10 +506,33 @@ wss.on("connection", function (ws, req) {
   // 오류 처리
   ws.on("error", function (error) {
     console.error(`❌ WebSocket 오류 (${clientId}):`, error);
+    clearClientTimers(clientId);
     releaseClientLocks(clientId);
     clientSessions.delete(clientId);
   });
 });
+
+function closeWithPolicyError(ws, reason) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.close(4403, String(reason).slice(0, 120));
+  }
+}
+
+function isMessageInAuthenticatedScope(session, message) {
+  return (
+    typeof message.docId === "string" &&
+    typeof message.formId === "string" &&
+    message.docId === session.docId &&
+    message.formId === session.formId
+  );
+}
+
+function clearClientTimers(clientId) {
+  const session = clientSessions.get(clientId);
+  if (!session) return;
+  if (session.authenticationTimer) clearTimeout(session.authenticationTimer);
+  if (session.expirationTimer) clearTimeout(session.expirationTimer);
+}
 
 // 클라이언트 ID 생성
 function generateClientId() {
@@ -452,55 +591,29 @@ async function handleUpdateDocument(clientId, message) {
   const { docId, formId, content, version } = message;
 
   try {
+    if (
+      typeof content !== "string" ||
+      Buffer.byteLength(content, "utf8") > MAX_MESSAGE_BYTES ||
+      !Number.isInteger(version) ||
+      version < 2
+    ) {
+      return closeWithPolicyError(
+        clientSessions.get(clientId)?.ws,
+        "Document update payload is invalid.",
+      );
+    }
     console.log(`📝 문서 업데이트: ${docId} (버전: ${version})`);
 
-    // 현재 문서 버전 확인
-    const [currentRows] = await db.execute(
-      "SELECT version FROM evaluation_notes WHERE response_id = ? AND form_id = ?",
-      [docId, formId],
+    // 2026-08-19: Compare-and-swap makes the version check and write one atomic database operation.
+    const [result] = await db.execute(
+      `UPDATE evaluation_notes
+          SET content = ?, version = ?, updated_at = NOW()
+        WHERE response_id = ? AND form_id = ? AND version = ?`,
+      [content, version, docId, formId, version - 1],
     );
-
-    let currentVersion = 1;
-    if (currentRows.length > 0) {
-      currentVersion = currentRows[0].version;
+    if (result.affectedRows !== 1) {
+      return sendLatestConflict(clientId, docId, formId);
     }
-
-    // 버전 충돌 체크
-    if (version <= currentVersion) {
-      console.log(
-        `⚠️ 버전 충돌 감지: 요청 버전 ${version} <= 현재 버전 ${currentVersion}`,
-      );
-
-      // 최신 문서 내용을 클라이언트에게 전송
-      const [latestRows] = await db.execute(
-        "SELECT content, version FROM evaluation_notes WHERE response_id = ? AND form_id = ?",
-        [docId, formId],
-      );
-
-      if (latestRows.length > 0) {
-        const conflictResponse = {
-          type: "conflict",
-          docId: docId,
-          formId: formId,
-          content: latestRows[0].content,
-          version: latestRows[0].version,
-          message: "다른 사용자가 먼저 수정했습니다. 최신 내용을 적용합니다.",
-          timestamp: Date.now(),
-        };
-
-        const session = clientSessions.get(clientId);
-        if (session && session.ws.readyState === WebSocket.OPEN) {
-          session.ws.send(JSON.stringify(conflictResponse));
-        }
-      }
-      return;
-    }
-
-    // DB 업데이트
-    await db.execute(
-      "UPDATE evaluation_notes SET content = ?, version = ?, updated_at = NOW() WHERE response_id = ? AND form_id = ?",
-      [content, version, docId, formId],
-    );
 
     console.log(`✅ DB 업데이트 완료: ${docId} (버전: ${version})`);
 
@@ -519,6 +632,8 @@ async function handleUpdateDocument(clientId, message) {
     clientSessions.forEach((session, sessionClientId) => {
       if (
         sessionClientId !== clientId &&
+        session.authenticated &&
+        session.subscribed &&
         session.docId === docId &&
         session.formId === formId &&
         session.ws.readyState === WebSocket.OPEN
@@ -536,14 +651,35 @@ async function handleUpdateDocument(clientId, message) {
   }
 }
 
+async function sendLatestConflict(clientId, docId, formId) {
+  const [latestRows] = await db.execute(
+    "SELECT content, version FROM evaluation_notes WHERE response_id = ? AND form_id = ?",
+    [docId, formId],
+  );
+  const latest = latestRows[0];
+  const session = clientSessions.get(clientId);
+  if (!session || session.ws.readyState !== WebSocket.OPEN) return;
+
+  session.ws.send(
+    JSON.stringify({
+      type: "conflict",
+      docId,
+      formId,
+      content: latest?.content || "",
+      version: Number(latest?.version || 1),
+      message: "다른 사용자가 먼저 수정했습니다. 최신 내용을 적용합니다.",
+      timestamp: Date.now(),
+    }),
+  );
+}
+
 // 문서 구독
 async function handleSubscribe(clientId, message) {
-  const { docId, formId } = message;
+  const { docId } = message;
 
   const session = clientSessions.get(clientId);
   if (session) {
-    session.docId = docId;
-    session.formId = formId;
+    session.subscribed = true;
     console.log(`📌 클라이언트 ${clientId}가 문서 ${docId} 구독`);
   }
 }
@@ -553,8 +689,7 @@ async function handleUnsubscribe(clientId, message) {
   const session = clientSessions.get(clientId);
   if (session) {
     console.log(`📌 클라이언트 ${clientId}가 문서 ${session.docId} 구독 해제`);
-    session.docId = null;
-    session.formId = null;
+    session.subscribed = false;
   }
 }
 

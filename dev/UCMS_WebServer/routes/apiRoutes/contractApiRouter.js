@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const crypto = require("crypto");
 const db = require("../../models/db");
+const Form = require("../../models/Form");
 const Event = require("../../models/Event");
 const Pos = require("../../models/Pos");
 const Board = require("../../models/Board");
@@ -17,6 +18,44 @@ const {
   generateInterviewSchedule,
 } = require("../../services/InterviewSchedulerService");
 const {
+  createShareDbTicket,
+} = require("../../services/ShareDbTicketService");
+const {
+  forceUserReauthentication,
+  listUsersForReauthentication,
+} = require("../../services/UserReauthenticationService");
+const {
+  deleteUser,
+  updateUser,
+} = require("../../services/SpringUserAdminService");
+const { requestTemporaryPassword } = require("../../services/SpringPasswordResetService");
+const { changePassword } = require("../../services/SpringPasswordChangeService");
+const {
+  updateInstance: updatePosInstance,
+} = require("../../services/SpringPosAdminService");
+const {
+  listImpersonationTargets,
+  startUserImpersonation,
+  stopUserImpersonation,
+} = require("../../services/UserImpersonationService");
+const {
+  createTrustedDevice,
+  isEmailVerificationEnabled,
+  revokeTrustedDevice,
+  startLogin,
+  startRegistration,
+  verifyChallenge,
+} = require("../../services/EmailAuthenticationService");
+const {
+  consumeLookupAttempt,
+  createVerifiedAccountIdentity,
+  findOwnApplications,
+  normalizeName,
+  normalizePhone,
+  normalizeStudentId,
+  setLookupRateLimitHeaders,
+} = require("../../services/ApplicantIdentityService");
+const {
   authorityLabel,
   authorityRank,
   asyncHandler,
@@ -30,6 +69,24 @@ const {
 
 const DEFAULT_EVENT_COLOR = "#43ff7b";
 const EVENT_MANAGER_AUTHORITY = 3;
+const GOOGLE_OAUTH_STATE_TTL_MS = 20 * 60 * 1000;
+const AUTH_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+const INTERVIEW_TIME_SLOTS = [
+  "09:00~10:00", "10:00~11:00", "11:00~12:00", "12:00~13:00",
+  "13:00~14:00", "14:00~15:00", "15:00~16:00", "16:00~17:00",
+  "17:00~18:00", "18:00~19:00", "19:00~20:00",
+];
+const authAttemptBuckets = new Map();
+// 2026-08-22: Keep retired and arbitrary applicant ratings out of every write path.
+const RECRUIT_RATINGS = new Set([
+  "대기",
+  "1차합격",
+  "불합격",
+  "느별",
+  "느괜",
+  "느좋",
+  "최종합격",
+]);
 
 function rows(result) {
   return Array.isArray(result) ? result[0] : [];
@@ -39,12 +96,61 @@ async function query(sql, params = []) {
   return rows(await db.execute(sql, params));
 }
 
+function saveRequestSession(req) {
+  return new Promise((resolve, reject) => {
+    req.session.save((error) => (error ? reject(error) : resolve()));
+  });
+}
+
+function regenerateRequestSession(req) {
+  return new Promise((resolve, reject) => req.session.regenerate((error) => error ? reject(error) : resolve()));
+}
+
+const trustedDeviceCookie = () => process.env.NODE_ENV === "dev" ? "UCMS_TRUSTED_DEVICE_DEV" : "UCMS_TRUSTED_DEVICE_PROD";
+function requestCookie(req, name) {
+  const match = String(req.headers.cookie || "").split(";").map((item) => item.trim()).find((item) => item.startsWith(`${name}=`));
+  return match ? decodeURIComponent(match.slice(name.length + 1)) : null;
+}
+
+function consumeAuthAttempt(scope, keyMaterial, limit) {
+  const now = Date.now();
+  const key = crypto.createHash("sha256").update(`${scope}:${keyMaterial}`).digest("hex");
+  const current = authAttemptBuckets.get(key);
+  const bucket = !current || current.resetAt <= now
+    ? { count: 0, resetAt: now + AUTH_ATTEMPT_WINDOW_MS }
+    : current;
+  if (bucket.count >= limit) return false;
+  bucket.count += 1;
+  authAttemptBuckets.set(key, bucket);
+  if (authAttemptBuckets.size > 5000) {
+    for (const [bucketKey, value] of authAttemptBuckets) {
+      if (value.resetAt <= now) authAttemptBuckets.delete(bucketKey);
+    }
+  }
+  return true;
+}
+
+async function establishEmailSession(req, user) {
+  await regenerateRequestSession(req);
+  req.session.userId = Number(user.id);
+  req.session.authority = Number(user.session_authority || 1);
+  await saveRequestSession(req);
+  await db.execute("UPDATE users SET last_login_at=NOW() WHERE id=?", [user.id]);
+}
+
 async function getCurrentUser(userId) {
   const result = await query(
     `SELECT u.id AS user_id,
             u.name AS user_name,
+            u.account_email,
+            u.phone_number,
+            u.student_id AS user_student_id,
+            u.major AS user_major,
             u.profile_image,
             u.thumbnail_image,
+            u.account_type,
+            u.system_key,
+            u.system_authority,
             u.created_at AS user_created_at,
             m.student_id,
             m.name AS member_name,
@@ -62,22 +168,26 @@ async function getCurrentUser(userId) {
 }
 
 function mapUser(row, fallbackAuthority = null) {
+  const effectiveAuthority =
+    row.account_type === "system" ? row.system_authority : row.authority;
   const mappedAuthority =
-    row.authority === null || row.authority === undefined
+    effectiveAuthority === null || effectiveAuthority === undefined
       ? sessionAuthorityRank(fallbackAuthority)
-      : authorityRank(row.authority);
+      : authorityRank(effectiveAuthority);
   return {
     id: row.user_id,
     userId: row.user_id,
     name: row.member_name || row.user_name,
-    email: null,
-    studentId: row.student_id || null,
+    email: row.account_email || null,
+    studentId: row.student_id || row.user_student_id || null,
     department: null,
-    major: row.major || null,
-    phone: row.phone || null,
+    major: row.major || row.user_major || null,
+    phone: row.phone || row.phone_number || null,
     // 2026-07-23: Non-member general users retain their session role for inquiry-board access.
-    role: row.authority || authorityLabel(mappedAuthority),
+    role: effectiveAuthority || authorityLabel(mappedAuthority),
     authority: mappedAuthority,
+    accountType: row.account_type || "human",
+    systemKey: row.system_key || null,
     profileImage: row.profile_image || null,
     thumbnailImage: row.thumbnail_image || null,
     joinedAt: toDate(row.user_created_at),
@@ -176,6 +286,10 @@ function mapPosInstance(row) {
     creatorName: row.creator_name || null,
     managerName: row.creator_name || null,
     closedAt: toIso(row.closed_at),
+    autoCloseAt: toIso(row.auto_close_at),
+    hasPoster: Boolean(row.poster_pdf),
+    posterUrl: row.poster_pdf ? `/api/pos/instances/${row.id}/poster` : null,
+    promotionCopy: row.promotion_copy || "",
   };
 }
 
@@ -185,8 +299,144 @@ function mapPosProduct(row) {
     name: row.product_name,
     price: row.product_price,
     stock: row.stock,
+    initialStock: row.initial_stock,
   };
 }
+
+function decodeBase64File(value, allowedMimeTypes, maxBytes) {
+  if (!value) return null;
+  const match = String(value).match(/^data:([^;]+);base64,([A-Za-z0-9+/=]+)$/);
+  if (!match || !allowedMimeTypes.includes(match[1])) {
+    const error = new Error("지원하지 않는 파일 형식입니다.");
+    error.code = "INVALID_UPLOAD";
+    throw error;
+  }
+  const buffer = Buffer.from(match[2], "base64");
+  if (!buffer.length || buffer.length > maxBytes) {
+    const error = new Error(`파일은 ${Math.floor(maxBytes / 1024 / 1024)}MB 이하여야 합니다.`);
+    error.code = "INVALID_UPLOAD";
+    throw error;
+  }
+  return { mimeType: match[1], buffer };
+}
+
+function mapRecruitment(row) {
+  const applicantCount = Number(row.snapshot_applicant_count ?? row.applicant_count ?? 0);
+  const firstPassCount = Number(row.snapshot_first_pass_count ?? row.first_pass_count ?? 0);
+  const finalPassCount = Number(row.snapshot_final_pass_count ?? row.final_pass_count ?? 0);
+  return {
+    id: Number(row.id),
+    formId: row.form_id || null,
+    title: row.title,
+    status: row.status,
+    recruitStart: toIso(row.recruit_start),
+    recruitEnd: toIso(row.recruit_end),
+    interviewStart: toIso(row.interview_start),
+    interviewEnd: toIso(row.interview_end),
+    formUrl: row.form_url || null,
+    promotionCopy: row.promotion_copy || "",
+    createdAt: toIso(row.created_at),
+    updatedAt: toIso(row.updated_at),
+    interviewStartedAt: toIso(row.interview_started_at),
+    closedAt: toIso(row.closed_at),
+    applicantCount,
+    maleCount: Number(row.male_count || 0),
+    femaleCount: Number(row.female_count || 0),
+    firstPassRate: applicantCount ? firstPassCount / applicantCount : 0,
+    finalPassRate: applicantCount ? finalPassCount / applicantCount : 0,
+    interviewPlanId: row.interview_plan_id ? Number(row.interview_plan_id) : null,
+    interviewPlanStatus: row.interview_plan_status || null,
+    posterUrls: row.poster_ids
+      ? String(row.poster_ids).split(",").map((id) => `/api/recruit/instances/${row.id}/posters/${id}`)
+      : [],
+  };
+}
+
+function koreaDateParts(value) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date(value));
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+}
+
+// 2026-08-23: Replace stale interview-date questions in a copied recruitment form.
+function buildInterviewQuestionRequests(form, interviewStart, interviewEnd) {
+  const start = new Date(interviewStart);
+  const end = new Date(interviewEnd);
+  const startParts = koreaDateParts(start);
+  const endParts = koreaDateParts(end);
+  const cursor = new Date(Date.UTC(Number(startParts.year), Number(startParts.month) - 1, Number(startParts.day)));
+  const last = new Date(Date.UTC(Number(endParts.year), Number(endParts.month) - 1, Number(endParts.day)));
+  const questions = [];
+  const weekday = ["일", "월", "화", "수", "목", "금", "토"];
+  while (cursor <= last) {
+    const year = cursor.getUTCFullYear();
+    const month = String(cursor.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(cursor.getUTCDate()).padStart(2, "0");
+    const ymd = `${year}-${month}-${day}`;
+    const options = INTERVIEW_TIME_SLOTS.filter((slot) => {
+      const [from, to] = slot.split("~");
+      const slotStart = new Date(`${ymd}T${from}:00+09:00`);
+      const slotEnd = new Date(`${ymd}T${to}:00+09:00`);
+      return slotStart >= start && slotEnd <= end;
+    });
+    if (options.length > 0) {
+      questions.push({
+        title: `면접 가능 시간 - ${month}/${day}(${weekday[cursor.getUTCDay()]})`,
+        options,
+      });
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  if (questions.length === 0) {
+    const error = new Error("면접 기간 안에 생성 가능한 1시간 단위 시간대가 없습니다. 면접 시작·종료 일시를 확인해 주세요.");
+    error.code = "INVALID_INTERVIEW_PERIOD";
+    throw error;
+  }
+  const items = form.items || [];
+  const deleteIndices = items
+    .map((item, index) => ({ index, title: String(item.title || "").replace(/\s+/g, "") }))
+    .filter((item) => item.title.includes("면접가능시간"))
+    .map((item) => item.index)
+    .sort((a, b) => b - a);
+  const remainingCount = items.length - deleteIndices.length;
+  return [
+    ...deleteIndices.map((index) => ({ deleteItem: { location: { index } } })),
+    ...questions.map((question, index) => ({
+      createItem: {
+        location: { index: remainingCount + index },
+        item: {
+          title: question.title,
+          questionItem: {
+            question: {
+              required: true,
+              choiceQuestion: {
+                type: "CHECKBOX",
+                options: question.options.map((value) => ({ value })),
+                shuffle: false,
+              },
+            },
+          },
+        },
+      },
+    })),
+  ];
+}
+
+const recruitmentSelect = `
+  SELECT ri.*,
+         COUNT(DISTINCT rm.id) AS applicant_count,
+         COUNT(DISTINCT CASE WHEN rm.gender = '남자' THEN rm.id END) AS male_count,
+         COUNT(DISTINCT CASE WHEN rm.gender = '여자' THEN rm.id END) AS female_count,
+         COUNT(DISTINCT CASE WHEN rm.rating IN ('1차합격', '최종합격') THEN rm.id END) AS first_pass_count,
+         COUNT(DISTINCT CASE WHEN rm.rating = '최종합격' THEN rm.id END) AS final_pass_count,
+         ip.id AS interview_plan_id,
+         ip.status AS interview_plan_status,
+         GROUP_CONCAT(DISTINCT rp.id ORDER BY rp.sort_order, rp.id) AS poster_ids
+    FROM recruitment_instances ri
+    LEFT JOIN recruiting_members rm ON rm.form_id = ri.form_id
+    LEFT JOIN interview_plans ip ON ip.recruitment_id = ri.id
+    LEFT JOIN recruitment_posters rp ON rp.recruitment_id = ri.id`;
 
 function mapRecruitResponse(row) {
   // 2026-07-23: Expose the recruiting_members fields shown by the legacy response table.
@@ -222,6 +472,7 @@ function groupInterviewScheduleRows(scheduleRows) {
       applicantName: schedule.applicant_name || schedule.interviewee_id,
       rating: schedule.rating || null,
       responseId: schedule.response_id || null,
+      location: schedule.location || null,
       interviewerNames: [],
       status: "scheduled",
     };
@@ -278,20 +529,21 @@ function toMysqlDateTime(value) {
 }
 
 function eventPayload(body, req, fallback = {}) {
+  const start = toMysqlDateTime(body.start || fallback.start);
+  const end = toMysqlDateTime(body.end || fallback.end);
   return {
     title: body.title || fallback.title,
     description: body.description ?? fallback.description ?? "",
-    start: toMysqlDateTime(body.start || fallback.start),
-    end: toMysqlDateTime(body.end || fallback.end),
+    start,
+    end,
     color: body.color || fallback.color || DEFAULT_EVENT_COLOR,
     authorId: fallback.author_id || req.session.userId,
     updaterId: req.session.userId,
     authority: authorityLabel(
       body.authority || fallback.authority || req.session.authority || 2,
     ),
-    isMultiple: Boolean(
-      body.isMultiple ?? body.ismultiple ?? fallback.ismultiple,
-    ),
+    // 2026-08-23: Derive multi-day status at the API boundary instead of trusting a redundant checkbox.
+    isMultiple: Boolean(start && end && koreanDateKey(start) !== koreanDateKey(end)),
     isRecruiting: Boolean(body.isRecruiting ?? fallback.isRecruiting),
     recruitStart: toMysqlDateTime(
       body.recruitStart || fallback.recruit_start || null,
@@ -302,6 +554,11 @@ function eventPayload(body, req, fallback = {}) {
   };
 }
 
+function koreanDateKey(value) {
+  if (!(value instanceof Date)) return String(value).slice(0, 10);
+  return new Date(value.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 async function getVisibleEvents(authority) {
   const result = await query(
     `SELECT e.*, u.name AS author_name
@@ -309,7 +566,7 @@ async function getVisibleEvents(authority) {
        LEFT JOIN users u ON u.id = e.author_id
       ORDER BY e.start DESC`,
   );
-  const rank = authorityRank(authority);
+  const rank = sessionAuthorityRank(authority);
   return result.filter((event) => authorityRank(event.authority) <= rank);
 }
 
@@ -368,6 +625,9 @@ router.get(
     // 2026-07-23: Keep the dashboard usable and identify the failing section when event loading fails.
     let events = [];
     let notices = [];
+    let activePos = null;
+    let recruitmentPromotions = [];
+    let recruitResultLookup = null;
     const issues = [];
     try {
       events = (await getVisibleEvents(req.session.authority)).map(mapEvent);
@@ -393,6 +653,48 @@ router.get(
         message: "공지사항 데이터를 불러오지 못했습니다.",
       });
     }
+    // 2026-08-20: Surface active recruitment/POS promotions and the time-bounded result lookup window.
+    try {
+      const promotion = await Pos.getActivePromotion();
+      activePos = promotion
+        ? {
+            ...mapPosInstance(promotion),
+            initialStock: promotion.initial_stock,
+            soldQuantity: promotion.sold_quantity,
+            saleRate: promotion.sale_rate,
+          }
+        : null;
+      recruitmentPromotions = (
+        await query(
+          `${recruitmentSelect}
+           WHERE ri.status = 'recruiting'
+           GROUP BY ri.id, ip.id
+           ORDER BY ri.updated_at DESC`,
+        )
+      ).map(mapRecruitment);
+      const resultWindows = await query(
+        `SELECT id, title, status, closed_at
+           FROM recruitment_instances
+          WHERE status = 'interview'
+             OR (status = 'closed' AND closed_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 3 DAY))
+          ORDER BY updated_at DESC LIMIT 1`,
+      );
+      if (resultWindows[0]) {
+        const item = resultWindows[0];
+        recruitResultLookup = {
+          recruitmentId: Number(item.id),
+          title: item.title,
+          phase: item.status,
+          showFinalResult: item.status === "closed",
+          visibleUntil: item.closed_at
+            ? toIso(new Date(new Date(item.closed_at).getTime() + 3 * 24 * 60 * 60 * 1000))
+            : null,
+        };
+      }
+    } catch (error) {
+      console.error("Dashboard promotion query failed:", error);
+      issues.push({ scope: "promotions", code: "PROMOTIONS_UNAVAILABLE", message: "모집/POS 홍보 정보를 불러오지 못했습니다." });
+    }
     ok(res, {
       calendarEvents: events,
       // 2026-07-23: Keep author_id=0 holidays out of the dashboard's My Events section.
@@ -410,6 +712,9 @@ router.get(
         createdAt: toIso(notice.created_at),
         updatedAt: toIso(notice.updated_at),
       })),
+      activePos,
+      recruitmentPromotions,
+      recruitResultLookup,
       issues,
     });
   }),
@@ -429,7 +734,21 @@ router.get(
       );
     }
     ok(res, {
-      user: mapUser(user, req.session.authority),
+      user: {
+        ...mapUser(user, req.session.authority),
+        // 2026-08-22: Expose only display-safe impersonation state so every page can offer a reliable exit.
+        impersonation: req.session.impersonation
+          ? {
+              active: true,
+              actorName: req.session.impersonation.actorName,
+              targetName: req.session.impersonation.targetName,
+              readOnly: !req.session.impersonation.allowMutations,
+              systemTestAccount:
+                req.session.impersonation.targetSystemKey === "ui-test-admin",
+              startedAt: req.session.impersonation.startedAt,
+            }
+          : null,
+      },
       cacheTtlSeconds: 1800,
     });
   }),
@@ -441,6 +760,23 @@ router.delete(
     if (!req.session?.userId) {
       return fail(res, 401, "UNAUTHORIZED", "Login required.");
     }
+    if (req.session.impersonation) {
+      return fail(
+        res,
+        409,
+        "IMPERSONATION_WITHDRAWAL_FORBIDDEN",
+        "End impersonation before withdrawing an account.",
+      );
+    }
+    const currentUser = await getCurrentUser(req.session.userId);
+    if (currentUser?.account_type === "system") {
+      return fail(
+        res,
+        409,
+        "SYSTEM_ACCOUNT_WITHDRAWAL_FORBIDDEN",
+        "A system account cannot be withdrawn through the user API.",
+      );
+    }
     await db.execute("UPDATE members SET user_id = NULL WHERE user_id = ?", [
       req.session.userId,
     ]);
@@ -450,40 +786,106 @@ router.delete(
   }),
 );
 
-router.post("/auth/logout", (req, res) => {
+// 2026-08-22: UCMS native auth keeps production verification while dev can temporarily complete immediately.
+router.post("/auth/register/start", asyncHandler(async (req, res) => {
+  if (!consumeAuthAttempt("register", req.ip, 10)) {
+    return fail(res, 429, "AUTH_RATE_LIMITED", "회원가입 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.");
+  }
+  const result = await startRegistration(req.body || {});
+  if (result.activated) {
+    await establishEmailSession(req, result.user);
+    return ok(res, { authenticated: true, emailVerificationRequired: false, next: "complete" });
+  }
+  req.session.pendingEmailAuth = { challengeId: result.challengeId, userId: result.userId, purpose: "register" };
+  await saveRequestSession(req);
+  ok(res, { authenticated: false, emailVerificationRequired: true, next: "verify", email: result.email });
+}));
+
+router.post("/auth/login/start", asyncHandler(async (req, res) => {
+  if (!consumeAuthAttempt("login", `${req.ip}:${String(req.body?.email || "").toLowerCase()}`, 10)) {
+    return fail(res, 429, "AUTH_RATE_LIMITED", "로그인 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.");
+  }
+  const result = await startLogin(req.body?.email, req.body?.password, requestCookie(req, trustedDeviceCookie()));
+  if (result.authenticated || result.trusted) {
+    await establishEmailSession(req, result.user);
+    return ok(res, { authenticated: true, twoFactorRequired: false });
+  }
+  req.session.pendingEmailAuth = { challengeId: result.challengeId, userId: Number(result.user.id), purpose: "login" };
+  await saveRequestSession(req);
+  return ok(res, { authenticated: false, twoFactorRequired: true });
+}));
+
+router.post("/auth/password/temporary", asyncHandler(async (req, res) => {
+  // 2026-08-23: Apply an IP-level limit and keep account existence private with one generic response.
+  if (!consumeAuthAttempt("temporary-password", req.ip, 5)) {
+    return fail(res, 429, "AUTH_RATE_LIMITED", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.");
+  }
+  await requestTemporaryPassword(req.body?.email);
+  return ok(res, {
+    message: "가입된 이메일이라면 임시 비밀번호를 발송했습니다.",
+  });
+}));
+
+router.post("/auth/password/change", asyncHandler(async (req, res) => {
+  if (!req.session?.userId) {
+    return fail(res, 401, "UNAUTHORIZED", "로그인이 필요합니다.");
+  }
+  await changePassword(req.session.userId, {
+    currentPassword: req.body?.currentPassword,
+    newPassword: req.body?.newPassword,
+  });
+  // 2026-08-23: Spring revoked persisted login state; also close the live Express session and trusted cookie.
+  res.clearCookie(trustedDeviceCookie(), { path: "/" });
+  return req.session.destroy(() => ok(res, {
+    message: "비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인해 주세요.",
+  }));
+}));
+
+router.post("/auth/email/verify", asyncHandler(async (req, res) => {
+  if (!isEmailVerificationEnabled()) {
+    return fail(res, 410, "EMAIL_VERIFICATION_DISABLED", "개발 환경에서는 이메일 인증을 사용하지 않습니다.");
+  }
+  const pending = req.session?.pendingEmailAuth;
+  if (!pending) return fail(res, 409, "EMAIL_CHALLENGE_NOT_ACTIVE", "진행 중인 이메일 인증이 없습니다.");
+  const user = await verifyChallenge({ ...pending, code: req.body?.code });
+  const shouldTrust = pending.purpose === "login" && Boolean(req.body?.trustDevice);
+  const token = shouldTrust ? await createTrustedDevice(user.id, req.get("user-agent")) : null;
+  await establishEmailSession(req, user);
+  if (token) {
+    res.cookie(trustedDeviceCookie(), token, {
+      httpOnly: true,
+      secure: req.secure,
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      path: "/",
+    });
+  }
+  ok(res, { authenticated: true });
+}));
+
+router.post("/auth/logout", asyncHandler(async (req, res) => {
+  await revokeTrustedDevice(requestCookie(req, trustedDeviceCookie()));
+  res.clearCookie(trustedDeviceCookie(), { path: "/" });
   req.session.destroy(() => ok(res, { message: "Logged out." }));
-});
+}));
 
 router.get("/auth/member-confirm", (req, res) => {
-  ok(res, { codeExpiresAt: null, confirmed: Boolean(req.session?.userId) });
+  // 2026-08-19: Retire the enumerable legacy member-link contract until the Kakao Business chatbot flow is implemented.
+  return fail(res, 410, "MEMBER_LINK_RETIRED", "Member linking is not available.");
 });
 
-router.post(
-  "/auth/member-confirm",
-  asyncHandler(async (req, res) => {
-    if (!req.body.studentId) {
-      return fail(res, 400, "INVALID_REQUEST", "studentId is required.");
-    }
-    const found = await query(
-      "SELECT student_id FROM members WHERE student_id = ?",
-      [req.body.studentId],
-    );
-    ok(res, {
-      confirmed: found.length > 0,
-      message: found.length > 0 ? "Member confirmed." : "Member not found.",
-    });
-  }),
+router.post("/auth/member-confirm", (req, res) =>
+  fail(res, 410, "MEMBER_LINK_RETIRED", "Member linking is not available."),
 );
 
 router.post("/auth/member-confirm/code", (req, res) => {
-  ok(res, {
-    codeExpiresAt: null,
-    message: "Confirmation code issuing remains in the legacy auth flow.",
-  });
+  return fail(res, 410, "MEMBER_LINK_RETIRED", "Member linking is not available.");
 });
 
 router.get(
   "/members",
+  // 2026-08-19: Member contact details are management data, not an executive-level directory endpoint.
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const result = await query("SELECT * FROM members ORDER BY name ASC");
     ok(res, { members: result.map(mapMember) });
@@ -492,7 +894,7 @@ router.get(
 
 router.post(
   "/members",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const payload = memberPayload(req.body);
     if (!payload.studentId || !payload.name) {
@@ -530,7 +932,7 @@ router.post(
 
 router.put(
   "/members/:id",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const existing = (
       await query("SELECT * FROM members WHERE student_id = ?", [req.params.id])
@@ -567,11 +969,13 @@ router.put(
 
 router.delete(
   "/members/:id",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
-    await db.execute("DELETE FROM members WHERE student_id = ?", [
+    // 2026-08-22: Report an explicit not-found result instead of claiming every deletion succeeded.
+    const [result] = await db.execute("DELETE FROM members WHERE student_id = ?", [
       req.params.id,
     ]);
+    if (!result.affectedRows) return fail(res, 404, "NOT_FOUND", "Member not found.");
     ok(res, { message: "Member deleted." });
   }),
 );
@@ -671,10 +1075,17 @@ router.get(
       [req.params.id],
     );
     if (!result[0]) return fail(res, 404, "NOT_FOUND", "Event not found.");
+    // 2026-08-22: Apply list visibility to direct event lookups so an ID cannot bypass authority filtering.
+    if (
+      authorityRank(result[0].authority) >
+      sessionAuthorityRank(req.session.authority)
+    ) {
+      return fail(res, 403, "FORBIDDEN", "This event is not accessible.");
+    }
     const event = mapEvent(result[0]);
     event.canEdit =
       Number(result[0].author_id) === Number(req.session.userId) ||
-      authorityRank(req.session.authority) >= EVENT_MANAGER_AUTHORITY;
+      sessionAuthorityRank(req.session.authority) >= EVENT_MANAGER_AUTHORITY;
     event.canDelete = event.canEdit;
     const participantStorage = await Event.getParticipantStorage();
     // 2026-07-23: Read participants from either the documented or deployed foreign-key layout.
@@ -722,7 +1133,7 @@ router.put(
     if (!existing) return fail(res, 404, "NOT_FOUND", "Event not found.");
     if (
       Number(existing.author_id) !== Number(req.session.userId) &&
-      authorityRank(req.session.authority) < EVENT_MANAGER_AUTHORITY
+      sessionAuthorityRank(req.session.authority) < EVENT_MANAGER_AUTHORITY
     ) {
       return fail(res, 403, "FORBIDDEN", "Authority is required.");
     }
@@ -778,7 +1189,7 @@ router.delete(
     if (!existing) return fail(res, 404, "NOT_FOUND", "Event not found.");
     if (
       Number(existing.author_id) !== Number(req.session.userId) &&
-      authorityRank(req.session.authority) < EVENT_MANAGER_AUTHORITY
+      sessionAuthorityRank(req.session.authority) < EVENT_MANAGER_AUTHORITY
     ) {
       return fail(res, 403, "FORBIDDEN", "Authority is required.");
     }
@@ -794,7 +1205,7 @@ router.post(
       await query("SELECT * FROM events WHERE id = ?", [req.params.id])
     )[0];
     if (!event) return fail(res, 404, "NOT_FOUND", "Event not found.");
-    if (authorityRank(event.authority) > authorityRank(req.session.authority)) {
+    if (authorityRank(event.authority) > sessionAuthorityRank(req.session.authority)) {
       return fail(res, 403, "FORBIDDEN", "This event is not accessible.");
     }
     if (!isEventRecruitmentOpen(event)) {
@@ -829,7 +1240,7 @@ router.delete(
       await query("SELECT * FROM events WHERE id = ?", [req.params.id])
     )[0];
     if (!event) return fail(res, 404, "NOT_FOUND", "Event not found.");
-    if (authorityRank(event.authority) > authorityRank(req.session.authority)) {
+    if (authorityRank(event.authority) > sessionAuthorityRank(req.session.authority)) {
       return fail(res, 403, "FORBIDDEN", "This event is not accessible.");
     }
     if (!isEventRecruitmentOpen(event)) {
@@ -865,6 +1276,77 @@ router.post("/admin/holidays/import", requireAuthority(4), (req, res) => {
   });
 });
 
+// 2026-08-22: Administrators can revoke a user's sessions and trusted-device 2FA bypass.
+router.get(
+  "/admin/users",
+  requireAuthority(4),
+  asyncHandler(async (req, res) => {
+    const users = await listUsersForReauthentication(req.session.userId);
+    ok(res, { users });
+  }),
+);
+
+router.post(
+  "/admin/users/:id/force-reauthentication",
+  requireAuthority(4),
+  asyncHandler(async (req, res) => {
+    const result = await forceUserReauthentication(
+      req.params.id,
+      req.session.userId,
+    );
+    ok(res, result);
+  }),
+);
+
+// 2026-08-23: Preserve Node session authorization while Spring owns new user-table mutations.
+router.patch(
+  "/admin/users/:id",
+  requireAuthority(6),
+  asyncHandler(async (req, res) => {
+    const result = await updateUser(req.params.id, req.session.userId, req.body || {});
+    ok(res, result);
+  }),
+);
+
+router.delete(
+  "/admin/users/:id",
+  requireAuthority(6),
+  asyncHandler(async (req, res) => {
+    const result = await deleteUser(req.params.id, req.session.userId);
+    ok(res, result);
+  }),
+);
+
+router.get(
+  "/admin/impersonation/targets",
+  requireAuthority(6),
+  asyncHandler(async (req, res) => {
+    const targets = await listImpersonationTargets(req.session.userId);
+    ok(res, { targets });
+  }),
+);
+
+router.post(
+  "/admin/impersonation/start",
+  requireAuthority(6),
+  asyncHandler(async (req, res) => {
+    const impersonation = await startUserImpersonation(
+      req,
+      req.body?.targetUserId,
+      req.body?.reason,
+    );
+    ok(res, { impersonation });
+  }),
+);
+
+router.post(
+  "/admin/impersonation/exit",
+  asyncHandler(async (req, res) => {
+    const result = await stopUserImpersonation(req);
+    ok(res, result);
+  }),
+);
+
 router.get(
   "/drive/templates",
   asyncHandler(async (req, res) => {
@@ -883,7 +1365,7 @@ router.get(
 
 router.post(
   "/drive/templates",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const { title, formUrl } = req.body;
     if (!title || !formUrl) {
@@ -904,7 +1386,7 @@ router.post(
 
 router.delete(
   "/drive/templates/:id",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const templateId = Number(req.params.id);
     if (!Number.isInteger(templateId) || templateId <= 0) {
@@ -935,7 +1417,7 @@ router.delete(
 
 router.post(
   "/drive/forms",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const formTitle = String(req.body.title || "").trim();
     const userEmail = String(req.body.userEmail || "").trim();
@@ -963,6 +1445,21 @@ router.post(
       );
     }
 
+    let recruitment = null;
+    if (req.body.recruitmentId) {
+      const recruitmentRows = await query(
+        "SELECT id, status, interview_start, interview_end FROM recruitment_instances WHERE id = ? LIMIT 1",
+        [req.body.recruitmentId],
+      );
+      recruitment = recruitmentRows[0];
+      if (!recruitment || recruitment.status !== "draft") {
+        return fail(res, 409, "RECRUITMENT_DRAFT_REQUIRED", "초안 상태의 모집에서만 폼을 생성할 수 있습니다.");
+      }
+      if (!recruitment.interview_start || !recruitment.interview_end) {
+        return fail(res, 400, "INTERVIEW_PERIOD_REQUIRED", "면접 시작·종료 일시를 먼저 저장해 주세요.");
+      }
+    }
+
     try {
       // 2026-07-23: React에서도 기존 EJS와 동일하게 템플릿을 실제 복사하고 사용자가 입력한 제목을 적용한다.
       const { drive, forms } = getOAuthClients();
@@ -983,17 +1480,26 @@ router.post(
         );
       }
 
+      const copiedForm = recruitment ? await forms.forms.get({ formId: newFormId }) : null;
+      const updateRequests = [
+        {
+          updateFormInfo: {
+            info: { title: formTitle },
+            updateMask: "title",
+          },
+        },
+      ];
+      if (recruitment) {
+        updateRequests.push(...buildInterviewQuestionRequests(
+          copiedForm.data,
+          recruitment.interview_start,
+          recruitment.interview_end,
+        ));
+      }
       await forms.forms.batchUpdate({
         formId: newFormId,
         requestBody: {
-          requests: [
-            {
-              updateFormInfo: {
-                info: { title: formTitle },
-                updateMask: "title",
-              },
-            },
-          ],
+          requests: updateRequests,
         },
       });
       await drive.permissions.create({
@@ -1015,8 +1521,41 @@ router.post(
       });
 
       const formUrl = `https://docs.google.com/forms/d/${newFormId}/edit`;
+      const responderUrl = `https://docs.google.com/forms/d/${newFormId}/viewform`;
+      // 2026-08-20: Form generation inside a recruitment draft establishes the required 1:1 association.
+      if (req.body.recruitmentId) {
+        const connection = await db.getConnection();
+        try {
+          await connection.beginTransaction();
+          await connection.execute(
+            `INSERT INTO formlist (id, title, form_type)
+             VALUES (?, ?, '신규모집')
+             ON DUPLICATE KEY UPDATE title = VALUES(title), form_type = '신규모집'`,
+            [newFormId, formTitle],
+          );
+          const [linkResult] = await connection.execute(
+            `UPDATE recruitment_instances
+                SET form_id = ?, form_url = ?, title = ?
+              WHERE id = ? AND status = 'draft' AND form_id IS NULL`,
+            [newFormId, responderUrl, formTitle, req.body.recruitmentId],
+          );
+          if (linkResult.affectedRows !== 1) {
+            const linkError = new Error("초안 모집에 Google Form을 연결하지 못했습니다.");
+            linkError.code = "RECRUITMENT_FORM_LINK_FAILED";
+            throw linkError;
+          }
+          await connection.commit();
+        } catch (linkError) {
+          await connection.rollback();
+          throw linkError;
+        } finally {
+          connection.release();
+        }
+      }
       return created(res, {
         formUrl,
+        responderUrl,
+        formId: newFormId,
         title: formTitle,
         message: "폼을 생성했습니다.",
       });
@@ -1030,6 +1569,9 @@ router.post(
           "구글 계정이 만료됐습니다. 관리자에게 문의해주세요.",
         );
       }
+      if (error.code === "INVALID_INTERVIEW_PERIOD") {
+        return fail(res, 400, error.code, error.message);
+      }
       throw error;
     }
   }),
@@ -1037,29 +1579,447 @@ router.post(
 
 router.get(
   "/drive/oauth/status",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const status = await getOAuthConnectionStatus();
-    let authorizationUrl = null;
 
-    if (!status.connected) {
-      const state = crypto.randomBytes(24).toString("hex");
-      req.session.googleOAuthState = state;
-      authorizationUrl = getOAuthAuthorizationUrl(state);
-    }
-
-    // 2026-07-23: Google 토큰 자체를 전달하지 않고 연결 여부와 재승인 URL만 제공합니다.
+    // 2026-08-21: Keep this GET read-only so React StrictMode cannot overwrite a pending OAuth state.
     return ok(res, {
       connected: status.connected,
       reason: status.reason,
-      authorizationUrl,
+      authorizationUrl: null,
     });
+  }),
+);
+
+router.put(
+  "/drive/templates/:id",
+  requireAuthority(3),
+  asyncHandler(async (req, res) => {
+    const title = String(req.body.title || "").trim();
+    const formUrl = String(req.body.formUrl || "").trim();
+    if (!title || !extractFormIdFromURL(formUrl)) {
+      return fail(res, 400, "INVALID_TEMPLATE", "템플릿 이름과 올바른 Google Form URL을 입력해 주세요.");
+    }
+    // 2026-08-23: Template metadata is editable while question editing remains in Google Forms.
+    const [result] = await db.execute(
+      "UPDATE form_templates SET title = ?, form_url = ? WHERE id = ?",
+      [title, formUrl, req.params.id],
+    );
+    if (!result.affectedRows) return fail(res, 404, "TEMPLATE_NOT_FOUND", "수정할 템플릿을 찾지 못했습니다.");
+    ok(res, { template: { id: Number(req.params.id), title, formUrl } });
+  }),
+);
+
+router.post(
+  "/drive/oauth/start",
+  requireAuthority(3),
+  asyncHandler(async (req, res) => {
+    const state = crypto.randomBytes(24).toString("hex");
+    req.session.googleOAuthState = state;
+    // 2026-08-21: Mint state only on an explicit click, allow time for account selection, and persist before navigation.
+    req.session.googleOAuthStateExpiresAt =
+      Date.now() + GOOGLE_OAUTH_STATE_TTL_MS;
+    await saveRequestSession(req);
+    return ok(res, {
+      authorizationUrl: getOAuthAuthorizationUrl(state),
+    });
+  }),
+);
+
+// 2026-08-20: Recruitment campaigns have an explicit draft-to-closed lifecycle independent of Google Form creation.
+router.get(
+  "/recruit/instances",
+  requireAuthority(3),
+  asyncHandler(async (_req, res) => {
+    const result = await query(
+      `${recruitmentSelect}
+       GROUP BY ri.id, ip.id
+       ORDER BY FIELD(ri.status, 'recruiting', 'planning', 'interview', 'draft', 'closed'), ri.updated_at DESC`,
+    );
+    ok(res, { instances: result.map(mapRecruitment) });
+  }),
+);
+
+router.post(
+  "/recruit/instances",
+  requireAuthority(3),
+  asyncHandler(async (req, res) => {
+    const title = String(req.body.title || "새 모집").trim();
+    const [result] = await db.execute(
+      `INSERT INTO recruitment_instances (title, status, created_by)
+       VALUES (?, 'draft', ?)`,
+      [title || "새 모집", req.session.userId],
+    );
+    created(res, { id: result.insertId, path: `/recruit/${result.insertId}` });
+  }),
+);
+
+router.get(
+  "/recruit/instances/:id",
+  requireAuthority(3),
+  asyncHandler(async (req, res) => {
+    const result = await query(
+      `${recruitmentSelect}
+       WHERE ri.id = ?
+       GROUP BY ri.id, ip.id`,
+      [req.params.id],
+    );
+    if (!result[0]) return fail(res, 404, "NOT_FOUND", "모집 인스턴스를 찾지 못했습니다.");
+    ok(res, { instance: mapRecruitment(result[0]) });
+  }),
+);
+
+router.patch(
+  "/recruit/instances/:id",
+  requireAuthority(3),
+  asyncHandler(async (req, res) => {
+    const existing = await query(
+      `SELECT id, status, form_id, form_url
+         FROM recruitment_instances
+        WHERE id = ? LIMIT 1`,
+      [req.params.id],
+    );
+    if (!existing[0]) return fail(res, 404, "NOT_FOUND", "모집 인스턴스를 찾지 못했습니다.");
+    if (existing[0].status === "closed") {
+      return fail(res, 409, "RECRUITMENT_CLOSED", "종료된 모집은 편집할 수 없습니다.");
+    }
+    const title = String(req.body.title || "").trim();
+    if (!title) return fail(res, 400, "INVALID_REQUEST", "제목을 입력해 주세요.");
+    const recruitStart = req.body.recruitStart || null;
+    const recruitEnd = req.body.recruitEnd || null;
+    const interviewStart = req.body.interviewStart || null;
+    const interviewEnd = req.body.interviewEnd || null;
+    for (const [label, value] of [["모집 시작", recruitStart], ["모집 종료", recruitEnd], ["면접 시작", interviewStart], ["면접 종료", interviewEnd]]) {
+      if (!value) continue;
+      const parsed = new Date(value);
+      if (
+        Number.isNaN(parsed.getTime()) ||
+        parsed.getMinutes() % 10 !== 0 ||
+        parsed.getSeconds() !== 0
+      ) {
+        return fail(res, 400, "INVALID_RECRUIT_PERIOD", `${label} 시간은 10분 단위로 입력해 주세요.`);
+      }
+    }
+    if (recruitStart && recruitEnd && new Date(recruitStart) >= new Date(recruitEnd)) {
+      return fail(res, 400, "INVALID_RECRUIT_PERIOD", "모집 종료는 시작보다 늦어야 합니다.");
+    }
+    if (interviewStart && interviewEnd && new Date(interviewStart) >= new Date(interviewEnd)) {
+      return fail(res, 400, "INVALID_INTERVIEW_PERIOD", "면접 종료는 시작보다 늦어야 합니다.");
+    }
+    const posters = req.body.posters;
+    if (Array.isArray(posters) && posters.length > 10) {
+      return fail(res, 400, "TOO_MANY_POSTERS", "모집 포스터는 최대 10장까지 등록할 수 있습니다.");
+    }
+    if (Array.isArray(posters)) {
+      const estimatedBytes = posters.reduce((total, poster) => {
+        const base64 = String(poster?.dataUrl || "").split(",", 2)[1] || "";
+        return total + Math.floor(base64.length * 3 / 4);
+      }, 0);
+      if (estimatedBytes > 10 * 1024 * 1024) {
+        return fail(res, 400, "POSTERS_TOO_LARGE", "모집 포스터 전체 용량은 10MB 이하여야 합니다.");
+      }
+    }
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      const canChangeGoogleForm = existing[0].status === "draft";
+      let submittedFormId = existing[0].form_id;
+      let storedFormUrl = existing[0].form_url;
+      if (canChangeGoogleForm) {
+        const submittedFormUrl = String(req.body.formUrl || "").trim();
+        submittedFormId = submittedFormUrl
+          ? extractFormIdFromURL(submittedFormUrl)
+          : null;
+        if (submittedFormUrl && !submittedFormId) {
+          const formError = new Error("Google Form 링크 형식을 확인해 주세요.");
+          formError.code = "INVALID_FORM_URL";
+          throw formError;
+        }
+        storedFormUrl = submittedFormId
+          ? `https://docs.google.com/forms/d/${submittedFormId}/viewform`
+          : null;
+      }
+      if (submittedFormId) {
+        await connection.execute(
+          `INSERT INTO formlist (id, title, form_type)
+           VALUES (?, ?, '신규모집')
+           ON DUPLICATE KEY UPDATE title = VALUES(title), form_type = '신규모집'`,
+          [submittedFormId, title],
+        );
+      }
+      await connection.execute(
+        `UPDATE recruitment_instances
+            SET title = ?, recruit_start = ?, recruit_end = ?, interview_start = ?, interview_end = ?, form_id = ?, form_url = ?, promotion_copy = ?
+          WHERE id = ?`,
+        [
+          title,
+          recruitStart,
+          recruitEnd,
+          interviewStart,
+          interviewEnd,
+          submittedFormId,
+          storedFormUrl,
+          req.body.promotionCopy || null,
+          req.params.id,
+        ],
+      );
+      if (Array.isArray(posters)) {
+        await connection.execute("DELETE FROM recruitment_posters WHERE recruitment_id = ?", [req.params.id]);
+        for (const [index, poster] of posters.entries()) {
+          const upload = decodeBase64File(
+            poster.dataUrl,
+            ["image/jpeg", "image/png", "image/webp"],
+            8 * 1024 * 1024,
+          );
+          await connection.execute(
+            `INSERT INTO recruitment_posters
+              (recruitment_id, file_name, mime_type, file_data, sort_order)
+             VALUES (?, ?, ?, ?, ?)`,
+            [req.params.id, String(poster.fileName || `poster-${index + 1}`), upload.mimeType, upload.buffer, index],
+          );
+        }
+      }
+      await connection.commit();
+      ok(res, { id: Number(req.params.id) });
+    } catch (error) {
+      await connection.rollback();
+      if (["INVALID_UPLOAD", "INVALID_FORM_URL"].includes(error.code)) return fail(res, 400, error.code, error.message);
+      if (error.code === "ER_DUP_ENTRY") return fail(res, 409, "FORM_ALREADY_LINKED", "해당 Google Form은 다른 모집에 연결되어 있습니다.");
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }),
+);
+
+router.delete(
+  "/recruit/instances/:id",
+  requireAuthority(3),
+  asyncHandler(async (req, res) => {
+    const existing = await query(
+      "SELECT id, status FROM recruitment_instances WHERE id = ? LIMIT 1",
+      [req.params.id],
+    );
+    if (!existing[0]) {
+      return fail(res, 404, "NOT_FOUND", "모집 인스턴스를 찾지 못했습니다.");
+    }
+    if (existing[0].status !== "draft") {
+      return fail(res, 409, "DRAFT_ONLY", "초안 상태의 모집만 삭제할 수 있습니다.");
+    }
+    // 2026-08-21: The recruitment owns its posters and optional plan, while the external Google Form remains untouched.
+    await db.execute("DELETE FROM recruitment_instances WHERE id = ?", [req.params.id]);
+    return ok(res, { id: Number(req.params.id) });
+  }),
+);
+
+router.get(
+  "/recruit/instances/:id/posters/:posterId",
+  asyncHandler(async (req, res) => {
+    const posters = await query(
+      `SELECT rp.file_name, rp.mime_type, rp.file_data
+         FROM recruitment_posters rp
+         JOIN recruitment_instances ri ON ri.id = rp.recruitment_id
+        WHERE rp.id = ? AND rp.recruitment_id = ?
+          AND (ri.status = 'recruiting' OR ? >= 3)
+        LIMIT 1`,
+      [req.params.posterId, req.params.id, sessionAuthorityRank(req.session?.authority)],
+    );
+    if (!posters[0]) return fail(res, 404, "NOT_FOUND", "포스터를 찾지 못했습니다.");
+    res.set("Content-Type", posters[0].mime_type);
+    res.set("Cache-Control", "public, max-age=300");
+    return res.send(posters[0].file_data);
+  }),
+);
+
+router.post(
+  "/recruit/instances/:id/start",
+  requireAuthority(3),
+  asyncHandler(async (req, res) => {
+    const instances = await query(
+      "SELECT * FROM recruitment_instances WHERE id = ? LIMIT 1",
+      [req.params.id],
+    );
+    const instance = instances[0];
+    if (!instance) return fail(res, 404, "NOT_FOUND", "모집 인스턴스를 찾지 못했습니다.");
+    if (instance.status !== "draft") return fail(res, 409, "INVALID_TRANSITION", "초안만 모집을 시작할 수 있습니다.");
+    if (!instance.form_id) return fail(res, 409, "FORM_REQUIRED", "Google Form을 먼저 생성하거나 연결해 주세요.");
+    if (!instance.interview_start || !instance.interview_end) return fail(res, 409, "INTERVIEW_PERIOD_REQUIRED", "면접 시작·종료 일시를 먼저 저장해 주세요.");
+    try {
+      const { forms } = getOAuthClients();
+      const formResponse = await forms.forms.get({ formId: instance.form_id });
+      if (formResponse.data.publishSettings && forms.forms.setPublishSettings) {
+        await forms.forms.setPublishSettings({
+          formId: instance.form_id,
+          requestBody: {
+            publishSettings: { publishState: { isPublished: true, isAcceptingResponses: true } },
+            updateMask: "publishState",
+          },
+        });
+      }
+    } catch (error) {
+      if (isOAuthReconnectRequired(error)) {
+        return fail(res, 409, "GOOGLE_OAUTH_RECONNECT_REQUIRED", "Google 계정을 다시 연결해 주세요.");
+      }
+      return fail(res, 409, "GOOGLE_FORM_NOT_FOUND", "연결한 Google Form을 확인할 수 없습니다.");
+    }
+    await db.execute("UPDATE recruitment_instances SET status = 'recruiting' WHERE id = ?", [req.params.id]);
+    ok(res, { status: "recruiting" });
+  }),
+);
+
+router.post(
+  "/recruit/instances/:id/interview-plan",
+  requireAuthority(3),
+  asyncHandler(async (req, res) => {
+    const instances = await query(
+      `SELECT ri.*, ip.id AS plan_id
+         FROM recruitment_instances ri
+         LEFT JOIN interview_plans ip ON ip.recruitment_id = ri.id
+        WHERE ri.id = ? LIMIT 1`,
+      [req.params.id],
+    );
+    const instance = instances[0];
+    if (!instance || !instance.form_id) return fail(res, 409, "FORM_REQUIRED", "연결된 Google Form이 필요합니다.");
+    if (instance.status !== "planning") return fail(res, 409, "INVALID_TRANSITION", "면접 계획 상태에서만 계획을 작성할 수 있습니다.");
+    if (instance.plan_id) return ok(res, { id: instance.plan_id, path: `/recruit/interview/plans/${instance.plan_id}/edit/interviewers` });
+    const [result] = await db.execute(
+      `INSERT INTO interview_plans (form_id, recruitment_id, title, status, created_by, updated_by, panel_size)
+       VALUES (?, ?, ?, 'draft', ?, ?, 2)`,
+      [instance.form_id, instance.id, `${instance.title} 면접 계획`, req.session.userId, req.session.userId],
+    );
+    // 2026-08-23: Enter the linked plan directly at interviewer assignment, not the generic new-plan intro.
+    created(res, { id: result.insertId, path: `/recruit/interview/plans/${result.insertId}/edit/interviewers` });
+  }),
+);
+
+router.post(
+  "/recruit/instances/:id/finish-recruiting",
+  requireAuthority(3),
+  asyncHandler(async (req, res) => {
+    const instances = await query(
+      `SELECT ri.*, ip.id AS plan_id, ip.status AS plan_status
+         FROM recruitment_instances ri
+         LEFT JOIN interview_plans ip ON ip.recruitment_id = ri.id
+        WHERE ri.id = ? LIMIT 1`,
+      [req.params.id],
+    );
+    const instance = instances[0];
+    if (!instance) return fail(res, 404, "NOT_FOUND", "모집 인스턴스를 찾지 못했습니다.");
+    if (instance.status !== "recruiting") return fail(res, 409, "INVALID_TRANSITION", "모집 상태에서만 모집을 종료할 수 있습니다.");
+    try {
+      // 2026-08-20: Current Google Forms API publish settings close responses before UCMS enters interview state.
+      const { forms } = getOAuthClients();
+      const formResponse = await forms.forms.get({ formId: instance.form_id });
+      if (!formResponse.data.publishSettings || !forms.forms.setPublishSettings) {
+        return fail(res, 409, "FORM_CLOSE_UNSUPPORTED", "이 Google Form은 API 응답 종료를 지원하지 않습니다. 새 형식의 폼을 연결해 주세요.");
+      }
+      await forms.forms.setPublishSettings({
+        formId: instance.form_id,
+        requestBody: {
+          publishSettings: { publishState: { isPublished: true, isAcceptingResponses: false } },
+          updateMask: "publishState",
+        },
+      });
+    } catch (error) {
+      if (isOAuthReconnectRequired(error)) {
+        return fail(res, 409, "GOOGLE_OAUTH_RECONNECT_REQUIRED", "Google 계정을 다시 연결해 주세요.");
+      }
+      return fail(res, 409, "GOOGLE_FORM_CLOSE_FAILED", "Google Form 응답 접수를 종료하지 못했습니다.");
+    }
+    // 2026-08-23: Closing intake now enters a distinct interview-planning phase.
+    await db.execute(
+      `UPDATE recruitment_instances
+          SET status = 'planning',
+              snapshot_applicant_count = (SELECT COUNT(*) FROM recruiting_members WHERE form_id = ?)
+        WHERE id = ?`,
+      [instance.form_id, req.params.id],
+    );
+    ok(res, { status: "planning" });
+  }),
+);
+
+router.post(
+  "/recruit/instances/:id/start-interview",
+  requireAuthority(3),
+  asyncHandler(async (req, res) => {
+    const instances = await query(
+      `SELECT ri.*, ip.id AS plan_id, ip.status AS plan_status
+         FROM recruitment_instances ri
+         LEFT JOIN interview_plans ip ON ip.recruitment_id = ri.id
+        WHERE ri.id = ? LIMIT 1`,
+      [req.params.id],
+    );
+    const instance = instances[0];
+    if (!instance) return fail(res, 404, "NOT_FOUND", "모집 인스턴스를 찾지 못했습니다.");
+    if (instance.status !== "planning") return fail(res, 409, "INVALID_TRANSITION", "면접 계획 상태에서만 면접을 시작할 수 있습니다.");
+    if (!instance.plan_id || instance.plan_status !== "active") return fail(res, 409, "CONFIRMED_PLAN_REQUIRED", "확정된 면접 계획이 필요합니다.");
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.execute("UPDATE recruiting_members SET rating = '불합격' WHERE form_id = ? AND rating <> '1차합격'", [instance.form_id]);
+      await connection.execute(
+        `UPDATE recruitment_instances
+            SET status = 'interview', interview_started_at = CURRENT_TIMESTAMP,
+                snapshot_first_pass_count = (SELECT COUNT(*) FROM recruiting_members WHERE form_id = ? AND rating = '1차합격')
+          WHERE id = ?`,
+        [instance.form_id, req.params.id],
+      );
+      await connection.commit();
+      ok(res, { status: "interview" });
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }),
+);
+
+router.post(
+  "/recruit/instances/:id/finish-interview",
+  requireAuthority(3),
+  asyncHandler(async (req, res) => {
+    const instances = await query(
+      "SELECT id, form_id, status FROM recruitment_instances WHERE id = ? LIMIT 1",
+      [req.params.id],
+    );
+    const instance = instances[0];
+    if (!instance) return fail(res, 404, "NOT_FOUND", "모집 인스턴스를 찾지 못했습니다.");
+    if (instance.status !== "interview") return fail(res, 409, "INVALID_TRANSITION", "면접 상태에서만 종료할 수 있습니다.");
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.execute(
+        "UPDATE recruiting_members SET rating = '불합격' WHERE form_id = ? AND rating <> '최종합격'",
+        [instance.form_id],
+      );
+      await connection.execute(
+        "UPDATE interview_plans SET status = 'completed', updated_by = ? WHERE recruitment_id = ?",
+        [req.session.userId, instance.id],
+      );
+      await connection.execute(
+        `UPDATE recruitment_instances
+            SET status = 'closed',
+                closed_at = CURRENT_TIMESTAMP,
+                snapshot_final_pass_count = (SELECT COUNT(*) FROM recruiting_members WHERE form_id = ? AND rating = '최종합격')
+          WHERE id = ?`,
+        [instance.form_id, req.params.id],
+      );
+      await connection.commit();
+      ok(res, { status: "closed", resultVisibleDays: 3 });
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }),
 );
 
 router.get(
   "/recruit/forms",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     // 2026-07-23: The React interview wizard needs the same form metadata as the legacy selector.
     const forms = await query(
@@ -1080,18 +2040,36 @@ router.get(
 
 router.get(
   "/recruit/forms/:id/interview-dates",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
-    // 2026-07-23: Derive interview dates from Google Form questions as the EJS flow did.
-    const questions = await query(
+    // 2026-08-23: Refresh an empty local question cache before deriving interview dates.
+    let questions = await query(
       `SELECT question_id, question
          FROM form_questions
         WHERE form_id = ?
         ORDER BY idx ASC`,
       [req.params.id],
     );
+    if (questions.length === 0) {
+      try {
+        await Form.loadFormStructure(req.params.id);
+        questions = await query(
+          `SELECT question_id, question
+             FROM form_questions
+            WHERE form_id = ?
+            ORDER BY idx ASC`,
+          [req.params.id],
+        );
+      } catch (error) {
+        if (isOAuthReconnectRequired(error)) {
+          return fail(res, 409, "GOOGLE_OAUTH_RECONNECT_REQUIRED", "Google 계정을 다시 연결해 주세요.");
+        }
+        return fail(res, 409, "GOOGLE_FORM_SYNC_FAILED", "Google Form 질문을 동기화하지 못했습니다.");
+      }
+    }
     const dates = [];
-    const datePattern = /(\d{1,2})\/(\d{1,2})(\([월화수목금토일]\))/g;
+    // 2026-08-23: Accept both 8/24(월) and 8월 24일 (월) question title formats.
+    const datePattern = /(\d{1,2})\s*(?:\/|월\s*)(\d{1,2})\s*(?:일)?\s*(\([월화수목금토일]\))?/g;
     for (const question of questions) {
       if (
         !String(question.question || "")
@@ -1102,10 +2080,18 @@ router.get(
       }
       for (const match of String(question.question).matchAll(datePattern)) {
         dates.push({
-          date: `${match[1].padStart(2, "0")}/${match[2].padStart(2, "0")}${match[3]}`,
+          date: `${match[1].padStart(2, "0")}/${match[2].padStart(2, "0")}${match[3] || ""}`,
           questionId: question.question_id,
         });
       }
+    }
+    if (dates.length === 0) {
+      return fail(
+        res,
+        422,
+        "INTERVIEW_DATE_QUESTIONS_NOT_FOUND",
+        "지원 폼에서 '면접 가능 시간'과 날짜가 포함된 질문을 찾지 못했습니다. Google Form 질문 제목을 확인해 주세요.",
+      );
     }
     ok(res, { dates });
   }),
@@ -1113,7 +2099,7 @@ router.get(
 
 router.get(
   "/recruit/responses",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const result = await query(
       `SELECT rm.*, fl.title AS form_title
@@ -1125,7 +2111,7 @@ router.get(
   }),
 );
 
-router.post("/recruit/sync", requireAuthority(4), (req, res) => {
+router.post("/recruit/sync", requireAuthority(3), (req, res) => {
   ok(res, {
     syncedCount: 0,
     message: "Recruit sync remains in the legacy Google Forms flow.",
@@ -1134,10 +2120,13 @@ router.post("/recruit/sync", requireAuthority(4), (req, res) => {
 
 router.patch(
   "/recruit/responses/:id/rating",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     if (!req.body.rating) {
       return fail(res, 400, "INVALID_REQUEST", "rating is required.");
+    }
+    if (!RECRUIT_RATINGS.has(req.body.rating)) {
+      return fail(res, 400, "INVALID_RATING", "지원하지 않는 평가 상태입니다.");
     }
     await db.execute("UPDATE recruiting_members SET rating = ? WHERE id = ?", [
       req.body.rating,
@@ -1149,7 +2138,7 @@ router.patch(
 
 router.get(
   "/recruit/responses/:id",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const applicants = await query(
       `SELECT rm.*, fl.title AS form_title
@@ -1196,7 +2185,7 @@ router.get(
 
 router.get(
   "/recruit/responses/:id/shared-document",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const applicants = await query(
       "SELECT response_id FROM recruiting_members WHERE id = ?",
@@ -1227,9 +2216,34 @@ router.get(
   }),
 );
 
+router.post(
+  "/recruit/responses/:id/shared-document/ticket",
+  requireAuthority(3),
+  asyncHandler(async (req, res) => {
+    // 2026-08-19: Scope every realtime credential to the applicant document verified by the authenticated REST API.
+    const applicants = await query(
+      "SELECT response_id, form_id FROM recruiting_members WHERE id = ?",
+      [req.params.id],
+    );
+    if (!applicants[0]) {
+      return fail(res, 404, "NOT_FOUND", "Recruit response not found.");
+    }
+
+    const documentId = `response-${applicants[0].response_id}`;
+    const formId = String(applicants[0].form_id);
+    const credential = createShareDbTicket({
+      userId: req.session.userId,
+      authority: sessionAuthorityRank(req.session.authority),
+      documentId,
+      formId,
+    });
+    ok(res, { ...credential, documentId, formId });
+  }),
+);
+
 router.put(
   "/recruit/responses/:id/shared-document",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const applicants = await query(
       "SELECT response_id, form_id FROM recruiting_members WHERE id = ?",
@@ -1267,7 +2281,7 @@ router.put(
 
 router.get(
   "/interview/plans",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const result = await query(
       `SELECT ip.*, fl.title AS form_title, u.name AS owner
@@ -1279,6 +2293,7 @@ router.get(
     ok(res, {
       plans: result.map((plan) => ({
         id: plan.id,
+        recruitmentId: plan.recruitment_id ? Number(plan.recruitment_id) : null,
         title: plan.title,
         formId: plan.form_id,
         formTitle: plan.form_title,
@@ -1292,7 +2307,7 @@ router.get(
 
 router.get(
   "/interview/schedules/active",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     // 2026-07-23: Expose every confirmed plan with its saved schedule for the React personnel menu.
     const plans = await query(
@@ -1310,13 +2325,18 @@ router.get(
                   interviewee.id AS applicant_id,
                   interviewee.name AS applicant_name,
                   interviewee.rating,
-                  interviewee.response_id
+                  interviewee.response_id,
+                  isl.location
              FROM interview_schedules s
              LEFT JOIN members interviewer
                ON interviewer.student_id = s.interviewer_id
              LEFT JOIN recruiting_members interviewee
                ON interviewee.student_id = s.interviewee_id
               AND interviewee.form_id = ?
+            LEFT JOIN interview_slot_locations isl
+              ON isl.plan_id = s.plan_id
+             AND isl.interview_date = s.interview_date
+             AND isl.time_slot = s.time_slot
             WHERE s.plan_id = ?
             ORDER BY s.interview_date, s.time_slot, s.interviewee_id`,
           [plan.form_id, plan.id],
@@ -1324,6 +2344,7 @@ router.get(
         return {
           plan: {
             id: plan.id,
+            recruitmentId: plan.recruitment_id ? Number(plan.recruitment_id) : null,
             title: plan.title,
             formTitle: plan.form_title,
             status: plan.status,
@@ -1340,7 +2361,7 @@ router.get(
 
 router.post(
   "/interview/plans",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     if (!req.body.title || !req.body.formId) {
       return fail(
@@ -1357,19 +2378,51 @@ router.post(
       const interviewerIds = Array.isArray(req.body.interviewerIds)
         ? req.body.interviewerIds.map(String)
         : [];
-      const [result] = await connection.execute(
-        `INSERT INTO interview_plans
-         (form_id, title, status, created_by, updated_by, panel_size)
-         VALUES (?, ?, 'draft', ?, ?, ?)`,
-        [
-          req.body.formId,
-          req.body.title,
-          req.session.userId,
-          req.session.userId,
-          Math.max(1, Number(req.body.panelSize || 2)),
-        ],
-      );
-      const planId = result.insertId;
+      let planId = Number(req.body.planId || 0);
+      if (planId) {
+        // 2026-08-23: Editing a draft or confirmed plan reuses its linked record and invalidates the old schedule.
+        const [drafts] = await connection.execute(
+          `SELECT id FROM interview_plans
+            WHERE id = ? AND form_id = ? AND status IN ('draft', 'active')
+            FOR UPDATE`,
+          [planId, req.body.formId],
+        );
+        if (!drafts[0]) {
+          const draftError = new Error("편집할 수 있는 면접 계획 초안을 찾지 못했습니다.");
+          draftError.code = "INTERVIEW_DRAFT_NOT_FOUND";
+          throw draftError;
+        }
+        await connection.execute(
+          `UPDATE interview_plans
+              SET title = ?, status = 'draft', updated_by = ?, panel_size = ?
+            WHERE id = ?`,
+          [req.body.title, req.session.userId, Math.max(1, Number(req.body.panelSize || 2)), planId],
+        );
+        await connection.execute("DELETE FROM interview_schedules WHERE plan_id = ?", [planId]);
+        await connection.execute("DELETE FROM interviewer_time_slots WHERE plan_id = ?", [planId]);
+        await connection.execute("DELETE FROM interview_interviewers WHERE plan_id = ?", [planId]);
+        await connection.execute("DELETE FROM interview_dates WHERE plan_id = ?", [planId]);
+        await connection.execute("DELETE FROM interview_slot_locations WHERE plan_id = ?", [planId]);
+      } else {
+        const [linkedRecruitments] = await connection.execute(
+          "SELECT id FROM recruitment_instances WHERE form_id = ? AND status <> 'closed' ORDER BY id DESC LIMIT 1",
+          [req.body.formId],
+        );
+        const [result] = await connection.execute(
+          `INSERT INTO interview_plans
+           (form_id, recruitment_id, title, status, created_by, updated_by, panel_size)
+           VALUES (?, ?, ?, 'draft', ?, ?, ?)`,
+          [
+            req.body.formId,
+            linkedRecruitments[0]?.id || null,
+            req.body.title,
+            req.session.userId,
+            req.session.userId,
+            Math.max(1, Number(req.body.panelSize || 2)),
+          ],
+        );
+        planId = result.insertId;
+      }
       for (const item of req.body.interviewDates || []) {
         await connection.execute(
           `INSERT INTO interview_dates (plan_id, interview_date, question_id)
@@ -1397,10 +2450,26 @@ router.post(
           ],
         );
       }
+      // 2026-08-20: A venue belongs to a plan/date/time slot and is shared by every scheduled participant in it.
+      for (const slot of req.body.slotLocations || []) {
+        if (!slot.date || !slot.timeSlot || !String(slot.location || "").trim()) continue;
+        await connection.execute(
+          `INSERT INTO interview_slot_locations (plan_id, interview_date, time_slot, location)
+           VALUES (?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE location = VALUES(location)`,
+          [planId, slot.date, slot.timeSlot, String(slot.location).trim()],
+        );
+      }
       await connection.commit();
       created(res, { id: planId, path: `/recruit/interview/plans/${planId}` });
     } catch (error) {
       await connection.rollback();
+      if (error.code === "INTERVIEW_DRAFT_NOT_FOUND") {
+        return fail(res, 409, error.code, error.message);
+      }
+      if (error.code === "ER_DUP_ENTRY") {
+        return fail(res, 409, "INTERVIEW_PLAN_ALREADY_LINKED", "해당 모집에는 이미 면접 계획이 있습니다.");
+      }
       throw error;
     } finally {
       connection.release();
@@ -1410,7 +2479,7 @@ router.post(
 
 router.get(
   "/interview/interviewers",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     // 2026-07-23: Limit interviewer candidates to executive members from the Members schema.
     const interviewers = await query(
@@ -1433,7 +2502,7 @@ router.get(
 
 router.get(
   "/interview/plans/:id",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const result = await query(
       `SELECT ip.*, fl.title AS form_title, u.name AS owner
@@ -1478,19 +2547,32 @@ router.get(
     const scheduleRows = await query(
       `SELECT s.*,
               interviewer.name AS interviewer_name,
-              interviewee.name AS applicant_name
+              interviewee.name AS applicant_name,
+              isl.location
          FROM interview_schedules s
          LEFT JOIN members interviewer ON interviewer.student_id = s.interviewer_id
          LEFT JOIN recruiting_members interviewee
            ON interviewee.student_id = s.interviewee_id
           AND interviewee.form_id = ?
+        LEFT JOIN interview_slot_locations isl
+          ON isl.plan_id = s.plan_id
+         AND isl.interview_date = s.interview_date
+         AND isl.time_slot = s.time_slot
         WHERE s.plan_id = ?
         ORDER BY s.interview_date, s.time_slot`,
       [plan.form_id, req.params.id],
     );
+    const slotLocations = await query(
+      `SELECT interview_date, time_slot, location
+         FROM interview_slot_locations
+        WHERE plan_id = ?
+        ORDER BY interview_date, time_slot`,
+      [req.params.id],
+    );
     ok(res, {
       plan: {
         id: plan.id,
+        recruitmentId: plan.recruitment_id ? Number(plan.recruitment_id) : null,
         title: plan.title,
         formId: plan.form_id,
         formTitle: plan.form_title,
@@ -1523,13 +2605,18 @@ router.get(
         rating: item.rating,
       })),
       schedule: groupInterviewScheduleRows(scheduleRows),
+      slotLocations: slotLocations.map((slot) => ({
+        date: slot.interview_date,
+        timeSlot: slot.time_slot,
+        location: slot.location,
+      })),
     });
   }),
 );
 
 router.post(
   "/interview/plans/:id/status",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     // 2026-07-23: Expose the draft/active/completed transitions used by the legacy detail page.
     const allowedStatuses = ["draft", "active", "completed", "cancelled"];
@@ -1540,6 +2627,21 @@ router.post(
         "INVALID_REQUEST",
         "Invalid interview plan status.",
       );
+    }
+    const plans = await query(
+      `SELECT ip.id, ip.status, ip.recruitment_id, ri.status AS recruitment_status
+         FROM interview_plans ip
+         LEFT JOIN recruitment_instances ri ON ri.id = ip.recruitment_id
+        WHERE ip.id = ? LIMIT 1`,
+      [req.params.id],
+    );
+    if (!plans[0]) return fail(res, 404, "NOT_FOUND", "면접 계획을 찾지 못했습니다.");
+    if (
+      plans[0].recruitment_id &&
+      (req.body.status === "completed" || plans[0].recruitment_status === "interview")
+    ) {
+      // 2026-08-21: Linked interview completion must atomically close the recruitment and reject non-final applicants.
+      return fail(res, 409, "RECRUITMENT_CLOSE_REQUIRED", "모집 상세의 면접 종료 버튼을 사용해 주세요.");
     }
     if (req.body.status === "active") {
       const schedules = await query(
@@ -1565,7 +2667,7 @@ router.post(
 
 router.post(
   "/interview/plans/:id/timetable",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     // 2026-07-23: Run the existing OR-Tools scheduler instead of returning the saved row count.
     try {
@@ -1591,7 +2693,7 @@ router.post(
 
 router.delete(
   "/interview/plans/:id",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     await db.execute("DELETE FROM interview_plans WHERE id = ?", [
       req.params.id,
@@ -1636,7 +2738,7 @@ router.get(
 
 router.post(
   "/finance/settlements",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const user = await getCurrentUser(req.session.userId);
     if (!user?.student_id) {
@@ -1765,8 +2867,8 @@ router.get(
         ...mapSettlement(settlement),
         dutchPay: Boolean(settlement.is_dutch_pay),
         event: null,
-        canEdit: authorityRank(req.session.authority) >= 4,
-        canDelete: authorityRank(req.session.authority) >= 4,
+        canEdit: sessionAuthorityRank(req.session.authority) >= 3,
+        canDelete: sessionAuthorityRank(req.session.authority) >= 3,
       },
       participants: participants.map((participant) => ({
         id: participant.id,
@@ -1784,7 +2886,7 @@ router.get(
 
 router.put(
   "/finance/settlements/:id",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const title = String(req.body.title || "").trim();
     const amount = Number(req.body.amount);
@@ -1888,7 +2990,7 @@ router.put(
 
 router.post(
   "/finance/settlements/:id/participants",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const ids = req.body.participantIds || [];
     for (const memberId of ids) {
@@ -1905,7 +3007,7 @@ router.post(
 
 router.patch(
   "/finance/settlements/:id/participants/:participantId",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     await db.execute(
       `UPDATE settlementparticipants
@@ -1928,7 +3030,7 @@ router.patch(
 
 router.post(
   "/finance/settlements/:id/complete",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     await db.execute(
       "UPDATE settlements SET status = 'completed' WHERE id = ?",
@@ -1943,7 +3045,7 @@ router.post(
 
 router.delete(
   "/finance/settlements/:id",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     // 2026-07-23: Settlement deletion mirrors the management action visible in the EJS overview.
     await db.execute("DELETE FROM settlements WHERE id = ?", [req.params.id]);
@@ -1954,17 +3056,31 @@ router.delete(
 router.get(
   "/pos/instances",
   asyncHandler(async (req, res) => {
+    await Pos.closeExpiredInstances();
     ok(res, {
       instances: (await Pos.findAllInstances()).map(mapPosInstance),
-      canCreate: authorityRank(req.session.authority) >= 4,
+      canCreate: sessionAuthorityRank(req.session.authority) >= 3,
     });
   }),
 );
 
 router.post(
   "/pos/instances",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
+    let poster = null;
+    try {
+      poster = decodeBase64File(req.body.posterDataUrl, ["application/pdf"], 10 * 1024 * 1024);
+    } catch (error) {
+      return fail(res, 400, error.code || "INVALID_UPLOAD", error.message);
+    }
+    const autoCloseAt = req.body.autoCloseAt ? new Date(req.body.autoCloseAt) : null;
+    if (autoCloseAt && Number.isNaN(autoCloseAt.getTime())) {
+      return fail(res, 400, "INVALID_CLOSE_TIME", "자동 판매 종료 시간을 확인해 주세요.");
+    }
+    if (poster && poster.buffer.subarray(0, 5).toString("ascii") !== "%PDF-") {
+      return fail(res, 400, "INVALID_PDF", "올바른 PDF 파일을 업로드해 주세요.");
+    }
     const products = (req.body.products || []).map((product) => ({
       product_name: product.name || product.product_name,
       product_price: Number(product.price ?? product.product_price),
@@ -1997,8 +3113,30 @@ router.post(
       products,
       salesmans: req.body.salesmans || [],
       created_by: req.session.userId,
+      poster_file_name: poster ? String(req.body.posterFileName || "poster.pdf") : null,
+      poster_pdf: poster?.buffer || null,
+      promotion_copy: String(req.body.promotionCopy || "").trim() || null,
+      auto_close_at: autoCloseAt,
     });
     created(res, { id, path: `/pos/instances/${id}` });
+  }),
+);
+
+// 2026-08-20: Navigation and dashboard share one active POS promotion contract.
+router.get(
+  "/pos/active",
+  asyncHandler(async (_req, res) => {
+    const promotion = await Pos.getActivePromotion();
+    ok(res, {
+      instance: promotion
+        ? {
+            ...mapPosInstance(promotion),
+            initialStock: promotion.initial_stock,
+            soldQuantity: promotion.sold_quantity,
+            saleRate: promotion.sale_rate,
+          }
+        : null,
+    });
   }),
 );
 
@@ -2016,14 +3154,32 @@ router.get(
         studentId: salesman.member_id,
         name: salesman.member_name,
       })),
-      canManage: authorityRank(req.session.authority) >= 4,
+      canManage: sessionAuthorityRank(req.session.authority) >= 3,
     });
+  }),
+);
+
+router.get(
+  "/pos/instances/:id/poster",
+  asyncHandler(async (req, res) => {
+    const result = await query(
+      `SELECT poster_file_name, poster_mime_type, poster_pdf
+         FROM pos_instances
+        WHERE id = ? AND (status = 'active' OR ? >= 3)
+        LIMIT 1`,
+      [req.params.id, sessionAuthorityRank(req.session?.authority)],
+    );
+    if (!result[0]?.poster_pdf) return fail(res, 404, "NOT_FOUND", "POS 포스터를 찾지 못했습니다.");
+    res.set("Content-Type", result[0].poster_mime_type || "application/pdf");
+    res.set("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(result[0].poster_file_name || "poster.pdf")}`);
+    res.set("Cache-Control", "public, max-age=300");
+    return res.send(result[0].poster_pdf);
   }),
 );
 
 router.patch(
   "/pos/instances/:id/status",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const status = String(req.body.status || "");
     try {
@@ -2049,26 +3205,17 @@ router.patch(
 
 router.put(
   "/pos/instances/:id",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
-    const products = (req.body.products || []).map((product) => ({
-      product_name: product.name || product.product_name,
-      product_price: product.price || product.product_price,
-      stock: product.stock || 0,
-    }));
-    await Pos.updateInstance({
-      id: Number(req.params.id),
-      instance_name: req.body.name || req.body.instance_name,
-      products,
-      salesmans: req.body.salesmans || [],
-    });
-    ok(res, { id: Number(req.params.id), message: "POS instance updated." });
+    // 2026-08-23: Spring rechecks authority and blocks edits while an instance is actively selling.
+    const result = await updatePosInstance(req.params.id, req.session.userId, req.body || {});
+    ok(res, result);
   }),
 );
 
 router.delete(
   "/pos/instances/:id",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     await db.execute("DELETE FROM pos_instances WHERE id = ?", [req.params.id]);
     ok(res, { message: "POS instance deleted." });
@@ -2077,7 +3224,7 @@ router.delete(
 
 router.post(
   "/pos/instances/:id/open",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     await Pos.setActiveInstance(req.params.id);
     ok(res, { status: "active", openedAt: toIso(new Date()) });
@@ -2167,7 +3314,7 @@ router.post(
 
 router.post(
   "/pos/close",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     await Pos.setInstanceStatus(req.body.instanceId, "closed");
     ok(res, { status: "closed", closedAt: toIso(new Date()) });
@@ -2209,14 +3356,14 @@ router.get(
       instance: { id: data.instance.id, name: data.instance.instance_name },
       records,
       summary,
-      canManage: authorityRank(req.session.authority) >= 4,
+      canManage: sessionAuthorityRank(req.session.authority) >= 3,
     });
   }),
 );
 
 router.delete(
   "/pos/records/:recordId",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     await db.execute("DELETE FROM pos_receipts WHERE id = ?", [
       req.params.recordId,
@@ -2227,7 +3374,7 @@ router.delete(
 
 router.post(
   "/pos/instances/:id/records/clear",
-  requireAuthority(4),
+  requireAuthority(3),
   asyncHandler(async (req, res) => {
     const [result] = await db.execute(
       "DELETE FROM pos_receipts WHERE instance_id = ?",
@@ -2243,22 +3390,73 @@ router.post(
 router.post(
   "/public/recruit-results/search",
   asyncHandler(async (req, res) => {
+    // 2026-08-20: Anonymous lookup requires three matching applicant attributes and is limited to the published result window.
+    const rateLimit = consumeLookupAttempt(`public-result:${req.ip}`);
+    setLookupRateLimitHeaders(res, rateLimit);
+    if (!rateLimit.allowed) {
+      return fail(res, 429, "RATE_LIMITED", "조회 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.");
+    }
+    const studentId = normalizeStudentId(req.body.studentId);
+    const submittedName = normalizeName(req.body.name);
+    const submittedPhone = normalizePhone(req.body.phone);
+    if (!studentId || !submittedName || submittedPhone.length < 10) {
+      return fail(res, 400, "INVALID_REQUEST", "학번, 이름, 지원서에 작성한 전화번호를 모두 입력해 주세요.");
+    }
     const result = await query(
-      `SELECT rm.*, fl.title AS form_title
+      `SELECT rm.*, fl.title AS form_title,
+              ri.status AS recruitment_status,
+              ri.closed_at,
+              ip.id AS plan_id
          FROM recruiting_members rm
          LEFT JOIN formlist fl ON fl.id = rm.form_id
+         JOIN recruitment_instances ri ON ri.form_id = rm.form_id
+         LEFT JOIN interview_plans ip ON ip.form_id = rm.form_id
         WHERE rm.student_id = ?
+          AND (ri.status = 'interview'
+               OR (ri.status = 'closed' AND ri.closed_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 3 DAY)))
         ORDER BY rm.synced_at DESC`,
-      [req.body.studentId],
+      [studentId],
     );
-    ok(res, {
-      results: result.map((row) => ({
+    const verified = result.filter(
+      (row) => normalizeName(row.name) === submittedName && normalizePhone(row.phone) === submittedPhone,
+    );
+    const results = await Promise.all(verified.map(async (row) => {
+      const schedules = row.plan_id
+        ? await query(
+            `SELECT s.interview_date, s.time_slot, isl.location, ip.title AS plan_title
+               FROM interview_schedules s
+               JOIN interview_plans ip ON ip.id = s.plan_id
+               LEFT JOIN interview_slot_locations isl
+                 ON isl.plan_id = s.plan_id
+                AND isl.interview_date = s.interview_date
+                AND isl.time_slot = s.time_slot
+              WHERE s.plan_id = ? AND s.interviewee_id = ?
+              ORDER BY s.interview_date, s.time_slot LIMIT 1`,
+            [row.plan_id, row.student_id],
+          )
+        : [];
+      const schedule = schedules[0];
+      const rating = row.recruitment_status === "interview" && row.rating === "최종합격"
+        ? "1차합격"
+        : row.rating;
+      return {
         formTitle: row.form_title,
         name: row.name,
         major: row.major,
-        rating: row.rating,
-        interviewSchedule: null,
-      })),
+        rating,
+        phase: row.recruitment_status,
+        interviewSchedule: rating === "1차합격" && schedule
+          ? {
+              planTitle: schedule.plan_title,
+              interviewDate: schedule.interview_date,
+              timeSlot: schedule.time_slot,
+              location: schedule.location,
+            }
+          : null,
+      };
+    }));
+    ok(res, {
+      results,
     });
   }),
 );
@@ -2266,14 +3464,45 @@ router.post(
 router.post(
   "/public/recruit-responses/search",
   asyncHandler(async (req, res) => {
-    const result = await query(
-      `SELECT rm.*, fl.title AS form_title
-         FROM recruiting_members rm
-         LEFT JOIN formlist fl ON fl.id = rm.form_id
-        WHERE rm.student_id = ?
-        ORDER BY rm.synced_at DESC`,
-      [req.body.studentId],
+    // 2026-08-22: Use the verified UCMS account's name, phone, and student ID; never trust lookup identity from the request body.
+    if (!req.session?.userId) {
+      return fail(res, 401, "UNAUTHORIZED", "로그인이 필요합니다.");
+    }
+    const rateLimit = consumeLookupAttempt(`${req.ip}:${req.session.userId}`);
+    setLookupRateLimitHeaders(res, rateLimit);
+    if (!rateLimit.allowed) {
+      return fail(
+        res,
+        429,
+        "RATE_LIMITED",
+        "조회 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
+      );
+    }
+    const currentUser = await getCurrentUser(req.session.userId);
+    const studentId = normalizeStudentId(
+      currentUser?.student_id || currentUser?.user_student_id,
     );
+    const identity = createVerifiedAccountIdentity(
+      currentUser?.member_name || currentUser?.user_name,
+      currentUser?.phone || currentUser?.phone_number,
+    );
+    if (!studentId || !identity) {
+      return fail(
+        res,
+        422,
+        "ACCOUNT_IDENTITY_REQUIRED",
+        "계정의 이름, 전화번호, 학번 정보가 필요합니다. 내 정보를 확인해 주세요.",
+      );
+    }
+    const result = await findOwnApplications(studentId, identity);
+    if (result.length === 0) {
+      return fail(
+        res,
+        404,
+        "NOT_FOUND",
+        "현재 계정 정보와 일치하는 지원서를 찾을 수 없습니다.",
+      );
+    }
     const apiResults = [];
     for (const row of result) {
       const responses = await query(
@@ -2295,7 +3524,7 @@ router.post(
         })),
       });
     }
-    ok(res, { results: apiResults });
+    ok(res, { responses: apiResults });
   }),
 );
 
@@ -2303,11 +3532,21 @@ router.use((err, req, res, next) => {
   if (err.code === "NOT_SALESMAN") {
     return fail(res, 403, "FORBIDDEN", err.message);
   }
-  // 2026-07-23: 외부 API 오류 객체의 OAuth 토큰·요청 본문이 서버 로그에 기록되지 않도록 요약만 남깁니다.
+  // 2026-08-22: Preserve typed API errors while keeping internal database/Google API details out of responses.
   console.error(
     `${req.method} ${req.originalUrl} API error: ${err?.code || err?.status || "UNKNOWN"} ${err?.message || ""}`,
   );
-  return fail(res, 500, "INTERNAL_SERVER_ERROR", "Internal server error.");
+  const status = Number.isInteger(Number(err?.status)) ? Number(err.status) : 500;
+  const safeStatus = status >= 400 && status <= 599 ? status : 500;
+  const code = safeStatus < 500 && /^[A-Z0-9_]+$/.test(String(err?.code || ""))
+    ? err.code
+    : "INTERNAL_SERVER_ERROR";
+  return fail(
+    res,
+    safeStatus,
+    code,
+    safeStatus < 500 ? err.message : "Internal server error.",
+  );
 });
 
 module.exports = router;

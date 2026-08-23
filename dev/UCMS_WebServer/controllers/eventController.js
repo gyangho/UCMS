@@ -1,12 +1,22 @@
 const Event = require("../models/Event");
 const Member = require("../models/Member");
 const {getHolidays} = require("../extern_apis/holidays");
+const {
+    authorityRank,
+    sessionAuthorityRank,
+} = require("../routes/apiRoutes/apiResponse");
 
 class EventController {
     // 2026-07-23: Event changes are restricted to the author or executive members and above.
     static canManageEvent(event, req) {
         return Number(event.author_id) === Number(req.session.userId) ||
-            Number(req.session.authority) >= 3;
+            sessionAuthorityRank(req.session.authority) >= 3;
+    }
+
+    // 2026-08-22: Direct legacy routes must enforce the same visibility as event lists.
+    static canViewEvent(event, req) {
+        return authorityRank(event.authority) <=
+            sessionAuthorityRank(req.session.authority);
     }
 
     // 2026-07-23: Participation endpoints accept changes only during the configured recruitment window.
@@ -54,6 +64,9 @@ class EventController {
 
             if (!event) {
                 return res.status(404).json({error: "Event not found"});
+            }
+            if (!EventController.canViewEvent(event, req)) {
+                return res.status(403).json({error: "Event is not accessible"});
             }
 
             res.json(event);
@@ -220,6 +233,14 @@ class EventController {
                     .json({error: "Event ID is required"});
             }
 
+            const event = await Event.findById(eventId);
+            if (!event) {
+                return res.status(404).json({error: "Event not found"});
+            }
+            if (!EventController.canViewEvent(event, req)) {
+                return res.status(403).json({error: "Event is not accessible"});
+            }
+
             const participants = await Event.getParticipants(eventId);
             res.json(participants);
         } catch (error) {
@@ -246,6 +267,9 @@ class EventController {
             const event = await Event.findById(eventId);
             if (!event) {
                 return res.status(404).json({error: "Event not found"});
+            }
+            if (!EventController.canViewEvent(event, req)) {
+                return res.status(403).json({error: "Event is not accessible"});
             }
             if (!EventController.isRecruitmentOpen(event)) {
                 return res.status(409).json({error: "참가 모집 기간이 아닙니다."});
@@ -279,6 +303,9 @@ class EventController {
             const event = await Event.findById(eventId);
             if (!event) {
                 return res.status(404).json({error: "Event not found"});
+            }
+            if (!EventController.canViewEvent(event, req)) {
+                return res.status(403).json({error: "Event is not accessible"});
             }
             if (!EventController.isRecruitmentOpen(event)) {
                 return res.status(409).json({error: "참가 모집 기간이 아닙니다."});
@@ -368,7 +395,16 @@ class EventController {
     static async renderEventInfo(req, res) {
         try {
             const {id} = req.query;
+            if (!id) {
+                return res.status(400).send("Event ID is required");
+            }
             const event = await Event.findById(id);
+            if (!event) {
+                return res.status(404).send("Event not found");
+            }
+            if (!EventController.canViewEvent(event, req)) {
+                return res.status(403).send("Event is not accessible");
+            }
             const participants = await Event.getParticipants(id);
 
             event.start = new Date(event.start.getTime() + 9 * 3600 * 1000)

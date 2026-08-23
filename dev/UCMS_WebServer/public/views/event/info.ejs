@@ -25,11 +25,12 @@
         <div>
           <label class="inline-field">
             시작 시각
-            <input type="datetime-local" name="start" value="<%= currentEvent.start || '' %>" required disabled />
+            <!-- 2026-08-23: Preserve ten-minute intervals when a legacy event is switched into edit mode. -->
+            <input type="datetime-local" step="600" name="start" value="<%= currentEvent.start || '' %>" required disabled />
           </label>
           <label class="inline-field">
             종료 시각
-            <input type="datetime-local" name="end" value="<%= currentEvent.end || '' %>" required disabled />
+            <input type="datetime-local" step="600" name="end" value="<%= currentEvent.end || '' %>" required disabled />
           </label>
         </div>
 
@@ -41,12 +42,12 @@
           <div id="recruit-time" class="hidden">
             <label class="inline-field">
               모집 시작 시각
-              <input type="datetime-local" name="recruit_start" value="<%= currentEvent.recruit_start || '' %>"
+              <input type="datetime-local" step="600" name="recruit_start" value="<%= currentEvent.recruit_start || '' %>"
                 disabled />
             </label>
             <label class="inline-field">
               모집 종료 시각
-              <input type="datetime-local" name="recruit_end" value="<%= currentEvent.recruit_end || '' %>" disabled />
+              <input type="datetime-local" step="600" name="recruit_end" value="<%= currentEvent.recruit_end || '' %>" disabled />
             </label>
           </div>
 

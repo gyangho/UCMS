@@ -1,0 +1,36 @@
+-- 2026-08-20: Synthetic 0.0.1 rows verify stable user IDs and references during first Flyway adoption.
+INSERT INTO users (id, kakao_id, name, profile_image, thumbnail_image)
+VALUES (
+  700001,
+  900000700001,
+  'MigrationExisting',
+  'https://example.invalid/profile.png',
+  'https://example.invalid/thumb.png'
+);
+
+INSERT INTO members
+  (student_id, name, major, phone, gender, generation, authority, user_id)
+VALUES ('9999970001', 'MigrationExisting', 'Test', '010-9700-0001', '남자', 1, '부원', 700001);
+
+INSERT INTO events
+  (id, title, description, `start`, `end`, author_id, updater_id, color,
+   ismultiple, authority, isRecruiting)
+VALUES (
+  700001,
+  'MigrationTest',
+  NULL,
+  '2026-08-20 00:00:00',
+  '2026-08-20 01:00:00',
+  700001,
+  700001,
+  'green',
+  0,
+  '부원',
+  0
+);
+
+INSERT INTO event_participants (event_id, user_id)
+VALUES (700001, 700001);
+
+INSERT INTO sessions (session_id, expires, data)
+VALUES ('migration-smoke-session', 2147483647, '{}');

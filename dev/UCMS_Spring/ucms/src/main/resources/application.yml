@@ -1,0 +1,51 @@
+spring:
+  devtools:
+    # 2026-08-23: Do not let development defaults re-enable detailed error responses for internal APIs.
+    add-properties: false
+  session:
+    # 2026-08-23: The internal mail backend is stateless and must not require SPRING_SESSION tables.
+    store-type: none
+  jpa:
+    # 2026-08-23: Mail endpoints do not need persistence access during response rendering.
+    open-in-view: false
+  mail:
+    # 2026-08-23: Gmail credentials are injected only through untracked environment configuration.
+    host: smtp.gmail.com
+    port: 587
+    username: ${GMAIL_USERNAME:}
+    password: ${GMAIL_APP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 10000
+          writetimeout: 10000
+        debug: false
+    test-connection: false
+
+ucms:
+  mail:
+    internal-token: ${UCMS_INTERNAL_MAIL_TOKEN:}
+
+logging:
+  level:
+    org.springframework.mail: INFO
+    org.eclipse.angus.mail: WARN
+    jakarta.mail: WARN
+
+management:
+  health:
+    # 2026-08-23: Avoid SMTP authentication attempts before untracked Gmail credentials are provisioned.
+    mail:
+      enabled: ${MAIL_HEALTH_ENABLED:false}
+
+server:
+  error:
+    # 2026-08-23: Internal API failures must never serialize stack traces or authentication details.
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never

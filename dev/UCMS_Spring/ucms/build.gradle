@@ -5,7 +5,8 @@ plugins {
 }
 
 group = 'net.gyangho'
-version = '0.0.1-SNAPSHOT'
+// 2026-08-19: Prepare the next release and its single pending Flyway migration as version 0.1.1.
+version = '0.1.1-SNAPSHOT'
 
 java {
 	toolchain {
@@ -21,9 +22,13 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
+	// 2026-08-23: Deliver UCMS verification mail through Gmail SMTP with JavaMailSender.
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
+	// 2026-08-23: Generate password hashes compatible with the existing Node scrypt login verifier.
+	implementation 'org.bouncycastle:bcprov-jdk18on:1.83'
 	implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
-	implementation 'org.springframework.boot:spring-boot-starter-session-jdbc'
+	// 2026-08-23: Existing login sessions remain in Node; the Spring mail backend stays stateless.
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.flywaydb:flyway-mysql'

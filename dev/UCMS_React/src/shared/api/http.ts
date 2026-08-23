@@ -42,7 +42,10 @@ export async function request<T>(
     if (response.status === 401 && typeof window !== "undefined") {
       window.dispatchEvent(new Event(API_UNAUTHORIZED_EVENT));
     }
-    const message =
+    // 2026-08-23: Translate proxy-level upload rejection into an actionable Korean message.
+    const message = response.status === 413
+      ? "파일 용량이 허용 기준을 초과했습니다. 파일 크기를 줄인 뒤 다시 시도해 주세요."
+      :
       typeof body === "object" &&
       body !== null &&
       "error" in body &&
@@ -52,7 +55,16 @@ export async function request<T>(
     throw new ApiError(message, response.status, body);
   }
 
-  return response.json() as Promise<T>;
+  // 2026-08-23: Surface a stable integration error when a proxy or server returns HTML instead of the JSON API envelope.
+  const body = await readResponseBody(response);
+  if (typeof body === "string") {
+    throw new ApiError(
+      "서버가 올바르지 않은 응답을 반환했습니다. 잠시 후 다시 시도해 주세요.",
+      response.status,
+      body
+    );
+  }
+  return body as T;
 }
 
 export async function requestData<T>(

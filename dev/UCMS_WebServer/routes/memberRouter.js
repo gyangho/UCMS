@@ -1,6 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const MemberController = require("../controllers/memberController");
+const { requireAuthority } = require("./apiRoutes/apiResponse");
+
+// 2026-08-19: Enforce administrator authority at the router boundary for every legacy member-management route.
+router.use(requireAuthority(4));
 
 // 회원 관리 페이지 렌더링 (루트 경로)
 router.get("/", MemberController.renderMemberManage);

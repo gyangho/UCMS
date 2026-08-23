@@ -16,6 +16,8 @@ export function PublicShell({ children }: PropsWithChildren) {
           onClick={() => navigate("/")}
           aria-label="UCMS 홈"
         >
+          {/* 2026-08-21: Public pages use the same bakery-club mark as the authenticated shell. */}
+          <img className="logo-image" src="/images/ucms-logo.png" alt="" />
           <span className="logo-text">UCMS</span>
         </button>
 
@@ -23,9 +25,12 @@ export function PublicShell({ children }: PropsWithChildren) {
           <button type="button" onClick={() => navigate("/public/recruit-result")}>
             모집 결과 조회
           </button>
-          <button type="button" onClick={() => navigate("/public/recruit-response")}>
-            지원 응답 조회
-          </button>
+          {/* 2026-08-22: Do not advertise applicant-answer lookup before a UCMS session is authenticated. */}
+          {currentUser ? (
+            <button type="button" onClick={() => navigate("/public/recruit-response")}>
+              지원 응답 조회
+            </button>
+          ) : null}
           <button
             className={currentUser ? "user-button" : "user-button login-button"}
             type="button"

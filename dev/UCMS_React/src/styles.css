@@ -2,12 +2,53 @@
   box-sizing: border-box;
 }
 
+/* 2026-08-20: Recruitment and POS promotions stay prominent and poster rows remain horizontally usable on mobile. */
+.dashboard-promotion {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border-color, #dbe3ef);
+  border-radius: 1rem;
+  background: #fff;
+}
+
+.dashboard-promotion object,
+.dashboard-promotion img,
+.recruit-poster-preview img,
+.clickable-card > img {
+  width: min(220px, 100%);
+  max-height: 310px;
+  object-fit: contain;
+  border-radius: .75rem;
+}
+
+.promotion-poster-carousel,
+.recruit-poster-preview {
+  display: flex;
+  gap: .75rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+}
+
+.promotion-poster-carousel > *,
+.recruit-poster-preview > * { scroll-snap-align: start; flex: 0 0 auto; }
+.clickable-card { width: 100%; text-align: left; cursor: pointer; }
+.recruit-closed-section > .section-heading-row { width: 100%; }
+
+@media (max-width: 720px) {
+  .dashboard-promotion { align-items: stretch; flex-direction: column; }
+}
+
 body {
   margin: 0;
   background: #f6f7fb;
   color: #182033;
+  /* 2026-08-21: Keep the warm theme readable with a clean Korean system sans-serif stack. */
   font-family:
-    Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    "Nanum Gothic", "Noto Sans KR", "Malgun Gothic", Gulim, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 a {
@@ -33,8 +74,7 @@ button:focus-visible,
 [role="button"]:focus,
 [role="button"]:focus-visible,
 a.button-link:focus,
-a.auth-link:focus,
-a.kakao-login-button:focus {
+a.auth-link:focus {
   outline: 0;
 }
 
@@ -251,7 +291,7 @@ button::-moz-focus-inner {
   color: #1d4ed8;
 }
 
-/* 2026-07-16: React login page mirrors the legacy Kakao OAuth entry screen. */
+/* 2026-08-22: UCMS native authentication uses a centered, responsive account panel. */
 .login-page {
   display: grid;
   min-height: calc(100vh - 160px);
@@ -279,19 +319,9 @@ button::-moz-focus-inner {
   color: #526078;
 }
 
-.kakao-login-button {
-  display: inline-flex;
-  border-radius: 10px;
-}
-
-.kakao-login-button img {
-  width: min(312px, 100%);
-  height: auto;
-  border-radius: 10px;
-}
-
 .app-main {
-  width: min(1120px, calc(100% - 32px));
+  /* 2026-08-23: Keep management cards away from both viewport edges on tablet and desktop widths. */
+  width: min(1180px, calc(100% - 64px));
   margin: 32px auto;
 }
 
@@ -676,7 +706,6 @@ button::-moz-focus-inner {
 .rating-1차합격,
 .rating-최종합격 { color: #166534; background: #dcfce7; }
 .rating-불합격,
-.rating-1차불합격 { color: #991b1b; background: #fee2e2; }
 .rating-느별 { color: #92400e; background: #fef3c7; }
 .rating-느괜 { color: #1e40af; background: #dbeafe; }
 .rating-느좋 { color: #3f6212; background: #ecfccb; }
@@ -1203,6 +1232,7 @@ button::-moz-focus-inner {
 
 /* 2026-07-23: POS 생성 폼과 인스턴스/품목 목록을 기존 관리 화면과 같은 밀도로 구성한다. */
 .pos-create-panel,
+.pos-instance-edit-panel,
 .pos-instance-summary,
 .pos-products-section,
 .pos-product-detail,
@@ -1216,7 +1246,8 @@ button::-moz-focus-inner {
   box-shadow: 0 8px 24px rgba(24, 32, 51, 0.05);
 }
 
-.pos-create-panel label {
+.pos-create-panel label,
+.pos-instance-edit-panel label {
   display: grid;
   gap: 6px;
   color: #475569;
@@ -1224,7 +1255,9 @@ button::-moz-focus-inner {
   font-weight: 800;
 }
 
-.pos-create-panel input {
+.pos-create-panel input,
+.pos-instance-edit-panel input,
+.pos-instance-edit-panel textarea {
   width: 100%;
   min-height: 42px;
   padding: 9px 11px;
@@ -1232,6 +1265,20 @@ button::-moz-focus-inner {
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
+}
+
+/* 2026-08-23: Match the non-selling POS editor to the creation form and keep product rows scannable. */
+.pos-instance-edit-panel textarea { resize: vertical; line-height: 1.6; }
+.pos-edit-product-list { display: grid; gap: 10px; }
+.pos-edit-product-list > div {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.5fr) minmax(120px, 1fr) minmax(100px, .8fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  background: var(--cream-soft);
+  border: 1px solid var(--brand-border);
+  border-radius: 12px;
 }
 
 .pos-create-section {
@@ -1658,6 +1705,7 @@ button::-moz-focus-inner {
 
 @media (max-width: 900px) {
   .pos-product-form,
+  .pos-edit-product-list > div,
   .pos-instance-summary,
   .pos-sale-layout {
     grid-template-columns: 1fr;
@@ -2912,7 +2960,7 @@ button:disabled {
   }
 
   .app-main {
-    width: min(100% - 20px, 1120px);
+    width: min(100% - 32px, 1180px);
     margin: 16px auto;
   }
 
@@ -3051,5 +3099,1301 @@ button:disabled {
 
   .settings-panel {
     justify-content: flex-start;
+  }
+}
+
+/* 2026-08-23: Present credential rotation as a distinct, responsive mypage settings card. */
+.password-settings-panel {
+  display: grid;
+  gap: 20px;
+}
+
+.password-settings-panel > div:first-child p,
+.field-help,
+.selected-file-summary {
+  color: var(--brand-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+/* 2026-08-23: Shared compact progress indicator for upload and mutation buttons. */
+.button-busy {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.processing-banner {
+  align-items: center;
+  background: rgba(255, 249, 220, 0.96);
+  border: 1px solid var(--border-color, #e2c878);
+  border-radius: 0.8rem;
+  box-shadow: 0 10px 24px rgba(90, 58, 29, 0.14);
+  color: #6a4a17;
+  display: flex;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 3.25rem;
+}
+
+.button-spinner {
+  animation: ucms-button-spin 0.75s linear infinite;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  height: 1rem;
+  width: 1rem;
+}
+
+@keyframes ucms-button-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button-spinner { animation-duration: 1.5s; }
+}
+
+.password-settings-panel .auth-form {
+  max-width: 520px;
+}
+
+.field-help,
+.selected-file-summary {
+  display: block;
+}
+
+.selected-file-summary {
+  overflow-wrap: anywhere;
+}
+
+/* 2026-08-21: Unify every React screen around the warm cream and brown palette of the club logo. */
+:root {
+  color-scheme: light;
+  --cream-canvas: #fffaf0;
+  --cream-surface: #fffdf7;
+  --cream-soft: #fff4d8;
+  --cream-strong: #f5dfaa;
+  --cream-deep: #e8c77c;
+  --brand-gold: #c38f36;
+  --brand-brown: #5a3a1d;
+  --brand-brown-hover: #432913;
+  --brand-ink: #3d2a1a;
+  --brand-muted: #796650;
+  --brand-border: #e7d3a3;
+  --brand-border-strong: #d8b86d;
+  --brand-shadow: 0 12px 32px rgba(93, 62, 25, 0.1);
+  --brand-shadow-soft: 0 4px 14px rgba(93, 62, 25, 0.08);
+  --border-color: var(--brand-border);
+}
+
+body {
+  min-height: 100vh;
+  color: var(--brand-ink);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(245, 223, 170, 0.62), transparent 28rem),
+    radial-gradient(circle at 95% 18%, rgba(232, 199, 124, 0.2), transparent 25rem),
+    linear-gradient(180deg, #fffdf8 0%, var(--cream-canvas) 42%, #fff7e5 100%);
+}
+
+::selection {
+  color: var(--cream-surface);
+  background: var(--brand-brown);
+}
+
+:focus-visible {
+  outline: 3px solid rgba(195, 143, 54, 0.42) !important;
+  outline-offset: 2px;
+}
+
+.app-header {
+  background: rgba(255, 253, 247, 0.96);
+  border-color: var(--brand-border);
+  box-shadow: 0 4px 18px rgba(88, 58, 29, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.logo-button {
+  gap: 10px;
+  min-height: 52px;
+  color: var(--brand-brown);
+}
+
+.logo-image {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  background: var(--cream-soft);
+  border: 1px solid var(--brand-border-strong);
+  border-radius: 50%;
+  box-shadow: 0 3px 10px rgba(88, 58, 29, 0.14);
+}
+
+.logo-text {
+  color: var(--brand-brown);
+  /* 2026-08-21: Match the rest of the UI instead of introducing an antique serif face. */
+  font-family: inherit;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+}
+
+.nav-group-trigger,
+.main-nav button,
+.user-area button,
+.auth-link,
+.mobile-menu h2 {
+  color: var(--brand-muted);
+}
+
+.nav-group-trigger:hover,
+.nav-group:focus-within .nav-group-trigger,
+.main-nav button:hover,
+.user-area button:hover,
+.mobile-menu button:hover {
+  color: var(--brand-brown);
+  background: var(--cream-soft);
+}
+
+.nav-dropdown {
+  background: var(--cream-surface);
+  border-color: var(--brand-border);
+  box-shadow: var(--brand-shadow);
+}
+
+.nav-dropdown button:hover {
+  color: var(--brand-brown);
+  background: var(--cream-strong);
+}
+
+.login-button,
+.admin-nav-button,
+.auth-link.primary {
+  color: #fffaf0 !important;
+  background: var(--brand-brown) !important;
+}
+
+.login-button:hover,
+.admin-nav-button:hover,
+.auth-link.primary:hover {
+  color: #ffffff !important;
+  background: var(--brand-brown-hover) !important;
+}
+
+.auth-link.secondary {
+  color: var(--brand-brown);
+  background: var(--cream-soft);
+}
+
+/* 2026-08-21: Mobile menu rows stay neutral until the user points to or presses them. */
+.mobile-menu button {
+  color: var(--brand-brown);
+  background: transparent;
+}
+
+.mobile-menu button:hover,
+.mobile-menu button:focus-visible,
+.mobile-menu button:active {
+  color: var(--brand-brown);
+  background: var(--cream-soft);
+}
+
+.page-heading {
+  border-color: var(--brand-border);
+}
+
+.page-heading h1,
+.page-panel h1,
+.data-card h2,
+.form-panel h2,
+.section-heading-row h2,
+.plan-detail-section > h2 {
+  color: var(--brand-brown);
+}
+
+.page-heading p,
+.page-panel p,
+.muted-copy,
+.dashboard-empty,
+.board-permission-note {
+  color: var(--brand-muted);
+}
+
+.dashboard-promotion,
+.login-panel,
+.page-panel,
+.data-card,
+.form-panel,
+.form-card,
+.empty-state,
+.page-state,
+.timeline-group,
+.table-wrap,
+.dashboard-calendar,
+.dashboard-list,
+.dashboard-notices,
+.board-post,
+.board-detail,
+.comments-panel,
+.profile-card,
+.settings-panel,
+.settlement-detail-card,
+.settlement-overview-card,
+.settlement-participant-card,
+.interview-plan-card,
+.active-schedule-plan,
+.plan-detail-section,
+.pos-create-panel,
+.pos-instance-edit-panel,
+.pos-instance-detail-card,
+.pos-product-detail,
+.pos-cart,
+.response-card,
+.answer-card,
+.evaluation-note-panel {
+  background: rgba(255, 253, 247, 0.96);
+  border-color: var(--brand-border);
+  box-shadow: var(--brand-shadow-soft);
+}
+
+.dashboard-promotion,
+.data-card,
+.login-panel,
+.page-panel,
+.form-card,
+.form-panel,
+.table-wrap,
+.board-post,
+.board-detail,
+.comments-panel,
+.profile-card,
+.settings-panel,
+.interview-plan-card,
+.active-schedule-plan,
+.plan-detail-section,
+.settlement-overview-card,
+.settlement-detail-card,
+.pos-create-panel,
+.pos-instance-edit-panel,
+.pos-instance-detail-card,
+.pos-product-detail,
+.pos-cart {
+  border-radius: 14px;
+}
+
+.clickable-card:hover,
+.interview-plan-card:hover,
+.board-post.clickable-row:hover,
+.board-post.clickable-row:focus {
+  background: #fff7e2;
+  border-color: var(--brand-border-strong);
+  box-shadow: var(--brand-shadow);
+}
+
+/* 2026-08-21: Give every recruitment draft/detail form the same complete card treatment. */
+.recruit-page .form-card {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid var(--brand-border);
+}
+
+.recruit-page .form-card h2 {
+  margin: 0;
+  color: var(--brand-brown);
+  font-size: 20px;
+}
+
+.recruit-page .form-card > label,
+.recruit-page .form-grid label {
+  display: grid;
+  gap: 8px;
+  color: var(--brand-muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.recruit-page .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.recruit-page .form-card input,
+.recruit-page .form-card select,
+.recruit-page .form-card textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--brand-border-strong);
+  border-radius: 10px;
+}
+
+.recruit-page .form-card textarea {
+  min-height: 150px;
+  line-height: 1.65;
+  resize: vertical;
+}
+
+.recruit-page .form-card input[type="file"] {
+  padding: 7px;
+  cursor: pointer;
+}
+
+.recruit-page .form-card input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  padding: 7px 11px;
+  color: var(--brand-brown);
+  background: var(--cream-strong);
+  border: 1px solid var(--brand-border-strong);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.recruit-page .form-card > button {
+  justify-self: start;
+  min-height: 42px;
+  padding: 10px 16px;
+  color: #fffaf0;
+  background: var(--brand-brown);
+  border-radius: 9px;
+  font-weight: 800;
+}
+
+.recruit-page .form-card > button:hover:not(:disabled) {
+  background: var(--brand-brown-hover);
+}
+
+.recruit-page .form-card > button:disabled {
+  color: #9a876d;
+  background: #eee4cf;
+  cursor: not-allowed;
+}
+
+.recruit-poster-preview img {
+  background: var(--cream-soft);
+  border: 1px solid var(--brand-border);
+  box-shadow: var(--brand-shadow-soft);
+}
+
+.recruit-closed-section {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  background: rgba(255, 253, 247, 0.8);
+  border: 1px solid var(--brand-border);
+  border-radius: 14px;
+}
+
+.recruit-closed-section > .section-heading-row {
+  padding: 10px 12px;
+  color: var(--brand-brown);
+  text-align: left;
+  background: transparent;
+  border-radius: 9px;
+}
+
+.recruit-closed-section > .section-heading-row:hover,
+.recruit-closed-section > .section-heading-row:focus-visible {
+  background: var(--cream-soft);
+}
+
+/* 2026-08-21: Style recruitment-specific actions that sit outside generic action containers. */
+.recruit-create-button {
+  min-height: 42px;
+  padding: 10px 18px;
+  color: #fffaf0;
+  background: var(--brand-brown);
+  border-radius: 9px;
+  font-weight: 800;
+  box-shadow: var(--brand-shadow-soft);
+}
+
+.recruit-create-button:hover {
+  color: #ffffff;
+  background: var(--brand-brown-hover);
+}
+
+.external-form-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  color: var(--brand-brown);
+  text-decoration: none;
+  background: var(--cream-soft);
+  border: 1px solid var(--brand-border-strong);
+  border-radius: 10px;
+}
+
+.external-form-link:hover {
+  background: var(--cream-strong);
+}
+
+/* 2026-08-21: Let poster media use its intrinsic aspect ratio instead of shrinking every image to a portrait thumbnail. */
+.recruit-page .recruit-poster-preview {
+  width: 100%;
+  padding: 12px;
+  background: var(--cream-soft);
+  border: 1px solid var(--brand-border);
+  border-radius: 12px;
+}
+
+.recruit-page .recruit-poster-preview:empty {
+  display: none;
+}
+
+.recruit-page .recruit-poster-preview img {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: min(72vh, 760px);
+  object-fit: contain;
+}
+
+.recruit-promotion {
+  display: grid;
+  align-items: stretch;
+}
+
+.recruit-promotion .promotion-poster-carousel {
+  width: 100%;
+  padding: 12px;
+  background: var(--cream-soft);
+  border: 1px solid var(--brand-border);
+  border-radius: 12px;
+}
+
+.recruit-promotion .promotion-poster-carousel:empty {
+  display: none;
+}
+
+.recruit-promotion .promotion-poster-carousel img {
+  flex: 0 0 100%;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: min(76vh, 820px);
+  object-fit: contain;
+}
+
+.recruit-promotion-copy {
+  margin: 0;
+  color: var(--brand-ink);
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.recruit-promotion-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 50px;
+  padding: 12px 18px;
+  color: #fffaf0;
+  text-align: center;
+  text-decoration: none;
+  background: var(--brand-brown);
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.recruit-promotion-cta:hover {
+  color: #ffffff;
+  background: var(--brand-brown-hover);
+}
+
+.action-grid a,
+.action-grid button,
+.button-link,
+.toolbar button,
+.form-panel button,
+.inline-form button,
+.card-actions button,
+.card-actions a,
+.data-table button,
+.hero-button,
+.pos-checkout-button {
+  color: #fffaf0;
+  background: var(--brand-brown);
+  border-radius: 9px;
+}
+
+.action-grid a:hover,
+.action-grid button:hover,
+.button-link:hover,
+.toolbar button:hover,
+.form-panel button:hover,
+.inline-form button:hover,
+.card-actions button:hover,
+.card-actions a:hover,
+.data-table button:hover,
+.hero-button:hover,
+.pos-checkout-button:hover {
+  color: #ffffff;
+  background: var(--brand-brown-hover);
+}
+
+.secondary-button,
+.toolbar .secondary-button,
+.card-actions .secondary-button,
+.availability-shortcuts button,
+.pos-status-actions button {
+  color: var(--brand-brown);
+  background: var(--cream-soft);
+  border: 1px solid var(--brand-border);
+}
+
+.text-button,
+.link-button,
+.generated-form-link,
+.plan-card-footer strong,
+.participant-search-results button b {
+  color: var(--brand-brown);
+}
+
+.success-button,
+.toolbar .success-button,
+.pos-status-actions .success-button {
+  color: #3f5d2c;
+  background: #edf4d7;
+  border-color: #cddaa6;
+}
+
+.danger-button,
+.toolbar .danger-button,
+.card-actions .danger-button,
+.pos-status-actions .danger-button {
+  color: #8f3e2f;
+  background: #fbe9df;
+  border-color: #efc4b2;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+select,
+textarea {
+  color: var(--brand-ink) !important;
+  background: #fffef9 !important;
+  border-color: var(--brand-border-strong) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #a08b70;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--brand-gold) !important;
+  box-shadow: 0 0 0 3px rgba(195, 143, 54, 0.16);
+  outline: none;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  color: #8c7a63 !important;
+  background: #f6eedb !important;
+}
+
+input[type="checkbox"],
+input[type="radio"],
+progress {
+  accent-color: var(--brand-gold);
+}
+
+.data-table th,
+.recruit-table th,
+.dashboard-weekdays,
+.pos-instance-list-head,
+.pos-product-list-head,
+.settlement-list-head,
+.settlement-payment-head,
+.finance-create-participant-head {
+  color: var(--brand-brown);
+  background: var(--cream-soft);
+  border-color: var(--brand-border-strong);
+}
+
+.data-table td,
+.data-table th,
+.timeline-item,
+.pos-product-row,
+.settlement-payment-row,
+.settlement-list-row,
+.pos-instance-row {
+  border-color: var(--brand-border);
+}
+
+.data-table .clickable-row:hover,
+.timeline-item.clickable-row:hover,
+.confirmed-schedule-table tbody tr.clickable-row:hover,
+.pos-instance-row:hover,
+.settlement-list-row:hover,
+.participant-search-results button:hover {
+  background: #fff3d2;
+}
+
+.dashboard-calendar-header,
+.interview-hero {
+  color: #fff9e9;
+  box-shadow: 0 12px 28px rgba(90, 58, 29, 0.16);
+}
+
+/* 2026-08-21: Keep the calendar year/month header calm and flat instead of gradient-filled. */
+.dashboard-calendar-header {
+  background: var(--brand-brown);
+}
+
+.interview-hero {
+  background: linear-gradient(135deg, #5a3a1d 0%, #8c632f 58%, #b98639 100%);
+}
+
+.interview-hero p {
+  color: #f8e9c6;
+}
+
+.dashboard-calendar-header button {
+  background: rgba(255, 249, 233, 0.14);
+}
+
+.calendar-day {
+  color: var(--brand-ink);
+  background: var(--cream-surface);
+  border-color: #efe0bb;
+}
+
+.calendar-day:hover:not(:disabled),
+.calendar-day.selected {
+  background: #fff0c6;
+}
+
+.calendar-day:disabled,
+.dashboard-weekdays,
+.calendar-event-chip,
+.dashboard-event-item,
+.notice-preview-item,
+.comment-item,
+.participant-name-list li,
+.date-card-grid article,
+.person-card-grid article,
+.availability-summary-list article,
+.member-choice-grid label,
+.time-slot-grid label,
+.pos-cart-lines article,
+.pos-record-items span,
+.event-option-row {
+  background: #fff8e7;
+  border-color: var(--brand-border);
+}
+
+.calendar-day.today .calendar-day-number,
+.wizard-progress .active span,
+.wizard-progress .active::before,
+.wizard-step-cards span,
+.date-chip-list span,
+.selected-chip-list button,
+.member-avatar,
+.pagination button.active,
+.selected-participant-list > span {
+  color: #fffaf0;
+  background: var(--brand-brown);
+}
+
+.calendar-event-chip,
+.dashboard-event-item {
+  border-left-color: var(--brand-gold);
+}
+
+.dashboard-list-heading button,
+.timeline-item button,
+.settings-panel button,
+.comment-actions button,
+.comment-form button,
+.quantity-control button,
+.admin-nav-button,
+.notice-preview-authority,
+.notice-read-authority strong {
+  color: var(--brand-brown) !important;
+  background: var(--cream-strong) !important;
+}
+
+.wizard-progress .active,
+.date-card-grid strong,
+.pos-cart-total strong {
+  color: var(--brand-brown);
+}
+
+.wizard-progress div::before,
+.wizard-progress span {
+  background: #eadab6;
+}
+
+.wizard-intro .hero-button,
+.pos-product-pad > button {
+  color: #fffaf0;
+  background: linear-gradient(145deg, #6c4722, #a77735);
+  box-shadow: 0 10px 22px rgba(90, 58, 29, 0.2);
+}
+
+.pos-product-pad > button:hover:not(:disabled) {
+  box-shadow: 0 14px 28px rgba(90, 58, 29, 0.28);
+}
+
+.pos-product-pad small {
+  color: #f8e9c6;
+}
+
+.wizard-form-summary,
+.selected-chip-box,
+.plan-summary-strip,
+.availability-person,
+.select-card,
+.interviewer-select-grid > button,
+.participant-search-results > button,
+.pos-cart-lines article {
+  color: var(--brand-ink);
+  background: #fff9e9;
+  border-color: var(--brand-border);
+}
+
+.select-card.selected,
+.interviewer-select-grid > button.selected {
+  background: #ffefc3;
+  border-color: var(--brand-gold);
+}
+
+.status-pill,
+.status-pill.draft,
+.status-pill.completed {
+  color: #765018;
+  background: #f9edc4;
+}
+
+.status-pill.active,
+.status-pill.planning,
+.payment-badge.paid,
+.evaluation-connection-status.connected {
+  color: #3f5d2c;
+  background: #edf4d7;
+}
+
+/* 2026-08-23: Keep interview-plan navigation and scheduler controls compact on desktop and mobile. */
+.interview-return-toolbar {
+  justify-content: flex-end;
+}
+
+.compact-number-field {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  color: var(--brand-ink);
+  background: #fff9e9;
+  border: 1px solid var(--brand-border);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.compact-number-field input {
+  width: 64px;
+  min-height: 34px;
+  padding: 5px 8px;
+}
+
+.plan-card-footer .text-button {
+  padding: 0;
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  /* 2026-08-23: Template actions wrap as cards instead of clipping inside a wide table. */
+  .template-management-table {
+    min-width: 0;
+  }
+
+  .template-management-table thead {
+    display: none;
+  }
+
+  .template-management-table,
+  .template-management-table tbody,
+  .template-management-table tr,
+  .template-management-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .template-management-table tr {
+    padding: 14px;
+  }
+
+  .template-management-table td {
+    padding: 6px 0;
+    border: 0;
+  }
+
+  .template-management-table .template-delete-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .plan-detail-heading {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .plan-detail-heading > div,
+  .plan-detail-heading .toolbar {
+    width: 100%;
+  }
+
+  .plan-detail-heading .toolbar {
+    justify-content: flex-start;
+  }
+}
+
+.status-pill.inactive,
+.status-pill.cancelled,
+.status-pill.closed,
+.payment-badge.pending {
+  color: #86513c;
+  background: #f7e6d7;
+}
+
+.profile-avatar {
+  color: #fffaf0;
+  background: var(--brand-brown);
+  box-shadow: inset 0 0 0 4px rgba(245, 223, 170, 0.35);
+}
+
+.page-state.notice,
+.evaluation-connection-status {
+  color: #765018;
+  background: #fff3c9;
+  border-color: #e8ca7c;
+}
+
+.page-state.compact {
+  color: var(--brand-muted);
+  background: var(--cream-surface);
+}
+
+/* 2026-08-22: Keep the effective identity visible on every page and provide an immediate audited exit. */
+.impersonation-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 12px clamp(16px, 4vw, 48px);
+  color: var(--brand-ink);
+  background: #fff0b8;
+  border-bottom: 1px solid var(--brand-border);
+}
+
+.impersonation-banner > div {
+  display: grid;
+  gap: 3px;
+}
+
+.impersonation-banner span {
+  color: var(--brand-muted);
+  font-size: 14px;
+}
+
+.impersonation-banner .impersonation-error {
+  color: #a33d2a;
+}
+
+.impersonation-banner button {
+  flex: 0 0 auto;
+}
+
+.admin-user-table td .status-pill {
+  margin-left: 8px;
+}
+
+/* 2026-08-23: Give every management search area a padded, responsive cream card instead of unstyled loose controls. */
+.member-filter-panel,
+.applicant-filter-panel,
+.admin-filter-panel {
+  display: grid;
+  gap: 14px;
+  align-items: end;
+  padding: 18px;
+  background: var(--cream-surface);
+  border-color: var(--brand-border);
+  border-radius: 16px;
+  box-shadow: var(--brand-shadow-soft);
+}
+.member-filter-panel { grid-template-columns: minmax(240px, 2fr) repeat(3, minmax(130px, 1fr)) auto; }
+.applicant-filter-panel { grid-template-columns: minmax(240px, 2fr) repeat(2, minmax(140px, 1fr)) auto; }
+.applicant-list-section { display: grid; gap: 16px; }
+.admin-filter-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 2fr) repeat(2, minmax(150px, 1fr));
+  gap: 14px;
+  margin: 20px 0 24px;
+  padding: 18px;
+  background: var(--cream-soft);
+  border: 1px solid var(--brand-border);
+  border-radius: 14px;
+}
+.admin-filter-grid label { display: grid; gap: 7px; color: var(--brand-muted); font-size: .88rem; font-weight: 800; }
+.member-filter-panel input,
+.member-filter-panel select,
+.applicant-filter-panel input,
+.applicant-filter-panel select,
+.admin-filter-grid input,
+.admin-filter-grid select {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 13px;
+  color: var(--brand-ink);
+  background: #fffdf8;
+  border: 1px solid var(--brand-border-strong);
+  border-radius: 10px;
+}
+.member-filter-panel input:hover,
+.member-filter-panel select:hover,
+.applicant-filter-panel input:hover,
+.applicant-filter-panel select:hover,
+.admin-filter-grid input:hover,
+.admin-filter-grid select:hover { border-color: var(--brand-gold); }
+.filter-result {
+  min-width: 72px;
+  min-height: 46px;
+  color: var(--brand-brown);
+  background: var(--cream-strong);
+  border: 1px solid var(--brand-border);
+  border-radius: 10px;
+}
+/* 2026-08-23: Separate high-impact user edits from the list with a clearly bounded review panel. */
+.admin-user-editor { margin: 16px 0 22px; padding: 18px; border: 1px solid var(--brand-line); border-radius: 16px; background: var(--brand-soft); }
+.admin-user-editor .admin-filter-grid { margin-top: 0; padding: 0; grid-template-columns: repeat(2, minmax(180px, 1fr)); background: transparent; border: 0; }
+.admin-tool-list { display: grid; gap: 12px; }
+.admin-tool-row { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 20px; padding: 20px 22px; text-align: left; color: var(--brand-ink); background: var(--cream-surface); border: 1px solid var(--brand-border); border-radius: 16px; box-shadow: var(--brand-shadow-soft); }
+.admin-tool-row:hover, .admin-tool-row:focus-visible { color: var(--brand-ink); background: var(--cream-soft); transform: translateY(-2px); }
+.admin-tool-row span { display: grid; gap: 5px; }
+.admin-tool-row strong { font-size: 1.05rem; }
+.admin-tool-row small { color: var(--brand-muted); font-weight: 600; }
+.admin-tool-row b { font-size: 1.8rem; }
+.recruit-metrics-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr); gap: 18px; }
+.gender-ratio { display: flex; min-height: 46px; overflow: hidden; color: #fff; border-radius: 12px; font-weight: 900; }
+.gender-ratio span { display: flex; min-width: 0; align-items: center; justify-content: center; white-space: nowrap; }
+.gender-ratio .male { background: #3b82f6; }
+.gender-ratio .female { background: #ec4899; }
+.rating-overview { grid-template-columns: 150px 1fr; align-items: center; }
+.rating-overview h2 { grid-column: 1 / -1; }
+.rating-pie { width: 140px; aspect-ratio: 1; border: 10px solid #fff8e7; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--brand-border); }
+.rating-overview ul { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.rating-overview li { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; }
+.rating-overview li i { width: 12px; height: 12px; border-radius: 50%; }
+.rating-badge { display: inline-flex; padding: 4px 9px; border-radius: 999px; font-weight: 800; }
+.rating-대기 { color: #6b7280; background: #f3f4f6; }
+.rating-1차합격 { color: #0369a1; background: #f0f9ff; }
+.rating-불합격 { color: #dc2626; background: #fef2f2; }
+.rating-느별 { color: #d97706; background: #fffbeb; }
+.rating-느괜 { color: #2563eb; background: #eff6ff; }
+.rating-느좋 { color: #64a316; background: #f7fdf0; }
+.rating-최종합격 { color: #047857; background: #f0fdf4; }
+.rating-select option[value="대기"] { color: #6b7280; background: #f3f4f6; }
+.rating-select option[value="1차합격"] { color: #0369a1; background: #f0f9ff; }
+.rating-select option[value="불합격"] { color: #dc2626; background: #fef2f2; }
+.rating-select option[value="느별"] { color: #d97706; background: #fffbeb; }
+.rating-select option[value="느괜"] { color: #2563eb; background: #eff6ff; }
+.rating-select option[value="느좋"] { color: #64a316; background: #f7fdf0; }
+.rating-select option[value="최종합격"] { color: #047857; background: #f0fdf4; }
+.pos-promotion > div { flex: 1; }
+.pos-promotion-copy { white-space: pre-wrap; }
+.pos-progress-row { display: grid; grid-template-columns: minmax(180px, 1fr) auto; gap: 14px; align-items: center; }
+.pos-progress-row progress { width: 100%; height: 28px; overflow: hidden; accent-color: #f59e0b; border-radius: 999px; }
+.pos-progress-row span { font-size: 28px; }
+/* 2026-08-22: Give native login and registration the same finished cream-and-brown visual system as the rest of UCMS. */
+.login-page {
+  padding: 36px 0 64px;
+}
+
+.email-auth-panel {
+  position: relative;
+  width: min(560px, calc(100vw - 32px));
+  padding: 42px 48px 46px;
+  overflow: hidden;
+  border: 1px solid var(--brand-border);
+  border-radius: 24px;
+  box-shadow: 0 18px 48px rgba(93, 62, 25, 0.13);
+}
+
+.email-auth-panel::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 5px;
+  content: "";
+  background: var(--brand-gold);
+}
+
+.auth-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: min(100%, 360px);
+  margin-bottom: 24px;
+  padding: 5px;
+  background: var(--cream-soft);
+  border: 1px solid var(--brand-border);
+  border-radius: 13px;
+}
+
+.auth-mode-tabs button {
+  min-height: 42px;
+  padding: 9px 16px;
+  color: var(--brand-muted);
+  background: transparent;
+  border-radius: 9px;
+  font-weight: 800;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.auth-mode-tabs button:hover:not(.active),
+.auth-mode-tabs button:focus-visible:not(.active) {
+  color: var(--brand-brown);
+  background: rgba(255, 253, 247, 0.72);
+}
+
+.auth-mode-tabs button.active {
+  color: #fffaf0;
+  background: var(--brand-brown);
+  box-shadow: 0 5px 13px rgba(90, 58, 29, 0.2);
+}
+
+.email-auth-panel h1 {
+  margin-bottom: 9px;
+  color: var(--brand-brown);
+  font-size: clamp(27px, 4vw, 34px);
+  line-height: 1.25;
+  letter-spacing: -0.04em;
+}
+
+.email-auth-panel > p {
+  margin-bottom: 32px;
+  color: var(--brand-muted);
+  line-height: 1.65;
+}
+
+.email-auth-panel > .page-state {
+  width: 100%;
+  margin: 0 0 20px;
+  text-align: left;
+}
+
+.auth-form {
+  display: grid;
+  width: 100%;
+  gap: 18px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 8px;
+  color: var(--brand-ink);
+  text-align: left;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.auth-form input:not([type="checkbox"]) {
+  width: 100%;
+  min-height: 48px;
+  padding: 11px 14px;
+  border: 1px solid var(--brand-border-strong) !important;
+  border-radius: 10px;
+  font-size: 16px;
+  line-height: 1.4;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.auth-form input:not([type="checkbox"]):hover {
+  border-color: var(--brand-gold) !important;
+}
+
+.auth-form > button {
+  width: 100%;
+  min-height: 50px;
+  padding: 12px 18px;
+  color: #fffaf0;
+  background: var(--brand-brown);
+  border: 1px solid var(--brand-brown);
+  border-radius: 11px;
+  font-weight: 800;
+  box-shadow: 0 9px 20px rgba(90, 58, 29, 0.18);
+  transition:
+    transform 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.auth-form > button:hover:not(:disabled),
+.auth-form > button:focus-visible:not(:disabled) {
+  color: #ffffff;
+  background: var(--brand-brown-hover);
+  box-shadow: 0 12px 24px rgba(90, 58, 29, 0.25);
+  transform: translateY(-1px);
+}
+
+.auth-form > button.secondary-button {
+  color: var(--brand-brown);
+  background: var(--cream-soft);
+  border-color: var(--brand-border);
+  box-shadow: none;
+}
+
+/* 2026-08-23: Keep recovery navigation visually secondary while preserving a clear keyboard focus target. */
+.auth-form > button.auth-text-link {
+  width: fit-content;
+  min-height: auto;
+  padding: 2px 1px;
+  color: var(--brand-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.auth-form > button.auth-text-link:hover,
+.auth-form > button.auth-text-link:focus-visible {
+  color: var(--brand-brown);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.forgot-password-link {
+  justify-self: end;
+  margin-top: -11px;
+}
+
+.auth-back-link {
+  justify-self: center;
+}
+
+.password-reset-panel {
+  width: min(500px, calc(100vw - 32px));
+}
+
+.auth-form > button:disabled {
+  color: #9a876d;
+  background: #eee4cf;
+  border-color: #e3d3b3;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.auth-form .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 16px;
+}
+
+.trusted-device-option {
+  grid-template-columns: auto 1fr !important;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--cream-soft);
+  border: 1px solid var(--brand-border);
+  border-radius: 10px;
+}
+
+.trusted-device-option input {
+  width: 20px;
+  height: 20px;
+}
+
+/* 2026-08-22: Action confirmations and recoverable errors behave like mobile toasts for about ten seconds. */
+.stack-page > .page-state:is(.notice, .success, .error) { position: fixed; top: 18px; right: 18px; z-index: 2000; width: min(420px, calc(100vw - 36px)); box-shadow: 0 14px 34px rgba(90, 58, 29, .24); animation: ucms-toast-lifecycle 10s forwards; }
+@keyframes ucms-toast-lifecycle { 0% { opacity: 0; transform: translateY(-12px); } 4%, 90% { opacity: 1; transform: translateY(0); visibility: visible; } 100% { opacity: 0; transform: translateY(-8px); visibility: hidden; pointer-events: none; } }
+
+@media (max-width: 760px) {
+  .member-filter-panel, .applicant-filter-panel, .admin-filter-panel, .admin-filter-grid, .recruit-metrics-grid { grid-template-columns: 1fr; }
+  .admin-user-editor .admin-filter-grid { grid-template-columns: 1fr; }
+  .user-management-table { overflow: visible; }
+  .user-management-table table, .user-management-table tbody, .user-management-table tr, .user-management-table td { display: block; width: 100%; }
+  .user-management-table thead { display: none; }
+  .user-management-table tr { margin-bottom: 14px; padding: 12px 14px; border: 1px solid var(--brand-line); border-radius: 14px; background: #fffdf7; }
+  .user-management-table td { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; padding: 8px 0; border: 0; overflow-wrap: anywhere; }
+  .user-management-table td::before { content: attr(data-label); color: var(--brand-muted); font-weight: 800; }
+  .rating-overview { grid-template-columns: 110px 1fr; }
+  .rating-pie { width: 104px; }
+  .mobile-menu.open {
+    border-color: var(--brand-border);
+  }
+
+  .logo-image {
+    width: 38px;
+    height: 38px;
+  }
+
+  .logo-text {
+    font-size: 21px;
+  }
+
+  .recruit-page .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-form .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .login-page {
+    min-height: auto;
+    padding: 20px 0 40px;
+  }
+
+  .email-auth-panel {
+    width: 100%;
+    padding: 30px 20px 32px;
+    border-radius: 18px;
+  }
+
+  .auth-mode-tabs {
+    width: 100%;
+    margin-bottom: 22px;
+  }
+
+  .email-auth-panel > p {
+    margin-bottom: 26px;
+  }
+
+  .recruit-page .form-card {
+    padding: 18px;
+  }
+
+  .impersonation-banner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .impersonation-banner button {
+    width: 100%;
   }
 }

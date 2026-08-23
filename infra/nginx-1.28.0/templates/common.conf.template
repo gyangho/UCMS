@@ -1,0 +1,25 @@
+# 2026-08-19: Render every public host from infra/env/infra/ports.env before Nginx starts.
+resolver 127.0.0.11 valid=30s;
+
+# Block unregistered domains.
+server {
+    listen 80 default_server;
+    server_name _;
+    return 444;
+}
+
+server {
+    listen 443 ssl default_server;
+    ssl_reject_handshake on;
+    server_name _;
+}
+
+# Redirect registered HTTP hosts to HTTPS.
+server {
+    listen 80;
+    server_name ${NGINX_PROD_HOST} ${NGINX_DEV_HOST} localhost;
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}

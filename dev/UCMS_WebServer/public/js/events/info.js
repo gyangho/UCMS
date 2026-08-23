@@ -147,7 +147,8 @@ export function initEventInfoModal() {
 
     if (currentEvent.isRecruiting) {
       if (
-        !participants.some((p) => `${p.kakao_id}` === currentKakaoId)
+        // 2026-08-22: Event participation is owned by stable users.id after Kakao login retirement.
+        !participants.some((p) => `${p.user_id}` === currentUserId)
       ) {
         participateButton.classList.remove("hidden");
       } else {

@@ -14,7 +14,6 @@ UCMS_WebServer/
 │   ├── Purchase.js        # 구매 기록 모델
 │   └── Recruit.js         # 채용 모델
 ├── controllers/           # 비즈니스 로직 (MVC의 Controller)
-│   ├── authController.js  # 인증 컨트롤러
 │   ├── memberController.js # 회원 관리 컨트롤러
 │   ├── eventController.js # 이벤트 컨트롤러
 │   ├── purchaseController.js # 구매 기록 컨트롤러
@@ -60,8 +59,9 @@ UCMS_WebServer/
 
 ### 1. 인증 시스템
 
-- 카카오 로그인 연동
-- 세션 기반 인증
+- 이메일/비밀번호 로그인과 회원가입 이메일 인증
+- 로그인 이메일 2차 인증 및 30일 신뢰 기기
+- MySQL 세션 기반 인증
 - 권한 관리
 
 ### 2. 회원 관리
@@ -104,10 +104,14 @@ DB_USER=your_db_user
 DB_PASSWORD=your_db_password
 DOMAIN=your_domain
 PORT=your_port
-KAKAO_CLIENT_ID=your_kakao_client_id
-KAKAO_REDIRECT_URI=your_kakao_redirect_uri
+EMAIL_CODE_SECRET=your_independent_email_code_secret
+EMAIL_VERIFICATION_ENABLED=false
+SPRING_MAIL_BASE_URL=http://ucms-spring:8080
+UCMS_INTERNAL_MAIL_TOKEN=your_independent_internal_service_token
 HOLIDAY_API_KEY=your_holiday_api_key
 ```
+
+2026-08-23: 기존 인증 상태와 세션은 이 서비스가 유지하지만 새 메일 발송 백엔드는 Spring Boot입니다. Spring의 별도 untracked `spring.env`에 `GMAIL_USERNAME`과 Gmail 앱 비밀번호인 `GMAIL_APP_PASSWORD`를 설정합니다. 인증번호는 5분 동안 유효하며 코드 원문은 로그나 DB에 저장하지 않습니다. 현재 dev는 임시로 `EMAIL_VERIFICATION_ENABLED=false`를 사용할 수 있고 prod는 반드시 `true`로 유지합니다.
 
 3. 서버 실행
 
@@ -119,8 +123,10 @@ npm run dev
 
 ### 인증 API
 
-- `GET /auth/kakao` - 카카오 로그인
-- `GET /auth/logout` - 로그아웃
+- `POST /api/auth/register/start` - 회원가입 이메일 인증 시작
+- `POST /api/auth/login/start` - 비밀번호 확인 및 로그인 2차 인증 시작
+- `POST /api/auth/email/verify` - 이메일 인증번호 확인
+- `POST /api/auth/logout` - 로그아웃과 현재 신뢰 기기 해제
 
 ### 회원 관리 API
 
@@ -152,7 +158,7 @@ npm run dev
 - **Backend**: Node.js, Express.js
 - **Database**: MySQL
 - **Template Engine**: EJS
-- **Authentication**: Kakao OAuth
+- **Authentication**: scrypt password + email verification/2FA
 - **Session**: express-session, express-mysql-session
 - **Real-time**: ShareDB, WebSocket
 

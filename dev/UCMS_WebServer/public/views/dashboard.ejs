@@ -287,7 +287,8 @@
       일정 관리
     </div>
     <div class="func-btn form">일정 생성</div>
-    <div class="func-btn" onclick="location.href='/event/holidays'">
+    <!-- 2026-08-19: Holiday refresh is an authenticated POST mutation, not a link-triggered GET. -->
+    <div class="func-btn" onclick="updateHolidays()">
       공휴일 업데이트
     </div>
   </div>
@@ -440,6 +441,18 @@
       console.error('정산 목록 로드 오류:', error);
       // 에러가 발생해도 섹션을 숨김
       document.querySelector('.settlement-container').style.display = 'none';
+    }
+  }
+
+  async function updateHolidays() {
+    try {
+      const response = await fetch("/event/holidays", { method: "POST" });
+      if (!response.ok) throw new Error("공휴일 업데이트 요청이 거부되었습니다.");
+      alert("공휴일을 업데이트했습니다.");
+      window.location.reload();
+    } catch (error) {
+      console.error("공휴일 업데이트 오류:", error);
+      alert("공휴일 업데이트에 실패했습니다.");
     }
   }
 

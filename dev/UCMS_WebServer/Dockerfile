@@ -16,6 +16,10 @@ COPY package*.json ./
 # 2026-07-24: WEB_PORT is injected from infra/env/ports.env; this value is the standalone default.
 ENV WEB_PORT=3000
 
+# 2026-08-19: Mark the service healthy only when Express and its database dependency answer together.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=5 \
+    CMD node -e "fetch('http://127.0.0.1:' + (process.env.WEB_PORT || 3000) + '/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+
 FROM base AS dev
 RUN npm install
 

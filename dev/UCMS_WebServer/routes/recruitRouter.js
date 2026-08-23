@@ -1,6 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const RecruitController = require("../controllers/recruitController");
+const { requireAuthority } = require("./apiRoutes/apiResponse");
+
+// 2026-08-19: Legacy recruiting pages and mutations contain applicant data and require administrator authority.
+router.use(requireAuthority(4));
 
 // 응답 페이지 렌더링
 router.get("/formlist", RecruitController.renderFormList);

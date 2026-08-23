@@ -5,14 +5,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { navigate } from "../../app/router";
-import { requestData } from "../../shared/api/http";
+import { ApiError, requestData } from "../../shared/api/http";
 import { ErrorState, LoadingState } from "../../shared/ui/PageState";
 
 const RATINGS = [
   "대기",
   "1차합격",
-  "1차불합격",
   "느별",
   "느괜",
   "느좋",
@@ -57,6 +55,13 @@ interface EvaluationSocketMessage {
   clientId?: string | null;
 }
 
+interface EvaluationSocketTicket {
+  ticket: string;
+  expiresAt: string;
+  documentId: string;
+  formId: string;
+}
+
 function getEvaluationClientId() {
   const storageKey = "ucms_evaluation_client_id";
   const stored = window.sessionStorage.getItem(storageKey);
@@ -78,6 +83,7 @@ function getLineNumber(value: string, selectionStart: number) {
 // 2026-07-23: Port the legacy EJS ShareDB protocol to React with subscriptions,
 // line locks, version conflict recovery, and automatic reconnection.
 function useEvaluationNote(
+  responseId: number | null,
   documentId: string | null,
   formId: string | null,
 ) {
@@ -213,7 +219,7 @@ function useEvaluationNote(
   );
 
   useEffect(() => {
-    if (!documentId || !formId) return;
+    if (!responseId || !documentId || !formId) return;
 
     let disposed = false;
     setContent("");
@@ -224,21 +230,46 @@ function useEvaluationNote(
     setConnectionStatus("connecting");
     setSyncMessage("공유 문서 서버에 연결하는 중입니다.");
 
-    function connect() {
+    // 2026-08-19: Obtain a fresh document-scoped ticket before every initial or reconnecting WebSocket session.
+    async function connect() {
       if (disposed) return;
       setConnectionStatus((current) =>
         current === "connected" ? "reconnecting" : current,
       );
+
+      let credential: EvaluationSocketTicket;
+      try {
+        credential = await requestData<EvaluationSocketTicket>(
+          `/api/recruit/responses/${responseId}/shared-document/ticket`,
+          { method: "POST" },
+        );
+      } catch (error) {
+        if (disposed) return;
+        setConnectionStatus("error");
+        setSyncMessage("공유 문서 인증 정보를 발급받지 못했습니다.");
+        if (!(error instanceof ApiError) || error.status >= 500) {
+          reconnectTimerRef.current = window.setTimeout(connect, 3000);
+        }
+        return;
+      }
+
+      if (
+        credential.documentId !== documentId ||
+        credential.formId !== formId ||
+        disposed
+      ) {
+        setConnectionStatus("error");
+        setSyncMessage("공유 문서 인증 범위가 일치하지 않습니다.");
+        return;
+      }
 
       const socket = new WebSocket(getEvaluationSocketUrl());
       socketRef.current = socket;
 
       socket.onopen = () => {
         if (disposed) return;
-        setConnectionStatus("connected");
-        setSyncMessage("평가 노트를 불러오는 중입니다.");
-        sendMessage({ type: "subscribe", docId: documentId, formId });
-        sendMessage({ type: "get", docId: documentId, formId });
+        setSyncMessage("공유 문서 연결을 인증하는 중입니다.");
+        sendMessage({ type: "authenticate", ticket: credential.ticket });
       };
 
       socket.onmessage = (event) => {
@@ -252,6 +283,13 @@ function useEvaluationNote(
         if (data.docId && data.docId !== documentId) return;
 
         switch (data.type) {
+          case "authenticated": {
+            setConnectionStatus("connected");
+            setSyncMessage("평가 노트를 불러오는 중입니다.");
+            sendMessage({ type: "subscribe", docId: documentId, formId });
+            sendMessage({ type: "get", docId: documentId, formId });
+            break;
+          }
           case "doc": {
             applyRemoteContent(data.content ?? "");
             const nextVersion = Number(data.version || 1);
@@ -338,12 +376,17 @@ function useEvaluationNote(
         setSyncMessage("공유 문서 서버에 연결하지 못했습니다.");
       };
 
-      socket.onclose = () => {
+      socket.onclose = (event) => {
         if (disposed) return;
         if (socketRef.current === socket) socketRef.current = null;
         myLockedLinesRef.current.clear();
         lockedLinesRef.current.clear();
         setIsReady(false);
+        if (event.code === 4403) {
+          setConnectionStatus("error");
+          setSyncMessage("공유 문서 인증 또는 접근 범위가 거부되었습니다.");
+          return;
+        }
         setConnectionStatus("reconnecting");
         setSyncMessage("연결이 끊어져 3초 후 다시 연결합니다.");
         reconnectTimerRef.current = window.setTimeout(connect, 3000);
@@ -384,6 +427,7 @@ function useEvaluationNote(
     applyRemoteContent,
     documentId,
     formId,
+    responseId,
     releaseAllLineLocks,
     requestLatestDocument,
     sendMessage,
@@ -493,6 +537,7 @@ export function RecruitSharedDocPage({ path }: { path: string }) {
     syncMessage,
     version: evaluationVersion,
   } = useEvaluationNote(
+    applicant?.responseId ?? null,
     applicant?.documentId ?? null,
     applicant?.formId ?? null,
   );
@@ -571,13 +616,6 @@ export function RecruitSharedDocPage({ path }: { path: string }) {
     <section className="stack-page response-detail-page">
       <div className="page-heading">
         <div>
-          <button
-            className="text-button"
-            type="button"
-            onClick={() => navigate("/recruit")}
-          >
-            ← 응답자 목록
-          </button>
           <h1>응답 상세 정보</h1>
           <p>{applicant.formTitle ?? "지원 폼"}</p>
         </div>

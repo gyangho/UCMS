@@ -5,15 +5,76 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8081:8080"
-      # 2026-07-24: Keep the inbound-agent port local so only 80 and 443 are externally reachable.
-      - "127.0.0.1:50000:50000"
+      # 2026-08-21: The CI agent uses WebSocket, so no inbound-agent TCP port is published.
     volumes:
       - jenkins_home:/var/jenkins_home
+      # 2026-08-21: Keep controller builds disabled through a read-only startup hook.
+      - ./jenkins/init.groovy.d/controller-isolation.groovy:/var/jenkins_home/init.groovy.d/controller-isolation.groovy:ro
+    networks:
+      - jenkins
+
+  jenkins-docker:
+    image: docker:29-dind
+    container_name: ucms_jenkins_docker
+    restart: unless-stopped
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+    command: --storage-driver overlay2
+    volumes:
+      - jenkins_docker_certs:/certs/client
+      - jenkins_docker_data:/var/lib/docker
+      # 2026-08-21: Mirror the agent workspace path so DinD bind mounts resolve to the checked-out files.
+      - jenkins_agent_home:/home/jenkins/agent
+    networks:
+      jenkins:
+        aliases:
+          - docker
+    healthcheck:
+      # 2026-08-21: Start the CI agent only after its isolated Docker daemon is ready.
+      test: ["CMD", "docker", "info"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  jenkins-agent:
+    build:
+      context: ./jenkins/agent
+    container_name: ucms_jenkins_agent
+    restart: unless-stopped
+    init: true
+    depends_on:
+      jenkins:
+        condition: service_started
+      jenkins-docker:
+        condition: service_healthy
+    environment:
+      DOCKER_HOST: tcp://docker:2376
+      DOCKER_CERT_PATH: /certs/client
+      DOCKER_TLS_VERIFY: "1"
+    command:
+      - -url
+      - http://jenkins:8080
+      - -secret
+      - "@/run/secrets/jenkins-agent-secret"
+      - -name
+      - ucms-ci-agent
+      - -webSocket
+      - -workDir
+      - /home/jenkins/agent
+    volumes:
+      - jenkins_agent_home:/home/jenkins/agent
+      - jenkins_docker_certs:/certs/client:ro
+      # 2026-08-21: Keep the inbound-agent secret outside Git and mount it read-only.
+      - ./jenkins/secrets/jenkins-agent-secret:/run/secrets/jenkins-agent-secret:ro
     networks:
       - jenkins
 
 volumes:
   jenkins_home:
+  jenkins_agent_home:
+  jenkins_docker_certs:
+  jenkins_docker_data:
 
 networks:
   jenkins:

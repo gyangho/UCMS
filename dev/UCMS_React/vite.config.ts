@@ -46,7 +46,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // 2026-07-16: Docker Compose routes React API calls to the web service name; local npm dev keeps localhost.
         "/api": apiProxyTarget,
-        // 2026-07-23: Preserve the browser-visible host so Kakao never receives the Docker service URL.
+        // 2026-08-22: Preserve the browser-visible host for cookie and callback origin checks.
         "/auth/authorize": {
           target: apiProxyTarget,
           changeOrigin: false,

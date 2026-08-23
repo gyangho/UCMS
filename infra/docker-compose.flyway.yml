@@ -1,0 +1,33 @@
+services:
+  # 2026-08-20: Run Flyway as an explicit one-shot job against the existing dev database network.
+  flyway-dev:
+    image: flyway/flyway:13.3.0
+    profiles: ["dev"]
+    env_file:
+      - ./env/dev/flyway.env
+    command: migrate
+    volumes:
+      - ../dev/UCMS_Spring/ucms/src/main/resources/db/migration:/flyway/sql:ro
+    networks:
+      - dev-db
+
+  # 2026-08-20: Production uses separate credentials and cannot accidentally join the dev database network.
+  flyway-prod:
+    image: flyway/flyway:13.3.0
+    profiles: ["prod"]
+    env_file:
+      - ./env/prod/flyway.env
+    command: migrate
+    volumes:
+      - ../dev/UCMS_Spring/ucms/src/main/resources/db/migration:/flyway/sql:ro
+    networks:
+      - prod-db
+
+networks:
+  dev-db:
+    name: ucms-dev-db-network
+    external: true
+
+  prod-db:
+    name: ucms-prod-db-network
+    external: true

@@ -9,20 +9,26 @@
     <title>UCMS-마이페이지</title>
     <link rel="stylesheet" href="../styles/dashboard.css" />
     <link rel="stylesheet" href="../styles/header.css" />
+    <!-- 2026-08-21: Align the standalone legacy mypage with the shared cream theme. -->
+    <link rel="stylesheet" href="/styles/ucms-theme.css" />
+    <link rel="icon" href="/images/ucms-logo.png" />
   </head>
 
   <body>
     <header>
       <img
-        src="../images/small-logo.png"
-        alt="로고"
+        src="/images/ucms-logo.png"
+        alt="UCMS 로고"
         class="small-logo"
       />
       <div class="header-right">
         <div class="user-info" id="userInfo">
           로그인 정보 불러오는 중...
         </div>
-        <a href="/auth/logout" class="logout-btn">로그아웃</a>
+        <!-- 2026-08-19: Logout uses POST to prevent cross-site top-level GET logout. -->
+        <form action="/auth/logout" method="post">
+          <button type="submit" class="logout-btn">로그아웃</button>
+        </form>
       </div>
     </header>
 

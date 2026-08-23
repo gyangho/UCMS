@@ -68,10 +68,13 @@
     background: #2563eb;
   }
 </style>
-<link rel="icon" href="/images/favicon.png" />
+<!-- 2026-08-21: Apply the shared cream theme and transparent club logo to legacy pages. -->
+<link rel="stylesheet" href="/styles/ucms-theme.css" />
+<link rel="icon" href="/images/ucms-logo.png" />
 
 <header>
-  <img src="/images/small-logo.png" alt="로고" class="small-logo" />
+  <!-- 2026-08-21: Show the same transparent club mark used by the React shell. -->
+  <img src="/images/ucms-logo.png" alt="UCMS 로고" class="small-logo" />
   <div class="header-right">
     <div class="user-info" id="userInfo">
       로그인 정보 불러오는 중...
@@ -109,8 +112,9 @@
                 ${user.name}
                 `;
       // 로그아웃 버튼 표시
+      // 2026-08-19: Logout is a POST mutation protected by the same-origin check.
       authButtons.innerHTML =
-        '<a href="/auth/logout" class="logout-btn">로그아웃</a>';
+        '<form action="/auth/logout" method="post"><button type="submit" class="logout-btn">로그아웃</button></form>';
     })
     .catch(() => {
       // 로그인 실패 시 로그인 버튼 표시

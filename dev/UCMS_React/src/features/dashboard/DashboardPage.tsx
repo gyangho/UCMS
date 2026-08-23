@@ -35,6 +35,27 @@ interface DashboardData {
   recruitingEvents: DashboardEvent[];
   notices: NoticePreview[];
   issues?: DashboardApiIssue[];
+  activePos?: {
+    id: number;
+    instanceName: string;
+    posterUrl?: string | null;
+    soldQuantity: number;
+    initialStock: number;
+    saleRate: number;
+    promotionCopy?: string | null;
+  } | null;
+  recruitmentPromotions?: Array<{
+    id: number;
+    title: string;
+    formUrl?: string | null;
+    promotionCopy?: string | null;
+    posterUrls: string[];
+  }>;
+  recruitResultLookup?: {
+    title: string;
+    phase: "interview" | "closed";
+    visibleUntil?: string | null;
+  } | null;
 }
 
 interface DashboardApiIssue {
@@ -47,7 +68,7 @@ const emptyDashboard: DashboardData = {
   calendarEvents: [],
   myEvents: [],
   recruitingEvents: [],
-  notices: []
+  notices: [],
 };
 
 interface CalendarEvent extends DashboardEvent {
@@ -82,9 +103,11 @@ function formatNoticeAuthority(authority?: string | null) {
 export function DashboardPage() {
   const today = useMemo(() => new Date(), []);
   const [visibleMonth, setVisibleMonth] = useState(
-    () => new Date(today.getFullYear(), today.getMonth(), 1)
+    () => new Date(today.getFullYear(), today.getMonth(), 1),
   );
-  const [selectedDateKey, setSelectedDateKey] = useState(() => toDateKey(today));
+  const [selectedDateKey, setSelectedDateKey] = useState(() =>
+    toDateKey(today),
+  );
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -103,7 +126,11 @@ export function DashboardPage() {
       } catch (loadError) {
         if (!ignore) {
           setDashboard(emptyDashboard);
-          setError(loadError instanceof Error ? loadError : new Error("Dashboard request failed."));
+          setError(
+            loadError instanceof Error
+              ? loadError
+              : new Error("Dashboard request failed."),
+          );
         }
       } finally {
         if (!ignore) {
@@ -123,17 +150,21 @@ export function DashboardPage() {
       (dashboard?.calendarEvents ?? [])
         .map(normalizeEvent)
         .sort((a, b) => a.startKey.localeCompare(b.startKey)),
-    [dashboard]
+    [dashboard],
   );
 
-  const monthWeeks = useMemo(() => buildMonthWeeks(visibleMonth), [visibleMonth]);
+  const monthWeeks = useMemo(
+    () => buildMonthWeeks(visibleMonth),
+    [visibleMonth],
+  );
 
   const selectedEvents = useMemo(
     () =>
       calendarEvents.filter(
-        (event) => event.startKey <= selectedDateKey && selectedDateKey <= event.endKey
+        (event) =>
+          event.startKey <= selectedDateKey && selectedDateKey <= event.endKey,
       ),
-    [calendarEvents, selectedDateKey]
+    [calendarEvents, selectedDateKey],
   );
 
   const upcomingMyEvents = useMemo(
@@ -143,7 +174,7 @@ export function DashboardPage() {
         .filter((event) => event.endKey >= toDateKey(today))
         .sort((a, b) => a.startKey.localeCompare(b.startKey))
         .slice(0, 5),
-    [dashboard, today]
+    [dashboard, today],
   );
 
   const recruitingEvents = useMemo(
@@ -152,12 +183,13 @@ export function DashboardPage() {
         .map(normalizeEvent)
         .sort((a, b) => a.startKey.localeCompare(b.startKey))
         .slice(0, 5),
-    [dashboard]
+    [dashboard],
   );
 
   function moveMonth(offset: number) {
     setVisibleMonth(
-      (current) => new Date(current.getFullYear(), current.getMonth() + offset, 1)
+      (current) =>
+        new Date(current.getFullYear(), current.getMonth() + offset, 1),
     );
   }
 
@@ -165,7 +197,9 @@ export function DashboardPage() {
 
   return (
     <section className="dashboard-page">
-      {isLoading ? <div className="page-state compact">대시보드를 불러오는 중입니다.</div> : null}
+      {isLoading ? (
+        <div className="page-state compact">대시보드를 불러오는 중입니다.</div>
+      ) : null}
       {requestIssue ? (
         <ApiIssueBanner
           error={error}
@@ -181,16 +215,94 @@ export function DashboardPage() {
           message={issue.message}
         />
       ))}
+      {/* 2026-08-20: Time-sensitive recruitment/result/POS promotions precede the calendar. */}
+      {dashboard?.recruitResultLookup ? (
+        <section className="dashboard-promotion result-promotion">
+          <div>
+            <h2>{dashboard.recruitResultLookup.title} 지원 결과 확인</h2>
+            <p>
+              {dashboard.recruitResultLookup.phase === "closed"
+                ? `최종 결과를 확인할 수 있습니다.${dashboard.recruitResultLookup.visibleUntil ? ` (${new Date(dashboard.recruitResultLookup.visibleUntil).toLocaleString("ko-KR")}까지)` : ""}`
+                : "1차 결과와 합격자의 면접 장소를 확인할 수 있습니다."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/public/recruit-result")}
+          >
+            결과 확인
+          </button>
+        </section>
+      ) : null}
+      {(dashboard?.recruitmentPromotions ?? []).map((promotion) => (
+        <section
+          className="dashboard-promotion recruit-promotion"
+          key={promotion.id}
+        >
+          <div className="promotion-poster-carousel">
+            {promotion.posterUrls.map((url, index) => (
+              <img
+                key={url}
+                src={url}
+                alt={`${promotion.title} 포스터 ${index + 1}`}
+              />
+            ))}
+          </div>
+          {/* 2026-08-21: Keep the public recruitment promotion focused on the poster, copy, and one full-width action. */}
+          {promotion.promotionCopy ? (
+            <p className="recruit-promotion-copy">{promotion.promotionCopy}</p>
+          ) : null}
+          {promotion.formUrl ? (
+            <a
+              className="recruit-promotion-cta"
+              href={promotion.formUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              👉 !! 여기를 눌러 🍞빵실이🍞 되기 !! 👈
+            </a>
+          ) : null}
+        </section>
+      ))}
+      {dashboard?.activePos ? (
+        <section className="dashboard-promotion pos-promotion">
+          {dashboard.activePos.posterUrl ? (
+            <object
+              data={dashboard.activePos.posterUrl}
+              type="application/pdf"
+              aria-label={`${dashboard.activePos.instanceName} 포스터`}
+            />
+          ) : null}
+          <div>
+            <h2>{dashboard.activePos.instanceName}</h2>
+            {dashboard.activePos.promotionCopy ? <p className="pos-promotion-copy">{dashboard.activePos.promotionCopy}</p> : null}
+            <p>
+              판매율 {Math.round(dashboard.activePos.saleRate * 100)}% (
+              {dashboard.activePos.soldQuantity}/
+              {dashboard.activePos.initialStock})
+            </p>
+            <div className="pos-progress-row"><progress max={Math.max(1, dashboard.activePos.initialStock)} value={dashboard.activePos.soldQuantity} /><span aria-hidden="true">🎉🥳</span></div>
+          </div>
+        </section>
+      ) : null}
       <div className="dashboard-layout">
         <section className="dashboard-calendar" aria-label="월간 일정">
           <div className="dashboard-calendar-header">
-            <button type="button" onClick={() => moveMonth(-1)} aria-label="이전 달">
+            <button
+              type="button"
+              onClick={() => moveMonth(-1)}
+              aria-label="이전 달"
+            >
               이전
             </button>
             <h2>
               {visibleMonth.getFullYear()}. {visibleMonth.getMonth() + 1}
             </h2>
-            <button type="button" onClick={() => moveMonth(1)} aria-label="다음 달">
+            <button
+              type="button"
+              onClick={() => moveMonth(1)}
+              aria-label="다음 달"
+            >
               다음
             </button>
           </div>
@@ -211,7 +323,8 @@ export function DashboardPage() {
                     const dayEvents = cell.dateKey
                       ? calendarEvents.filter(
                           (event) =>
-                            isSingleDayEvent(event) && event.startKey === cell.dateKey
+                            isSingleDayEvent(event) &&
+                            event.startKey === cell.dateKey,
                         )
                       : [];
                     const isSelected = cell.dateKey === selectedDateKey;
@@ -223,7 +336,7 @@ export function DashboardPage() {
                           "calendar-day",
                           cell.inMonth ? "" : "muted",
                           isSelected ? "selected" : "",
-                          isToday ? "today" : ""
+                          isToday ? "today" : "",
                         ]
                           .filter(Boolean)
                           .join(" ")}
@@ -237,7 +350,9 @@ export function DashboardPage() {
                           }
                         }}
                       >
-                        <span className="calendar-day-number">{cell.label}</span>
+                        <span className="calendar-day-number">
+                          {cell.label}
+                        </span>
                         <span className="calendar-events">
                           {dayEvents.slice(0, 3).map((event) => (
                             <span
@@ -250,7 +365,9 @@ export function DashboardPage() {
                             </span>
                           ))}
                           {dayEvents.length > 3 ? (
-                            <span className="calendar-more">+{dayEvents.length - 3}</span>
+                            <span className="calendar-more">
+                              +{dayEvents.length - 3}
+                            </span>
                           ) : null}
                         </span>
                       </button>
@@ -262,7 +379,7 @@ export function DashboardPage() {
                       className={[
                         "calendar-multi-event-bar",
                         bar.continuesBefore ? "continues-before" : "",
-                        bar.continuesAfter ? "continues-after" : ""
+                        bar.continuesAfter ? "continues-after" : "",
                       ]
                         .filter(Boolean)
                         .join(" ")}
@@ -272,7 +389,9 @@ export function DashboardPage() {
                         {
                           "--lane": bar.lane,
                           backgroundColor: bar.event.color ?? "#2563eb",
-                          gridColumn: `${bar.startColumn} / ${bar.endColumn}`
+                          // 2026-08-23: Select black or white text from the event color's WCAG luminance.
+                          color: contrastTextColor(bar.event.color),
+                          gridColumn: `${bar.startColumn} / ${bar.endColumn}`,
                         } as CSSProperties
                       }
                       type="button"
@@ -299,7 +418,10 @@ export function DashboardPage() {
                 +
               </button>
             </div>
-            <EventList events={selectedEvents} emptyText="선택한 날짜에 일정이 없습니다." />
+            <EventList
+              events={selectedEvents}
+              emptyText="선택한 날짜에 일정이 없습니다."
+            />
           </section>
 
           <section className="dashboard-list">
@@ -309,14 +431,20 @@ export function DashboardPage() {
                 전체
               </button>
             </div>
-            <EventList events={upcomingMyEvents} emptyText="참여 중인 예정 일정이 없습니다." />
+            <EventList
+              events={upcomingMyEvents}
+              emptyText="참여 중인 예정 일정이 없습니다."
+            />
           </section>
 
           <section className="dashboard-list">
             <div className="dashboard-list-heading">
               <h2>모집 중인 일정</h2>
             </div>
-            <EventList events={recruitingEvents} emptyText="모집 중인 일정이 없습니다." />
+            <EventList
+              events={recruitingEvents}
+              emptyText="모집 중인 일정이 없습니다."
+            />
           </section>
         </aside>
       </div>
@@ -369,9 +497,20 @@ export function DashboardPage() {
   );
 }
 
+function contrastTextColor(color?: string | null) {
+  const raw = String(color ?? "#2563eb").trim();
+  const match = raw.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!match) return "#ffffff";
+  const hex = match[1].length === 3 ? match[1].split("").map((digit) => digit + digit).join("") : match[1];
+  const channels = [0, 2, 4].map((index) => Number.parseInt(hex.slice(index, index + 2), 16) / 255);
+  const [red, green, blue] = channels.map((channel) => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+  const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+  return luminance > 0.179 ? "#24180e" : "#ffffff";
+}
+
 function EventList({
   events,
-  emptyText
+  emptyText,
 }: {
   events: CalendarEvent[];
   emptyText: string;
@@ -402,7 +541,7 @@ function normalizeEvent(event: DashboardEvent): CalendarEvent {
   return {
     ...event,
     startKey: toDateKey(new Date(event.start)),
-    endKey: toDateKey(new Date(event.end))
+    endKey: toDateKey(new Date(event.end)),
   };
 }
 
@@ -418,7 +557,7 @@ function buildMonthWeeks(month: Date) {
       dateKey: null,
       inMonth: false,
       key: `empty-start-${index}`,
-      label: ""
+      label: "",
     });
   }
 
@@ -428,7 +567,7 @@ function buildMonthWeeks(month: Date) {
       dateKey: toDateKey(cellDate),
       inMonth: true,
       key: toDateKey(cellDate),
-      label: String(date)
+      label: String(date),
     });
   }
 
@@ -437,7 +576,7 @@ function buildMonthWeeks(month: Date) {
       dateKey: null,
       inMonth: false,
       key: `empty-end-${cells.length}`,
-      label: ""
+      label: "",
     });
   }
 
@@ -450,7 +589,10 @@ function buildMonthWeeks(month: Date) {
   return weeks;
 }
 
-function buildWeekBars(week: CalendarCell[], events: CalendarEvent[]): WeekBar[] {
+function buildWeekBars(
+  week: CalendarCell[],
+  events: CalendarEvent[],
+): WeekBar[] {
   const datedCells = week.filter((cell) => cell.dateKey);
   const weekStart = datedCells[0]?.dateKey;
   const weekEnd = datedCells[datedCells.length - 1]?.dateKey;
@@ -462,12 +604,17 @@ function buildWeekBars(week: CalendarCell[], events: CalendarEvent[]): WeekBar[]
   return events
     .filter(
       (event) =>
-        !isSingleDayEvent(event) && event.startKey <= weekEnd && event.endKey >= weekStart
+        !isSingleDayEvent(event) &&
+        event.startKey <= weekEnd &&
+        event.endKey >= weekStart,
     )
     .map((event, lane) => {
-      const segmentStart = event.startKey > weekStart ? event.startKey : weekStart;
+      const segmentStart =
+        event.startKey > weekStart ? event.startKey : weekStart;
       const segmentEnd = event.endKey < weekEnd ? event.endKey : weekEnd;
-      const startIndex = week.findIndex((cell) => cell.dateKey === segmentStart);
+      const startIndex = week.findIndex(
+        (cell) => cell.dateKey === segmentStart,
+      );
       const endIndex = week.findIndex((cell) => cell.dateKey === segmentEnd);
 
       return {
@@ -476,7 +623,7 @@ function buildWeekBars(week: CalendarCell[], events: CalendarEvent[]): WeekBar[]
         continuesAfter: event.endKey > segmentEnd,
         continuesBefore: event.startKey < segmentStart,
         lane,
-        startColumn: startIndex + 1
+        startColumn: startIndex + 1,
       };
     });
 }
@@ -496,7 +643,7 @@ function formatSelectedDate(dateKey: string) {
   return new Date(`${dateKey}T00:00:00`).toLocaleDateString("ko-KR", {
     month: "long",
     day: "numeric",
-    weekday: "short"
+    weekday: "short",
   });
 }
 
@@ -513,7 +660,7 @@ function formatDateTime(value: string) {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
   });
 }
 
@@ -525,30 +672,33 @@ function describeDashboardRequestError(error: Error | null) {
     if (error.status === 401) {
       return {
         label: "세션 확인",
-        message: "로그인 세션을 확인하지 못했습니다. 로그인 기능이 필요하면 다시 로그인해주세요."
+        message:
+          "로그인 세션을 확인하지 못했습니다. 로그인 기능이 필요하면 다시 로그인해주세요.",
       };
     }
     if (error.status === 403) {
       return {
         label: "접근 권한",
-        message: "대시보드를 조회할 권한이 없습니다. 계정 권한을 확인해주세요."
+        message: "대시보드를 조회할 권한이 없습니다. 계정 권한을 확인해주세요.",
       };
     }
     if (error.status >= 500) {
       return {
         label: "대시보드 서버",
-        message: "서버에서 대시보드 데이터를 처리하지 못했습니다. 잠시 후 다시 시도해주세요."
+        message:
+          "서버에서 대시보드 데이터를 처리하지 못했습니다. 잠시 후 다시 시도해주세요.",
       };
     }
     return {
       label: "대시보드 응답",
-      message: `대시보드 요청을 완료하지 못했습니다. (HTTP ${error.status})`
+      message: `대시보드 요청을 완료하지 못했습니다. (HTTP ${error.status})`,
     };
   }
 
   return {
     label: "네트워크 연결",
-    message: "서버에 연결하지 못했습니다. 네트워크와 서버 실행 상태를 확인해주세요."
+    message:
+      "서버에 연결하지 못했습니다. 네트워크와 서버 실행 상태를 확인해주세요.",
   };
 }
 

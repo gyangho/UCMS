@@ -3,18 +3,26 @@ documents/
 docs/
 *.csv
 *.txt
+# 2026-08-22: Keep Python dependency manifests available to Docker and Jenkins builds.
+!**/requirements.txt
 .vscode/
 keys/
+# 2026-08-21: Jenkins inbound-agent secrets are provisioned only on the server.
+infra/jenkins/secrets/
 certbot/
 logs/
 handoffs/
 outputs/
 inputs/
 .agents/
-AGENTS.md
+# 2026-08-19: Database schemas/exports may contain real member data; keep them local until sanitized migrations replace them.
 *.sql
-!infra/data/schemalist.sql
+# 2026-08-19: Sanitized, versioned Flyway migrations are application source and must remain tracked.
+!dev/UCMS_Spring/ucms/src/main/resources/db/migration/*.sql
 dbbkp/
+
+*.pem
+*.key
 
 __pycache__/
 
@@ -60,6 +68,8 @@ bower_components
 
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
+# 2026-08-21: Flyway/Spring verification generates disposable Gradle build outputs.
+**/build/
 
 # Dependency directories
 node_modules/
@@ -93,6 +103,9 @@ web_modules/
 *.env
 .env.*
 !.env.example
+# 2026-08-23: Keep environment-specific Gmail SMTP credentials out of Git even when examples are tracked.
+infra/env/dev/spring.env
+infra/env/prod/spring.env
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -161,6 +174,10 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# 2026-08-22: Playwright login state and visual evidence can contain private UCMS data.
+dev/UCMS_React/playwright/.auth/
+dev/UCMS_React/artifacts/playwright/
 .pnp.*
 .yarn/*
 !.yarn/patches

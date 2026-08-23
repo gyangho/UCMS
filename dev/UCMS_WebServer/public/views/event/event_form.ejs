@@ -122,11 +122,12 @@
         <div>
           <label class="inline-field">
             시작 시각
-            <input type="datetime-local" name="start" value="<%= data.start || '' %>" required />
+            <!-- 2026-08-23: Keep legacy date-time pickers aligned with the React ten-minute interval. -->
+            <input type="datetime-local" step="600" name="start" value="<%= data.start || '' %>" required />
           </label>
           <label class="inline-field">
             종료 시각
-            <input type="datetime-local" name="end" value="<%= data.end || '' %>" required />
+            <input type="datetime-local" step="600" name="end" value="<%= data.end || '' %>" required />
           </label>
         </div>
 
@@ -138,11 +139,11 @@
         <div class="hidden" id="recruit-time">
           <label class="inline-field">
             모집 시작 시각
-            <input type="datetime-local" name="recruit_start" value="<%= data.end || '' %>" />
+            <input type="datetime-local" step="600" name="recruit_start" value="<%= data.end || '' %>" />
           </label>
           <label class="inline-field">
             모집 종료 시각
-            <input type="datetime-local" name="recruit_end" value="<%= data.end || '' %>" />
+            <input type="datetime-local" step="600" name="recruit_end" value="<%= data.end || '' %>" />
           </label>
         </div>
 

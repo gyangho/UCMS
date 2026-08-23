@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const Pos = require("../../models/Pos");
+const { requireAuthority } = require("./apiResponse");
+// 2026-08-21: POS record management starts at the normalized executive rank.
+const requirePosManager = requireAuthority(3);
 
 // Get records for active instance (JSON)
 router.get("/", async (req, res) => {
@@ -47,15 +50,8 @@ router.get("/", async (req, res) => {
 });
 
 // Delete a record (receipt) by id
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requirePosManager, async (req, res) => {
   try {
-    if (
-      !req.session ||
-      typeof req.session.authority !== "number" ||
-      req.session.authority < 4
-    ) {
-      return res.status(403).json({ error: "권한이 없습니다." });
-    }
     const active = await Pos.findActiveInstance();
     if (!active)
       return res.status(400).json({ error: "No active instance" });
@@ -68,15 +64,8 @@ router.delete("/:id", async (req, res) => {
 });
 
 // Clear all records for active instance
-router.post("/clear", async (req, res) => {
+router.post("/clear", requirePosManager, async (req, res) => {
   try {
-    if (
-      !req.session ||
-      typeof req.session.authority !== "number" ||
-      req.session.authority < 4
-    ) {
-      return res.status(403).json({ error: "권한이 없습니다." });
-    }
     const active = await Pos.findActiveInstance();
     if (!active)
       return res.status(400).json({ error: "No active instance" });
