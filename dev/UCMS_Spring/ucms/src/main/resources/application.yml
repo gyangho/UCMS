@@ -30,6 +30,11 @@ spring:
 ucms:
   mail:
     internal-token: ${UCMS_INTERNAL_MAIL_TOKEN:}
+  recruit:
+    response-sync:
+      scheduler-enabled: ${RECRUIT_RESPONSE_SYNC_SCHEDULER_ENABLED:true}
+      interval-ms: ${RECRUIT_RESPONSE_SYNC_INTERVAL_MS:600000}
+      service-account-path: ${GOOGLE_SERVICE_ACCOUNT_PATH:/app/keys/google/ucms-466410-b5ec552f2e06.json}
 
 logging:
   level:

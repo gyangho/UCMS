@@ -17,6 +17,9 @@ services:
         required: false
     environment:
       SPRING_PROFILES_ACTIVE: prod
+    volumes:
+      # 2026-08-23: Production Spring only needs read access to the Google Forms service-account key.
+      - ./env/keys/google:/app/keys/google:ro
     networks:
       prod-app:
         # 2026-08-23: Keep the internal HTTP host valid for Tomcat in production too.

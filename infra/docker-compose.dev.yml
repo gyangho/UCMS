@@ -16,6 +16,8 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: dev
     volumes:
+      # 2026-08-23: Spring reads the Google Forms service-account key only; browser-facing services never receive it.
+      - ./env/keys/google:/app/keys/google:ro
       - ../dev/UCMS_Spring/ucms:/app
       - /home/gradle/.gradle
     networks:

@@ -16,13 +16,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalRecruitMemberController {
 	private final InternalMailTokenVerifier tokenVerifier;
 	private final RecruitMemberRegistrationService registrationService;
+	private final RecruitResponseSyncService responseSyncService;
 
 	public InternalRecruitMemberController(
 		InternalMailTokenVerifier tokenVerifier,
-		RecruitMemberRegistrationService registrationService
+		RecruitMemberRegistrationService registrationService,
+		RecruitResponseSyncService responseSyncService
 	) {
 		this.tokenVerifier = tokenVerifier;
 		this.registrationService = registrationService;
+		this.responseSyncService = responseSyncService;
 	}
 
 	@PostMapping("/{recruitmentId}/final-members")
@@ -35,5 +38,16 @@ public class InternalRecruitMemberController {
 		// 2026-08-23: Node authenticates the session; Spring rechecks authority and owns this new write path.
 		tokenVerifier.verify(token);
 		return ResponseEntity.ok(registrationService.register(actorUserId, recruitmentId, request.generation()));
+	}
+
+	@PostMapping("/{recruitmentId}/responses/sync")
+	public ResponseEntity<Map<String, Object>> syncResponses(
+		@RequestHeader(value = "X-UCMS-Internal-Token", required = false) String token,
+		@RequestHeader("X-UCMS-Actor-User-Id") long actorUserId,
+		@PathVariable long recruitmentId
+	) {
+		// 2026-08-23: Node supplies the authenticated actor; Spring verifies authority and owns the Google Forms write path.
+		tokenVerifier.verify(token);
+		return ResponseEntity.ok(responseSyncService.syncByManager(actorUserId, recruitmentId));
 	}
 }

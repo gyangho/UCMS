@@ -7,7 +7,7 @@ import { BusyLabel } from "../../shared/ui/BusyLabel";
 import { TenMinuteDateTimeInput } from "../../shared/ui/TenMinuteDateTimeInput";
 
 type RecruitStatus = "draft" | "recruiting" | "planning" | "interview" | "interview_completed" | "closed";
-interface RecruitmentInstance { id: number; formId?: string | null; title: string; status: RecruitStatus; recruitStart?: string | null; recruitEnd?: string | null; interviewStart?: string | null; interviewEnd?: string | null; formUrl?: string | null; promotionCopy?: string | null; posterUrls: string[]; applicantCount: number; maleCount: number; femaleCount: number; firstPassRate: number; finalPassRate: number; interviewPlanId?: number | null; interviewPlanStatus?: string | null; membersRegisteredAt?: string | null; }
+interface RecruitmentInstance { id: number; formId?: string | null; title: string; status: RecruitStatus; recruitStart?: string | null; recruitEnd?: string | null; interviewStart?: string | null; interviewEnd?: string | null; formUrl?: string | null; promotionCopy?: string | null; posterUrls: string[]; applicantCount: number; maleCount: number; femaleCount: number; firstPassRate: number; finalPassRate: number; interviewPlanId?: number | null; interviewPlanStatus?: string | null; membersRegisteredAt?: string | null; lastResponseSyncAt?: string | null; lastResponseSyncCount?: number | null; responseSyncError?: string | null; }
 interface RecruitResponseRow { id: number; applicantName: string; studentId?: string | null; gender?: string | null; rating?: string | null; formId: string; }
 const STATUS_LABEL: Record<RecruitStatus, string> = { draft: "초안", recruiting: "모집", planning: "면접 계획", interview: "면접", interview_completed: "면접 종료", closed: "종료" };
 const MAX_POSTER_COUNT = 10;
@@ -69,6 +69,21 @@ export function RecruitInstanceDetailPage({ path }: { path: string }) {
   async function save(event: FormEvent) { event.preventDefault(); if (busyAction) return; setBusyAction("save"); setMessage(null); try { const posters = posterFiles.length ? await Promise.all(posterFiles.map(filePayload)) : undefined; await requestData(`/api/recruit/instances/${id}`, { method: "PATCH", body: JSON.stringify({ ...form, posters }) }); setMessage(item?.status === "draft" ? "초안을 저장했습니다." : "모집 정보를 수정했습니다."); setPosterFiles([]); await load(); } catch (e) { setMessage(e instanceof Error ? e.message : "저장하지 못했습니다."); } finally { setBusyAction(null); } }
   async function generateGoogleForm() { if (busyAction) return; setBusyAction("google-form"); setMessage(null); try { /* 2026-08-23: Save the interview range before the backend derives dynamic form questions. */ await requestData(`/api/recruit/instances/${id}`, { method: "PATCH", body: JSON.stringify(form) }); const data = await requestData<{ formUrl: string }>("/api/drive/forms", { method: "POST", body: JSON.stringify({ recruitmentId: id, templateId: generator.templateId, title: form.title, userEmail: generator.userEmail }) }); setForm((v) => ({ ...v, formUrl: data.formUrl })); setMessage("Google Form을 생성하고 연결했습니다."); await load(); } catch (e) { setMessage(e instanceof Error ? e.message : "Google Form을 생성하지 못했습니다."); } finally { setBusyAction(null); } }
   async function action(endpoint: string) { if (busyAction) return; setBusyAction(endpoint); setMessage(null); try { const data = await requestData<{ path?: string }>(`/api/recruit/instances/${id}/${endpoint}`, { method: "POST" }); if (data.path) navigate(data.path); else await load(); } catch (e) { setMessage(e instanceof Error ? e.message : "작업을 완료하지 못했습니다."); } finally { setBusyAction(null); } }
+  async function syncResponses() {
+    if (busyAction) return;
+    setBusyAction("sync-responses");
+    setMessage(null);
+    try {
+      // 2026-08-23: Managers can refresh the applicant list immediately; Spring also performs periodic synchronization.
+      const result = await requestData<{ syncedCount: number; createdCount: number; updatedCount: number }>(`/api/recruit/instances/${id}/sync-responses`, { method: "POST" });
+      setMessage(`지원자 응답 ${result.syncedCount}건을 동기화했습니다. 신규 ${result.createdCount}건, 갱신 ${result.updatedCount}건입니다.`);
+      await load();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "지원자 응답을 동기화하지 못했습니다.");
+    } finally {
+      setBusyAction(null);
+    }
+  }
   async function registerFinalMembers() {
     // 2026-08-23: Require explicit generation confirmation before the atomic member-registration transition.
     const parsedGeneration = Number(generation);
@@ -139,6 +154,7 @@ export function RecruitInstanceDetailPage({ path }: { path: string }) {
     ? `https://docs.google.com/forms/d/${encodeURIComponent(item.formId)}/edit`
     : item.formUrl;
   return <section className="stack-page recruit-page">
+    {item.status === "recruiting" ? <div className="toolbar"><button className="secondary-button" disabled={Boolean(busyAction)} type="button" onClick={syncResponses}>{busyAction === "sync-responses" ? <BusyLabel text="응답 동기화 중..." /> : "지원자 응답 동기화"}</button></div> : null}
     <div className="page-heading"><div><h1>{item.title}</h1><span className={`status-pill ${item.status}`}>{STATUS_LABEL[item.status]}</span></div><div className="toolbar">{canEditActive && !isEditing ? <button className="secondary-button" disabled={Boolean(busyAction)} type="button" onClick={() => setIsEditing(true)}>수정</button> : null}{canEditActive && isEditing ? <button className="secondary-button" disabled={Boolean(busyAction)} type="button" onClick={cancelEditing}>수정 취소</button> : null}<button className="danger-button" disabled={Boolean(busyAction)} type="button" onClick={deleteRecruitment}>{isDeleting ? <BusyLabel text="삭제 중..." /> : "모집 삭제"}</button>{item.status === "draft" ? <button disabled={Boolean(busyAction)} type="button" onClick={() => action("start")}>{busyAction === "start" ? <BusyLabel /> : "모집 시작"}</button> : null}{item.status === "recruiting" ? <button disabled={Boolean(busyAction)} type="button" onClick={() => action("finish-recruiting")}>{busyAction === "finish-recruiting" ? <BusyLabel /> : "모집 종료"}</button> : null}{item.status === "planning" ? <><button disabled={Boolean(busyAction)} type="button" onClick={() => action("interview-plan")}>{busyAction === "interview-plan" ? <BusyLabel /> : "면접 계획하기"}</button>{item.interviewPlanStatus === "active" ? <button disabled={Boolean(busyAction)} type="button" onClick={() => action("start-interview")}>{busyAction === "start-interview" ? <BusyLabel /> : "면접 시작"}</button> : null}</> : null}{item.status === "interview" && item.interviewPlanId ? <button disabled={Boolean(busyAction)} type="button" onClick={() => navigate(`/recruit/interview/plans/${item.interviewPlanId}`)}>면접 타임테이블 보기</button> : null}{item.status === "interview" ? <button disabled={Boolean(busyAction)} type="button" onClick={() => action("finish-interview")}>{busyAction === "finish-interview" ? <BusyLabel /> : "면접 종료"}</button> : null}</div></div>
     {message ? <div className="page-state notice">{message}</div> : null}
     {busyAction ? <div aria-live="polite" className="processing-banner"><BusyLabel text={busyAction === "save" ? "저장 중..." : busyAction === "google-form" ? "Google Form 처리 중..." : busyAction === "delete" ? "삭제 중..." : "처리 중..."} /></div> : null}

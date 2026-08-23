@@ -34,6 +34,7 @@ const {
   updateInstance: updatePosInstance,
 } = require("../../services/SpringPosAdminService");
 const { registerFinalMembers } = require("../../services/SpringRecruitMemberService");
+const { syncRecruitResponses } = require("../../services/SpringRecruitResponseSyncService");
 const {
   listImpersonationTargets,
   startUserImpersonation,
@@ -341,6 +342,9 @@ function mapRecruitment(row) {
     interviewStartedAt: toIso(row.interview_started_at),
     closedAt: toIso(row.closed_at),
     membersRegisteredAt: toIso(row.members_registered_at),
+    lastResponseSyncAt: toIso(row.last_response_sync_at),
+    lastResponseSyncCount: Number(row.last_response_sync_count || 0),
+    responseSyncError: row.response_sync_error || null,
     applicantCount,
     maleCount: Number(row.male_count || 0),
     femaleCount: Number(row.female_count || 0),
@@ -1948,6 +1952,16 @@ router.post(
 );
 
 router.post(
+  "/recruit/instances/:id/sync-responses",
+  requireAuthority(3),
+  asyncHandler(async (req, res) => {
+    // 2026-08-23: Spring paginates Forms API responses and preserves existing evaluation ratings.
+    const result = await syncRecruitResponses(req.params.id, req.session.userId);
+    ok(res, result);
+  }),
+);
+
+router.post(
   "/recruit/instances/:id/finish-recruiting",
   requireAuthority(3),
   asyncHandler(async (req, res) => {
@@ -1959,6 +1973,8 @@ router.post(
       [req.params.id],
     );
     const instance = instances[0];
+    // 2026-08-23: Fetch the final submitted answers before Google Forms stops accepting new responses.
+    await syncRecruitResponses(req.params.id, req.session.userId);
     if (!instance) return fail(res, 404, "NOT_FOUND", "모집 인스턴스를 찾지 못했습니다.");
     if (instance.status !== "recruiting") return fail(res, 409, "INVALID_TRANSITION", "모집 상태에서만 모집을 종료할 수 있습니다.");
     try {

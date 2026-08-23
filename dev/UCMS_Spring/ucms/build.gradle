@@ -10,7 +10,8 @@ version = '0.1.1-SNAPSHOT'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(26)
+		// 2026-08-23: Use the locally installed LTS toolchain so Gradle builds work outside Docker as well.
+		languageVersion = JavaLanguageVersion.of(21)
 	}
 }
 
@@ -31,6 +32,10 @@ dependencies {
 	// 2026-08-23: Existing login sessions remain in Node; the Spring mail backend stays stateless.
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	// 2026-08-23: Parse Google Forms REST payloads in the Spring-owned synchronization adapter.
+	implementation 'com.fasterxml.jackson.core:jackson-databind'
+	// 2026-08-23: Spring reads Google Forms through the existing service-account key without exposing it to the web client.
+	implementation 'com.google.auth:google-auth-library-oauth2-http:1.40.0'
 	implementation 'org.flywaydb:flyway-mysql'
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
