@@ -133,6 +133,11 @@ public class RecruitResponseSyncService {
 
 	private String semanticKey(String title) {
 		String normalized = title == null ? "" : title.replaceAll("[\\s\\p{Punct}]", "").toLowerCase(Locale.ROOT);
+		// 2026-08-24: Form templates append examples after identity labels, so match each stable Korean label prefix.
+		if (normalized.startsWith("\uD559\uBC88") || normalized.startsWith("\uD559\uC0DD\uBC88\uD638")) return "student_id";
+		if (normalized.startsWith("\uC774\uB984") || normalized.startsWith("\uC131\uBA85")) return "name";
+		if (normalized.startsWith("\uC804\uACF5") || normalized.startsWith("\uD559\uACFC") || normalized.startsWith("\uC18C\uC18D\uD559\uACFC")) return "major";
+		if (normalized.startsWith("\uC804\uD654\uBC88\uD638") || normalized.startsWith("\uD734\uB300\uD3F0\uBC88\uD638") || normalized.startsWith("\uC5F0\uB77D\uCC98")) return "phone";
 		// 2026-08-23: Only the controlled form labels below map identity fields; unknown questions remain raw responses.
 		if (normalized.equals("학번") || normalized.equals("학생번호")) return "student_id";
 		if (normalized.equals("이름") || normalized.equals("성명")) return "name";
