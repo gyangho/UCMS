@@ -136,6 +136,22 @@ async function smokeDatabaseSchema() {
     throw new Error("Missing interview_plans.recruitment_id.");
   }
 
+  // 2026-08-23: Preserve the explicit interview-completed/member-registration lifecycle boundary.
+  const [recruitmentColumns] = await db.execute(
+    `SELECT column_name, column_type FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = 'recruitment_instances'`,
+  );
+  const recruitmentColumnMap = new Map(recruitmentColumns.map((row) => [
+    row.COLUMN_NAME ?? row.column_name,
+    row.COLUMN_TYPE ?? row.column_type,
+  ]));
+  if (!recruitmentColumnMap.has("members_registered_at")) {
+    throw new Error("Missing recruitment_instances.members_registered_at.");
+  }
+  if (!String(recruitmentColumnMap.get("status") || "").includes("interview_completed")) {
+    throw new Error("Missing recruitment interview_completed status.");
+  }
+
   const [productColumns] = await db.execute(
     `SELECT column_name FROM information_schema.columns
       WHERE table_schema = DATABASE() AND table_name = 'pos_products'`,

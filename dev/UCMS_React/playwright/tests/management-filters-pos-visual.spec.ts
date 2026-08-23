@@ -225,10 +225,13 @@ test("POS poster size error and creation progress are visible", async ({ page },
 });
 
 test("mypage lists account actions and opens the password page", async ({ page }, testInfo) => {
-  // 2026-08-23: Keep account actions discoverable without crowding the profile page.
+  // 2026-08-23: Keep only the full-width action list aligned with the profile card.
   await page.goto("/mypage");
-  await expect(page.getByRole("heading", { name: "사용할 수 있는 기능" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "사용할 수 있는 기능" })).toHaveCount(0);
+  await expect(page.getByText("계정과 로그인 정보를 관리할 수 있습니다.")).toHaveCount(0);
   await expect(page.getByText("현재 브라우저의 로그인 세션을 종료합니다.")).toBeVisible();
+  const widthDifference = await page.locator(".mypage-feature-panel").evaluate((panel) => Math.abs(panel.getBoundingClientRect().width - document.querySelector(".profile-card")!.getBoundingClientRect().width));
+  expect(widthDifference).toBeLessThanOrEqual(1);
   await capture(page, testInfo.outputPath("mypage-feature-list.png"));
   await page.getByRole("button", { name: "비밀번호 변경" }).click();
   await expect(page).toHaveURL(/\/mypage\/password$/);
@@ -237,6 +240,23 @@ test("mypage lists account actions and opens the password page", async ({ page }
   await expect(page.getByLabel("새 비밀번호", { exact: true })).toBeVisible();
   await expect(page.getByLabel("새 비밀번호 확인")).toBeVisible();
   await capture(page, testInfo.outputPath("mypage-password-change.png"));
+});
+
+test("interview-completed recruitment registers final members before closing", async ({ page }, testInfo) => {
+  // 2026-08-23: Verify the explicit generation confirmation and Spring-backed lifecycle action without mutating local data.
+  await page.route("**/api/recruit/instances/9", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({ success: true, data: { instance: {
+    id: 9, formId: "form-9", title: "9기 모집", status: "interview_completed", recruitStart: "2026-08-01T00:00:00Z", recruitEnd: "2026-08-20T00:00:00Z", interviewStart: "2026-09-01T01:00:00Z", interviewEnd: "2026-09-03T10:00:00Z", formUrl: "https://docs.google.com/forms/d/form-9/viewform", promotionCopy: "", posterUrls: [], applicantCount: 2, maleCount: 1, femaleCount: 1, firstPassRate: 1, finalPassRate: 0.5, interviewPlanId: 39, interviewPlanStatus: "completed",
+  } } }) }));
+  await page.route("**/api/recruit/responses", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({ success: true, data: { responses: [
+    { id: 91, applicantName: "김합격", studentId: "20260091", gender: "여자", rating: "최종합격", formId: "form-9" },
+    { id: 92, applicantName: "이불합격", studentId: "20260092", gender: "남자", rating: "불합격", formId: "form-9" },
+  ] } }) }));
+  await page.goto("/recruit/9");
+  await expect(page.getByText("면접 종료", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "최종합격자 회원 등록" })).toBeVisible();
+  await expect(page.getByLabel("기수")).toHaveValue("9");
+  await expect(page.getByRole("button", { name: "최종 합격자 회원 등록 및 모집 종료" })).toBeVisible();
+  await capture(page, testInfo.outputPath("recruitment-final-member-registration.png"));
 });
 
 test("wrong current password stays on the password page", async ({ page }) => {

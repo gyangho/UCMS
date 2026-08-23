@@ -3195,22 +3195,12 @@ button:disabled {
   max-width: 520px;
 }
 
-/* 2026-08-23: Make mypage actions scan like a settings menu on both desktop and mobile. */
+/* 2026-08-23: Keep the mypage action list plain, full-width, and aligned with the profile card. */
 .mypage-feature-panel {
-  display: grid;
-  gap: 16px;
-  padding: 20px;
+  width: 100%;
 }
 
-.mypage-feature-heading h2,
-.password-settings-panel h2 {
-  margin: 0;
-}
-
-.mypage-feature-heading p {
-  margin: 6px 0 0;
-  color: var(--brand-muted);
-}
+.password-settings-panel h2 { margin: 0; }
 
 .mypage-feature-list {
   display: grid;
@@ -3226,6 +3216,7 @@ button:disabled {
   gap: 18px;
   align-items: center;
   padding: 16px;
+  width: 100%;
   background: var(--cream-soft);
   border: 1px solid var(--brand-border);
   border-radius: 12px;
@@ -4002,10 +3993,17 @@ progress {
 
 .status-pill.active,
 .status-pill.planning,
+.status-pill.interview_completed,
 .payment-badge.paid,
 .evaluation-connection-status.connected {
   color: #3f5d2c;
   background: #edf4d7;
+}
+
+/* 2026-08-23: Visually separate the irreversible final-member registration step. */
+.final-member-registration {
+  border-color: #d4a72c;
+  background: #fff6d9;
 }
 
 /* 2026-08-23: Keep interview-plan navigation and scheduler controls compact on desktop and mobile. */

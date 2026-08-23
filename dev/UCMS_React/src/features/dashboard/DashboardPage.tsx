@@ -53,7 +53,7 @@ interface DashboardData {
   }>;
   recruitResultLookup?: {
     title: string;
-    phase: "interview" | "closed";
+    phase: "interview" | "interview_completed" | "closed";
     visibleUntil?: string | null;
   } | null;
 }
@@ -221,7 +221,7 @@ export function DashboardPage() {
           <div>
             <h2>{dashboard.recruitResultLookup.title} 지원 결과 확인</h2>
             <p>
-              {dashboard.recruitResultLookup.phase === "closed"
+              {dashboard.recruitResultLookup.phase !== "interview"
                 ? `최종 결과를 확인할 수 있습니다.${dashboard.recruitResultLookup.visibleUntil ? ` (${new Date(dashboard.recruitResultLookup.visibleUntil).toLocaleString("ko-KR")}까지)` : ""}`
                 : "1차 결과와 합격자의 면접 장소를 확인할 수 있습니다."}
             </p>

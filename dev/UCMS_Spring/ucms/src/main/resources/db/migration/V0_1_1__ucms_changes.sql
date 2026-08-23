@@ -225,8 +225,8 @@ CREATE TABLE recruitment_instances (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   form_id VARCHAR(255) DEFAULT NULL COMMENT '1:1 linked Google Form ID',
   title VARCHAR(255) NOT NULL,
-  -- 2026-08-23: Separate closed recruitment intake from the later live interview phase.
-  status ENUM('draft', 'recruiting', 'planning', 'interview', 'closed') NOT NULL DEFAULT 'draft',
+  -- 2026-08-23: Keep member registration between interview completion and final campaign closure.
+  status ENUM('draft', 'recruiting', 'planning', 'interview', 'interview_completed', 'closed') NOT NULL DEFAULT 'draft',
   recruit_start DATETIME DEFAULT NULL,
   recruit_end DATETIME DEFAULT NULL,
   -- 2026-08-23: Drive dynamic interview-date questions and the later timetable plan.
@@ -239,6 +239,7 @@ CREATE TABLE recruitment_instances (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   interview_started_at DATETIME DEFAULT NULL,
   closed_at DATETIME DEFAULT NULL,
+  members_registered_at DATETIME DEFAULT NULL,
   snapshot_applicant_count INT UNSIGNED DEFAULT NULL,
   snapshot_first_pass_count INT UNSIGNED DEFAULT NULL,
   snapshot_final_pass_count INT UNSIGNED DEFAULT NULL,

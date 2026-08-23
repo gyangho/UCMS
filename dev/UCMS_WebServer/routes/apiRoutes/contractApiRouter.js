@@ -33,6 +33,7 @@ const { changePassword } = require("../../services/SpringPasswordChangeService")
 const {
   updateInstance: updatePosInstance,
 } = require("../../services/SpringPosAdminService");
+const { registerFinalMembers } = require("../../services/SpringRecruitMemberService");
 const {
   listImpersonationTargets,
   startUserImpersonation,
@@ -339,6 +340,7 @@ function mapRecruitment(row) {
     updatedAt: toIso(row.updated_at),
     interviewStartedAt: toIso(row.interview_started_at),
     closedAt: toIso(row.closed_at),
+    membersRegisteredAt: toIso(row.members_registered_at),
     applicantCount,
     maleCount: Number(row.male_count || 0),
     femaleCount: Number(row.female_count || 0),
@@ -676,7 +678,7 @@ router.get(
       const resultWindows = await query(
         `SELECT id, title, status, closed_at
            FROM recruitment_instances
-          WHERE status = 'interview'
+          WHERE status IN ('interview', 'interview_completed')
              OR (status = 'closed' AND closed_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 3 DAY))
           ORDER BY updated_at DESC LIMIT 1`,
       );
@@ -686,7 +688,7 @@ router.get(
           recruitmentId: Number(item.id),
           title: item.title,
           phase: item.status,
-          showFinalResult: item.status === "closed",
+          showFinalResult: ["interview_completed", "closed"].includes(item.status),
           visibleUntil: item.closed_at
             ? toIso(new Date(new Date(item.closed_at).getTime() + 3 * 24 * 60 * 60 * 1000))
             : null,
@@ -1636,7 +1638,7 @@ router.get(
     const result = await query(
       `${recruitmentSelect}
        GROUP BY ri.id, ip.id
-       ORDER BY FIELD(ri.status, 'recruiting', 'planning', 'interview', 'draft', 'closed'), ri.updated_at DESC`,
+       ORDER BY FIELD(ri.status, 'recruiting', 'planning', 'interview', 'interview_completed', 'draft', 'closed'), ri.updated_at DESC`,
     );
     ok(res, { instances: result.map(mapRecruitment) });
   }),
@@ -1682,8 +1684,8 @@ router.patch(
       [req.params.id],
     );
     if (!existing[0]) return fail(res, 404, "NOT_FOUND", "모집 인스턴스를 찾지 못했습니다.");
-    if (existing[0].status === "closed") {
-      return fail(res, 409, "RECRUITMENT_CLOSED", "종료된 모집은 편집할 수 없습니다.");
+    if (["interview_completed", "closed"].includes(existing[0].status)) {
+      return fail(res, 409, "RECRUITMENT_CLOSED", "면접이 종료된 모집은 편집할 수 없습니다.");
     }
     const title = String(req.body.title || "").trim();
     if (!title) return fail(res, 400, "INVALID_REQUEST", "제목을 입력해 주세요.");
@@ -2052,20 +2054,34 @@ router.post(
       );
       await connection.execute(
         `UPDATE recruitment_instances
-            SET status = 'closed',
+            SET status = 'interview_completed',
                 closed_at = CURRENT_TIMESTAMP,
                 snapshot_final_pass_count = (SELECT COUNT(*) FROM recruiting_members WHERE form_id = ? AND rating = '최종합격')
           WHERE id = ?`,
         [instance.form_id, req.params.id],
       );
       await connection.commit();
-      ok(res, { status: "closed", resultVisibleDays: 3 });
+      ok(res, { status: "interview_completed", resultVisibleDays: 3 });
     } catch (error) {
       await connection.rollback();
       throw error;
     } finally {
       connection.release();
     }
+  }),
+);
+
+router.post(
+  "/recruit/instances/:id/register-final-members",
+  requireAuthority(3),
+  asyncHandler(async (req, res) => {
+    // 2026-08-23: Spring atomically validates, links, and promotes final-pass applicants before closure.
+    const generation = Number(req.body.generation);
+    if (!Number.isInteger(generation) || generation < 1 || generation > 999) {
+      return fail(res, 400, "INVALID_GENERATION", "기수는 1부터 999 사이의 정수로 입력해 주세요.");
+    }
+    const result = await registerFinalMembers(req.params.id, req.session.userId, generation);
+    ok(res, result);
   }),
 );
 
@@ -2457,7 +2473,7 @@ router.post(
         await connection.execute("DELETE FROM interview_slot_locations WHERE plan_id = ?", [planId]);
       } else {
         const [linkedRecruitments] = await connection.execute(
-          "SELECT id FROM recruitment_instances WHERE form_id = ? AND status <> 'closed' ORDER BY id DESC LIMIT 1",
+          "SELECT id FROM recruitment_instances WHERE form_id = ? AND status IN ('draft', 'recruiting', 'planning', 'interview') ORDER BY id DESC LIMIT 1",
           [req.body.formId],
         );
         const [result] = await connection.execute(
@@ -3464,7 +3480,7 @@ router.post(
          JOIN recruitment_instances ri ON ri.form_id = rm.form_id
          LEFT JOIN interview_plans ip ON ip.form_id = rm.form_id
         WHERE rm.student_id = ?
-          AND (ri.status = 'interview'
+          AND (ri.status IN ('interview', 'interview_completed')
                OR (ri.status = 'closed' AND ri.closed_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 3 DAY)))
         ORDER BY rm.synced_at DESC`,
       [studentId],

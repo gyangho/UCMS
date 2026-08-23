@@ -6,10 +6,10 @@ import { ErrorState, LoadingState } from "../../shared/ui/PageState";
 import { BusyLabel } from "../../shared/ui/BusyLabel";
 import { TenMinuteDateTimeInput } from "../../shared/ui/TenMinuteDateTimeInput";
 
-type RecruitStatus = "draft" | "recruiting" | "planning" | "interview" | "closed";
-interface RecruitmentInstance { id: number; formId?: string | null; title: string; status: RecruitStatus; recruitStart?: string | null; recruitEnd?: string | null; interviewStart?: string | null; interviewEnd?: string | null; formUrl?: string | null; promotionCopy?: string | null; posterUrls: string[]; applicantCount: number; maleCount: number; femaleCount: number; firstPassRate: number; finalPassRate: number; interviewPlanId?: number | null; interviewPlanStatus?: string | null; }
+type RecruitStatus = "draft" | "recruiting" | "planning" | "interview" | "interview_completed" | "closed";
+interface RecruitmentInstance { id: number; formId?: string | null; title: string; status: RecruitStatus; recruitStart?: string | null; recruitEnd?: string | null; interviewStart?: string | null; interviewEnd?: string | null; formUrl?: string | null; promotionCopy?: string | null; posterUrls: string[]; applicantCount: number; maleCount: number; femaleCount: number; firstPassRate: number; finalPassRate: number; interviewPlanId?: number | null; interviewPlanStatus?: string | null; membersRegisteredAt?: string | null; }
 interface RecruitResponseRow { id: number; applicantName: string; studentId?: string | null; gender?: string | null; rating?: string | null; formId: string; }
-const STATUS_LABEL: Record<RecruitStatus, string> = { draft: "초안", recruiting: "모집", planning: "면접 계획", interview: "면접", closed: "종료" };
+const STATUS_LABEL: Record<RecruitStatus, string> = { draft: "초안", recruiting: "모집", planning: "면접 계획", interview: "면접", interview_completed: "면접 종료", closed: "종료" };
 const MAX_POSTER_COUNT = 10;
 const MAX_POSTER_BYTES = 8 * 1024 * 1024;
 const MAX_POSTERS_TOTAL_BYTES = 10 * 1024 * 1024;
@@ -62,12 +62,33 @@ export function RecruitInstanceDetailPage({ path }: { path: string }) {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [templates, setTemplates] = useState<Array<{ id: number; title: string }>>([]);
   const [generator, setGenerator] = useState({ templateId: "", userEmail: "" });
-  const load = useCallback(async () => { setLoading(true); try { const data = await requestData<{ instance: RecruitmentInstance }>(`/api/recruit/instances/${id}`); setItem(data.instance); setIsEditing(data.instance.status === "draft"); setForm({ title: data.instance.title, recruitStart: toLocalInput(data.instance.recruitStart), recruitEnd: toLocalInput(data.instance.recruitEnd), interviewStart: toLocalInput(data.instance.interviewStart), interviewEnd: toLocalInput(data.instance.interviewEnd), formUrl: data.instance.formUrl ?? "", promotionCopy: data.instance.promotionCopy ?? "" }); if (data.instance.formId && data.instance.status !== "draft") { const responseData = await requestData<{ responses: RecruitResponseRow[] }>("/api/recruit/responses"); setResponses((responseData.responses ?? []).filter((row) => row.formId === data.instance.formId)); } } catch (e) { setMessage(e instanceof Error ? e.message : "모집 상세를 불러오지 못했습니다."); } finally { setLoading(false); } }, [id]);
+  const [generation, setGeneration] = useState("");
+  const load = useCallback(async () => { setLoading(true); try { const data = await requestData<{ instance: RecruitmentInstance }>(`/api/recruit/instances/${id}`); setItem(data.instance); setIsEditing(data.instance.status === "draft"); setGeneration((current) => current || inferGeneration(data.instance.title)); setForm({ title: data.instance.title, recruitStart: toLocalInput(data.instance.recruitStart), recruitEnd: toLocalInput(data.instance.recruitEnd), interviewStart: toLocalInput(data.instance.interviewStart), interviewEnd: toLocalInput(data.instance.interviewEnd), formUrl: data.instance.formUrl ?? "", promotionCopy: data.instance.promotionCopy ?? "" }); if (data.instance.formId && data.instance.status !== "draft") { const responseData = await requestData<{ responses: RecruitResponseRow[] }>("/api/recruit/responses"); setResponses((responseData.responses ?? []).filter((row) => row.formId === data.instance.formId)); } } catch (e) { setMessage(e instanceof Error ? e.message : "모집 상세를 불러오지 못했습니다."); } finally { setLoading(false); } }, [id]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (item?.status !== "draft") return; requestData<{ templates: Array<{ id: number; title: string }> }>("/api/drive/templates").then((data) => setTemplates(data.templates ?? [])).catch(() => setTemplates([])); }, [item?.status]);
   async function save(event: FormEvent) { event.preventDefault(); if (busyAction) return; setBusyAction("save"); setMessage(null); try { const posters = posterFiles.length ? await Promise.all(posterFiles.map(filePayload)) : undefined; await requestData(`/api/recruit/instances/${id}`, { method: "PATCH", body: JSON.stringify({ ...form, posters }) }); setMessage(item?.status === "draft" ? "초안을 저장했습니다." : "모집 정보를 수정했습니다."); setPosterFiles([]); await load(); } catch (e) { setMessage(e instanceof Error ? e.message : "저장하지 못했습니다."); } finally { setBusyAction(null); } }
   async function generateGoogleForm() { if (busyAction) return; setBusyAction("google-form"); setMessage(null); try { /* 2026-08-23: Save the interview range before the backend derives dynamic form questions. */ await requestData(`/api/recruit/instances/${id}`, { method: "PATCH", body: JSON.stringify(form) }); const data = await requestData<{ formUrl: string }>("/api/drive/forms", { method: "POST", body: JSON.stringify({ recruitmentId: id, templateId: generator.templateId, title: form.title, userEmail: generator.userEmail }) }); setForm((v) => ({ ...v, formUrl: data.formUrl })); setMessage("Google Form을 생성하고 연결했습니다."); await load(); } catch (e) { setMessage(e instanceof Error ? e.message : "Google Form을 생성하지 못했습니다."); } finally { setBusyAction(null); } }
   async function action(endpoint: string) { if (busyAction) return; setBusyAction(endpoint); setMessage(null); try { const data = await requestData<{ path?: string }>(`/api/recruit/instances/${id}/${endpoint}`, { method: "POST" }); if (data.path) navigate(data.path); else await load(); } catch (e) { setMessage(e instanceof Error ? e.message : "작업을 완료하지 못했습니다."); } finally { setBusyAction(null); } }
+  async function registerFinalMembers() {
+    // 2026-08-23: Require explicit generation confirmation before the atomic member-registration transition.
+    const parsedGeneration = Number(generation);
+    if (!Number.isInteger(parsedGeneration) || parsedGeneration < 1 || parsedGeneration > 999) {
+      setMessage("기수는 1부터 999 사이의 정수로 입력해 주세요.");
+      return;
+    }
+    if (!window.confirm(`최종합격자를 ${parsedGeneration}기 부원으로 등록하고 모집을 종료할까요?`)) return;
+    setBusyAction("register-final-members");
+    setMessage(null);
+    try {
+      const result = await requestData<{ createdCount: number; updatedCount: number; linkedUserCount: number }>(`/api/recruit/instances/${id}/register-final-members`, { method: "POST", body: JSON.stringify({ generation: parsedGeneration }) });
+      setMessage(`회원 등록을 완료했습니다. 신규 ${result.createdCount}명, 갱신 ${result.updatedCount}명, 계정 연결 ${result.linkedUserCount}명`);
+      await load();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "최종합격자를 회원으로 등록하지 못했습니다.");
+    } finally {
+      setBusyAction(null);
+    }
+  }
   async function deleteRecruitment() {
     // 2026-08-23: Allow every lifecycle state to be removed with an explicit full-scope warning.
     if (!window.confirm("이 모집을 삭제할까요? 연결된 Google Form은 휴지통으로 이동하고, 면접 계획·시간표·지원자 응답 등 관련 DB 정보는 모두 삭제됩니다.")) return;
@@ -122,6 +143,7 @@ export function RecruitInstanceDetailPage({ path }: { path: string }) {
     {message ? <div className="page-state notice">{message}</div> : null}
     {busyAction ? <div aria-live="polite" className="processing-banner"><BusyLabel text={busyAction === "save" ? "저장 중..." : busyAction === "google-form" ? "Google Form 처리 중..." : busyAction === "delete" ? "삭제 중..." : "처리 중..."} /></div> : null}
     <form className="form-card" onSubmit={save}><label>제목<input disabled={!editable} required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></label><div className="form-grid"><TenMinuteDateTimeInput disabled={!editable} label="모집 시작" required value={form.recruitStart} onChange={(value) => setForm((current) => ({ ...current, recruitStart: value }))} /><TenMinuteDateTimeInput disabled={!editable} label="모집 종료" required value={form.recruitEnd} onChange={(value) => setForm((current) => ({ ...current, recruitEnd: value }))} /><TenMinuteDateTimeInput disabled={!editable} label="면접 시작" required value={form.interviewStart} onChange={(value) => setForm((current) => ({ ...current, interviewStart: value }))} /><TenMinuteDateTimeInput disabled={!editable} label="면접 종료" required value={form.interviewEnd} onChange={(value) => setForm((current) => ({ ...current, interviewEnd: value }))} /></div><label>Google Form 링크{formEditUrl ? <a className="external-form-link" href={formEditUrl} target="_blank" rel="noreferrer">Google Form 수정 화면 열기</a> : <input disabled={!editable || item.status !== "draft"} value={form.formUrl} onChange={(e) => setForm({ ...form, formUrl: e.target.value })} />}</label><label>모집 문구<textarea disabled={!editable} value={form.promotionCopy} onChange={(e) => setForm({ ...form, promotionCopy: e.target.value })} /></label><div className="recruit-poster-preview">{item.posterUrls.map((url, index) => <img key={url} src={url} alt={`${item.title} 포스터 ${index + 1}`} />)}</div>{editable ? <label>모집 포스터<span className="field-help">PNG·JPEG·WebP, 한 장 8MB 이하, 전체 10MB 이하·최대 10장. 새 파일 선택 시 기존 포스터 전체를 교체합니다.</span><input accept="image/png,image/jpeg,image/webp" multiple type="file" onChange={(e) => selectPosterFiles(e.target.files, e.currentTarget)} />{posterFiles.length ? <span className="selected-file-summary">선택: {posterFiles.map((file) => file.name).join(", ")}</span> : null}</label> : null}{editable ? <button type="submit">{item.status === "draft" ? "초안 저장" : "수정 저장"}</button> : null}</form>
+    {item.status === "interview_completed" ? <section className="form-card final-member-registration"><h2>최종합격자 회원 등록</h2><p>최종합격자 {responses.filter((row) => row.rating === "최종합격").length}명의 필수정보를 검증하고 회원으로 등록합니다. 이름과 전화번호가 일치하는 기존 UCMS 계정은 자동으로 연결됩니다.</p><label>기수<input inputMode="numeric" min={1} max={999} step={1} type="number" value={generation} onChange={(e) => setGeneration(e.target.value)} /></label><button disabled={Boolean(busyAction)} type="button" onClick={registerFinalMembers}>{busyAction === "register-final-members" ? <BusyLabel text="회원 등록 중..." /> : "최종 합격자 회원 등록 및 모집 종료"}</button></section> : null}
     {editable && !item.formId ? <section className="form-card"><h2>Google Form 생성</h2><p>저장된 면접 시작·종료 일시를 기준으로 날짜별 면접 가능 시간 질문을 자동 생성합니다.</p><label>템플릿<select value={generator.templateId} onChange={(e) => setGenerator({ ...generator, templateId: e.target.value })}><option value="">선택</option>{templates.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}</select></label><label>편집자 이메일<input type="email" value={generator.userEmail} onChange={(e) => setGenerator({ ...generator, userEmail: e.target.value })} /></label><button disabled={!generator.templateId || !generator.userEmail || !form.title || !form.interviewStart || !form.interviewEnd} type="button" onClick={generateGoogleForm}>Google Form 생성 및 연결</button></section> : null}
     {item.status !== "draft" ? <RecruitMetrics item={item} rows={responses} /> : null}{item.status !== "draft" ? <ApplicantTable rows={responses} /> : null}
   </section>;
@@ -133,7 +155,7 @@ function RecruitMetrics({ item, rows }: { item: RecruitmentInstance; rows: Recru
   const maleRate = total ? Math.round(item.maleCount / total * 100) : 0;
   const femaleRate = total ? 100 - maleRate : 0;
   const counts = ratingCounts(rows);
-  return <section className="recruit-metrics-grid"><article className="data-card"><h2>지원 현황</h2><p>지원자 {item.applicantCount}명</p>{total ? <div className="gender-ratio" aria-label={`남성 ${maleRate}%, 여성 ${femaleRate}%`}><span className="male" style={{ width: `${maleRate}%` }}>남 {maleRate}%</span><span className="female" style={{ width: `${femaleRate}%` }}>여 {femaleRate}%</span></div> : <p className="muted-copy">성별 집계 데이터가 없습니다.</p>}</article>{["interview", "closed"].includes(item.status) ? <RatingPie counts={counts} total={rows.length} /> : null}</section>;
+  return <section className="recruit-metrics-grid"><article className="data-card"><h2>지원 현황</h2><p>지원자 {item.applicantCount}명</p>{total ? <div className="gender-ratio" aria-label={`남성 ${maleRate}%, 여성 ${femaleRate}%`}><span className="male" style={{ width: `${maleRate}%` }}>남 {maleRate}%</span><span className="female" style={{ width: `${femaleRate}%` }}>여 {femaleRate}%</span></div> : <p className="muted-copy">성별 집계 데이터가 없습니다.</p>}</article>{["interview", "interview_completed", "closed"].includes(item.status) ? <RatingPie counts={counts} total={rows.length} /> : null}</section>;
 }
 
 const RATING_COLORS: Record<string, string> = { 대기: "#9ca3af", "1차합격": "#0ea5e9", 불합격: "#ef4444", 느별: "#f59e0b", 느괜: "#3b82f6", 느좋: "#84cc16", 최종합격: "#10b981" };
@@ -152,4 +174,5 @@ function ApplicantTable({ rows }: { rows: RecruitResponseRow[] }) {
 }
 function formatPeriod(start?: string | null, end?: string | null) { return start || end ? `${start ? new Date(start).toLocaleDateString("ko-KR") : "-"} ~ ${end ? new Date(end).toLocaleDateString("ko-KR") : "-"}` : "모집 기간 미정"; }
 function toLocalInput(value?: string | null) { if (!value) return ""; const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
+function inferGeneration(title: string) { return title.match(/(\d+)\s*기/)?.[1] ?? ""; }
 function filePayload(file: File) { return new Promise<{ fileName: string; dataUrl: string }>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve({ fileName: file.name, dataUrl: String(reader.result) }); reader.onerror = () => reject(reader.error); reader.readAsDataURL(file); }); }

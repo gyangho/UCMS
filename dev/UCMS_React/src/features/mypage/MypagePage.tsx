@@ -71,12 +71,8 @@ export function MypagePage() {
         </div>
       </section>
 
-      <section className="settings-panel mypage-feature-panel" aria-labelledby="mypage-feature-title">
-        {/* 2026-08-23: Present account actions as a discoverable list and move password editing to its own route. */}
-        <div className="mypage-feature-heading">
-          <h2 id="mypage-feature-title">사용할 수 있는 기능</h2>
-          <p>계정과 로그인 정보를 관리할 수 있습니다.</p>
-        </div>
+      <nav className="mypage-feature-panel" aria-label="마이페이지 기능">
+        {/* 2026-08-23: Keep account actions as a plain full-width list aligned with the profile section. */}
         <ul className="mypage-feature-list">
           <li>
             <div><strong>비밀번호 변경</strong><span>현재 비밀번호를 확인하고 새 비밀번호로 변경합니다.</span></div>
@@ -91,7 +87,7 @@ export function MypagePage() {
             <button className="danger-button" type="button" onClick={withdraw}>탈퇴하기</button>
           </li>
         </ul>
-      </section>
+      </nav>
     </section>
   );
 }
