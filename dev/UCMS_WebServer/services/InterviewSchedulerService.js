@@ -159,12 +159,14 @@ async function rebuildIntervieweeTimeSlots(plan) {
         date.question_id,
         member.response_id,
       );
-      if (!response?.answer || response.answer === "가능 시간대 없음") {
+      // 2026-08-23: Support both the legacy and current no-availability labels.
+      const unavailableAnswers = new Set(["가능 시간대 없음", "가능한 시간대 없음"]);
+      if (!response?.answer || unavailableAnswers.has(response.answer.trim())) {
         continue;
       }
       for (const timeSlot of String(response.answer).split(";")) {
         const normalizedSlot = timeSlot.trim();
-        if (normalizedSlot) {
+        if (normalizedSlot && !unavailableAnswers.has(normalizedSlot)) {
           slots.push({
             studentId: member.student_id,
             interviewDate: date.interview_date,

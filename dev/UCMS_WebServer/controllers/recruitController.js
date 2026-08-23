@@ -375,7 +375,12 @@ class RecruitController {
                         interviewDate
                         ].split(";")) {
                         timeSlot = timeSlot.trim();
-                        if (timeSlot === "") {
+                        // 2026-08-23: Never persist either no-availability label as a real time slot.
+                        if (
+                            timeSlot === "" ||
+                            timeSlot === "가능 시간대 없음" ||
+                            timeSlot === "가능한 시간대 없음"
+                        ) {
                             continue;
                         }
                         await IntervieweeTimeSlots.createIntervieweeTimeSlots(

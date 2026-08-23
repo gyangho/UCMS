@@ -383,7 +383,8 @@ function buildInterviewQuestionRequests(form, interviewStart, interviewEnd) {
     if (options.length > 0) {
       questions.push({
         title: `면접 가능 시간 - ${month}/${day}(${weekday[cursor.getUTCDay()]})`,
-        options,
+        // 2026-08-23: Let applicants explicitly report no availability for each interview date.
+        options: [...options, "가능한 시간대 없음"],
       });
     }
     cursor.setUTCDate(cursor.getUTCDate() + 1);
