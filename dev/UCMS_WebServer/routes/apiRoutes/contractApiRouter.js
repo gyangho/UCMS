@@ -1799,18 +1799,69 @@ router.delete(
   requireAuthority(3),
   asyncHandler(async (req, res) => {
     const existing = await query(
-      "SELECT id, status FROM recruitment_instances WHERE id = ? LIMIT 1",
+      "SELECT id, form_id FROM recruitment_instances WHERE id = ? LIMIT 1",
       [req.params.id],
     );
     if (!existing[0]) {
       return fail(res, 404, "NOT_FOUND", "모집 인스턴스를 찾지 못했습니다.");
     }
-    if (existing[0].status !== "draft") {
-      return fail(res, 409, "DRAFT_ONLY", "초안 상태의 모집만 삭제할 수 있습니다.");
+
+    const formId = existing[0].form_id;
+    if (formId) {
+      try {
+        // 2026-08-23: Move the recruitment-owned Google Form to Drive trash before removing its local records.
+        const { drive } = getOAuthClients();
+        await drive.files.update({
+          fileId: formId,
+          requestBody: { trashed: true },
+          fields: "id,trashed",
+        });
+      } catch (error) {
+        const googleStatus = Number(error?.response?.status || error?.code);
+        if (googleStatus !== 404) {
+          if (isOAuthReconnectRequired(error)) {
+            return fail(res, 409, "GOOGLE_OAUTH_RECONNECT_REQUIRED", "Google 계정을 다시 연결한 뒤 삭제해 주세요.");
+          }
+          return fail(res, 409, "GOOGLE_FORM_DELETE_FAILED", "연결된 Google Form을 삭제하지 못해 모집 삭제를 중단했습니다.");
+        }
+      }
     }
-    // 2026-08-21: The recruitment owns its posters and optional plan, while the external Google Form remains untouched.
-    await db.execute("DELETE FROM recruitment_instances WHERE id = ?", [req.params.id]);
-    return ok(res, { id: Number(req.params.id) });
+
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      // 2026-08-23: Cascades remove posters/plans and all form questions, responses, applicants, and schedules.
+      await connection.execute("DELETE FROM recruitment_instances WHERE id = ?", [req.params.id]);
+      if (formId) {
+        await connection.execute("DELETE FROM formlist WHERE id = ?", [formId]);
+      }
+      await connection.commit();
+      return ok(res, {
+        id: Number(req.params.id),
+        googleFormMovedToTrash: Boolean(formId),
+      });
+    } catch (error) {
+      await connection.rollback();
+      if (formId) {
+        try {
+          // 2026-08-23: Compensate for a local transaction failure by restoring the external form.
+          const { drive } = getOAuthClients();
+          await drive.files.update({
+            fileId: formId,
+            requestBody: { trashed: false },
+            fields: "id,trashed",
+          });
+        } catch (restoreError) {
+          console.error(
+            "Recruitment Google Form restore failed after database rollback.",
+            { status: restoreError?.response?.status || restoreError?.code || "unknown" },
+          );
+        }
+      }
+      throw error;
+    } finally {
+      connection.release();
+    }
   }),
 );
 

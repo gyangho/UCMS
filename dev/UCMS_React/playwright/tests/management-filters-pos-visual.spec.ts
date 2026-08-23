@@ -88,6 +88,14 @@ test("recruitment planning opens the linked plan at interviewer assignment", asy
   await page.route("**/api/recruit/responses", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({ success: true, data: { responses: [] } }) }));
   await page.goto("/recruit/8");
   await expect(page.getByRole("button", { name: "면접 계획하기" })).toBeVisible();
+  // 2026-08-23: Every recruitment state exposes deletion with the full cascade warning.
+  const deleteButton = page.getByRole("button", { name: "모집 삭제" });
+  await expect(deleteButton).toBeVisible();
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toContain("면접 계획·시간표·지원자 응답");
+    await dialog.dismiss();
+  });
+  await deleteButton.click();
   await expect(page.getByRole("group", { name: "면접 시작" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Google Form 수정 화면 열기" })).toHaveAttribute("href", "https://docs.google.com/forms/d/form-8/edit");
   await capture(page, testInfo.outputPath("recruitment-planning-detail.png"));
