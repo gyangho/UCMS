@@ -4,6 +4,7 @@ export type PrivateRouteId =
   | "dashboard"
   | "admin"
   | "mypage"
+  | "mypage-password"
   | "member"
   | "recruit-forms"
   | "recruit-detail"
@@ -79,6 +80,12 @@ const routeTable: Array<Exclude<AppRoute, { kind: "not-found" }>> = [
     id: "mypage",
     path: "/mypage",
     title: "마이페이지"
+  },
+  {
+    kind: "private",
+    id: "mypage-password",
+    path: "/mypage/password",
+    title: "비밀번호 변경"
   },
   {
     kind: "private",
@@ -194,6 +201,7 @@ const hiddenNavIds: PrivateRouteId[] = [
   "dashboard",
   "admin",
   "mypage",
+  "mypage-password",
   "recruit-detail",
   "event-my-events",
   "event-create",

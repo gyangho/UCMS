@@ -27,7 +27,8 @@ public class PasswordChangeService {
 			throw new PasswordChangeException("PASSWORD_ACCOUNT_UNAVAILABLE", "비밀번호를 변경할 수 없는 계정입니다.", HttpStatus.CONFLICT);
 		}
 		if (!passwordHashService.matches(request.currentPassword(), hashes.getFirst())) {
-			throw new PasswordChangeException("CURRENT_PASSWORD_MISMATCH", "현재 비밀번호가 일치하지 않습니다.", HttpStatus.UNAUTHORIZED);
+			// 2026-08-23: A wrong current password is form validation, not an expired browser session.
+			throw new PasswordChangeException("CURRENT_PASSWORD_MISMATCH", "현재 비밀번호가 일치하지 않습니다.", HttpStatus.BAD_REQUEST);
 		}
 		if (passwordHashService.matches(request.newPassword(), hashes.getFirst())) {
 			throw new PasswordChangeException("PASSWORD_UNCHANGED", "새 비밀번호는 현재 비밀번호와 달라야 합니다.", HttpStatus.CONFLICT);

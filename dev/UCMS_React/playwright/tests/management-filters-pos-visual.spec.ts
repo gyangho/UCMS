@@ -224,14 +224,36 @@ test("POS poster size error and creation progress are visible", async ({ page },
   await capture(page, testInfo.outputPath("pos-upload-limit-and-loading.png"));
 });
 
-test("mypage exposes the password change form", async ({ page }, testInfo) => {
-  // 2026-08-23: Keep the new security control readable and usable on desktop and mobile.
+test("mypage lists account actions and opens the password page", async ({ page }, testInfo) => {
+  // 2026-08-23: Keep account actions discoverable without crowding the profile page.
   await page.goto("/mypage");
+  await expect(page.getByRole("heading", { name: "사용할 수 있는 기능" })).toBeVisible();
+  await expect(page.getByText("현재 브라우저의 로그인 세션을 종료합니다.")).toBeVisible();
+  await capture(page, testInfo.outputPath("mypage-feature-list.png"));
+  await page.getByRole("button", { name: "비밀번호 변경" }).click();
+  await expect(page).toHaveURL(/\/mypage\/password$/);
   await expect(page.getByRole("heading", { name: "비밀번호 변경" })).toBeVisible();
   await expect(page.getByLabel("현재 비밀번호")).toBeVisible();
   await expect(page.getByLabel("새 비밀번호", { exact: true })).toBeVisible();
   await expect(page.getByLabel("새 비밀번호 확인")).toBeVisible();
   await capture(page, testInfo.outputPath("mypage-password-change.png"));
+});
+
+test("wrong current password stays on the password page", async ({ page }) => {
+  // 2026-08-23: Credential mismatch must remain an inline form error without invalidating the session.
+  await page.route("**/api/auth/password/change", (route) => route.fulfill({
+    status: 400,
+    contentType: "application/json",
+    body: JSON.stringify({ success: false, error: { code: "CURRENT_PASSWORD_MISMATCH", message: "현재 비밀번호가 일치하지 않습니다." } }),
+  }));
+  await page.goto("/mypage/password");
+  await page.getByLabel("현재 비밀번호").fill("wrong-password");
+  await page.getByLabel("새 비밀번호", { exact: true }).fill("new-password-1234");
+  await page.getByLabel("새 비밀번호 확인").fill("new-password-1234");
+  await page.getByRole("button", { name: "비밀번호 변경" }).click();
+  await expect(page.getByRole("alert")).toHaveText("현재 비밀번호가 일치하지 않습니다.");
+  await expect(page).toHaveURL(/\/mypage\/password$/);
+  await expect(page.getByText("테스트 관리자님의 로그인 비밀번호를 변경합니다.")).toBeVisible();
 });
 
 async function capture(page: import("@playwright/test").Page, path: string) {

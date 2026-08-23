@@ -18,7 +18,7 @@ import {
 import { LegacyRoutePage } from "../features/legacy/LegacyRoutePage";
 import { NotFoundPage } from "../features/legacy/NotFoundPage";
 import { MemberPage } from "../features/member/MemberPage";
-import { MypagePage } from "../features/mypage/MypagePage";
+import { MypagePage, PasswordChangePage } from "../features/mypage/MypagePage";
 import { PosInstanceDetailPage } from "../features/pos/PosInstanceDetailPage";
 import { PosInstancesPage } from "../features/pos/PosInstancesPage";
 import { PosRecordsPage } from "../features/pos/PosRecordsPage";
@@ -80,6 +80,8 @@ function renderPrivateRoute(
       return <AdminPage path={route.path} />;
     case "mypage":
       return <MypagePage />;
+    case "mypage-password":
+      return <PasswordChangePage />;
     case "board-notices":
       return <NoticeBoardPage />;
     case "board-notice-detail":

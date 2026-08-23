@@ -3195,6 +3195,75 @@ button:disabled {
   max-width: 520px;
 }
 
+/* 2026-08-23: Make mypage actions scan like a settings menu on both desktop and mobile. */
+.mypage-feature-panel {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.mypage-feature-heading h2,
+.password-settings-panel h2 {
+  margin: 0;
+}
+
+.mypage-feature-heading p {
+  margin: 6px 0 0;
+  color: var(--brand-muted);
+}
+
+.mypage-feature-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mypage-feature-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 16px;
+  background: var(--cream-soft);
+  border: 1px solid var(--brand-border);
+  border-radius: 12px;
+}
+
+.mypage-feature-list li > div {
+  display: grid;
+  gap: 4px;
+}
+
+.mypage-feature-list strong {
+  color: var(--brand-brown);
+}
+
+.mypage-feature-list span {
+  color: var(--brand-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mypage-feature-list button {
+  min-width: 112px;
+}
+
+.password-change-heading > div p {
+  margin-bottom: 0;
+}
+
+@media (max-width: 720px) {
+  .mypage-feature-list li {
+    grid-template-columns: 1fr;
+  }
+
+  .mypage-feature-list button {
+    width: 100%;
+  }
+}
+
 .field-help,
 .selected-file-summary {
   display: block;
