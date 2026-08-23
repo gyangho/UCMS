@@ -55,6 +55,22 @@ test("calendar bars choose readable text for light and dark event colors", async
   await capture(page, testInfo.outputPath("calendar-contrast.png"));
 });
 
+test("desktop recruitment posters form a continuous strip while mobile spacing stays intact", async ({ page }, testInfo) => {
+  // 2026-08-23: Exercise connected desktop poster pages without changing the established mobile carousel.
+  const poster = (color: string, pageNumber: number) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="700" height="990"><rect width="700" height="990" fill="${color}"/><text x="350" y="495" text-anchor="middle" font-size="72" fill="#4f2d18">${pageNumber}</text></svg>`)}`;
+  await page.route("**/api/dashboard", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({ success: true, data: {
+    calendarEvents: [], myEvents: [], recruitingEvents: [], notices: [], activePos: null, recruitResultLookup: null,
+    recruitmentPromotions: [{ id: 1, title: "11기 모집", promotionCopy: "함께할 부원을 모집합니다.", formUrl: "https://example.com/apply", posterUrls: [poster("#fff0b8", 1), poster("#f5d889", 2), poster("#f0c965", 3)] }],
+  } }) }));
+  await page.goto("/");
+  const carousel = page.locator(".recruit-promotion .promotion-poster-carousel");
+  const isMobile = (page.viewportSize()?.width ?? 1440) < 721;
+  await expect(carousel).toHaveCSS("gap", isMobile ? "12px" : "2px");
+  await expect(carousel).toHaveCSS("padding-left", isMobile ? "12px" : "0px");
+  await expect(carousel.locator("img")).toHaveCount(3);
+  await capture(page, testInfo.outputPath("dashboard-recruitment-poster-strip.png"));
+});
+
 test("event detail omits unrelated participant and settlement cards", async ({ page }, testInfo) => {
   await page.route("**/api/events/5", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({ success: true, data: { event: {
     id: 5, title: "일반 단일 일정", description: "참가 모집과 정산이 없는 일정", start: "2026-08-24T01:00:00.000Z", end: "2026-08-24T03:00:00.000Z", color: "#f5dfaa", authorName: "테스트 관리자", authority: "부원", isMultiple: false, isRecruiting: false, participants: [], settlement: null, canEdit: true, canDelete: true,
@@ -73,6 +89,7 @@ test("recruitment planning opens the linked plan at interviewer assignment", asy
   await page.goto("/recruit/8");
   await expect(page.getByRole("button", { name: "면접 계획하기" })).toBeVisible();
   await expect(page.getByLabel("면접 시작")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Google Form 수정 화면 열기" })).toHaveAttribute("href", "https://docs.google.com/forms/d/form-8/edit");
   await capture(page, testInfo.outputPath("recruitment-planning-detail.png"));
 });
 
