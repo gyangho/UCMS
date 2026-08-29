@@ -16,6 +16,7 @@
     "browser:report": "playwright show-report artifacts/playwright/report"
   },
   "dependencies": {
+    "@zip.js/zip.js": "^2.8.61",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

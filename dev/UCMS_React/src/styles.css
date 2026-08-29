@@ -4160,6 +4160,22 @@ progress {
 .member-filter-panel { grid-template-columns: minmax(240px, 2fr) repeat(3, minmax(130px, 1fr)) auto; }
 .applicant-filter-panel { grid-template-columns: minmax(240px, 2fr) repeat(2, minmax(140px, 1fr)) auto; }
 .applicant-list-section { display: grid; gap: 16px; }
+/* 2026-08-29: Keep the restored Excel/manual member registration flow readable beside the member filters. */
+.member-add-panel { gap: 18px; padding: 22px; background: var(--cream-surface); border: 1px solid var(--brand-border); border-radius: 16px; box-shadow: var(--brand-shadow-soft); }
+.member-add-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.member-add-heading h2 { margin: 0; color: var(--brand-ink); }
+.member-add-heading p { margin: 7px 0 0; color: var(--brand-muted); font-weight: 600; }
+.member-add-heading .toolbar { justify-content: flex-end; }
+.file-action-button { position: relative; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer; }
+.file-action-button input { position: absolute; inset: 0; width: 100%; min-height: 100%; opacity: 0; cursor: pointer; }
+.file-action-button:has(input:disabled) { cursor: wait; opacity: .65; }
+.member-add-table-wrap { margin: 0; border: 1px solid var(--brand-border); border-radius: 12px; }
+.member-add-table { min-width: 920px; }
+.member-add-table th { white-space: nowrap; }
+.member-add-table input,
+.member-add-table select { min-width: 108px; color: var(--brand-ink); background: #fffdf8; border-color: var(--brand-border-strong); }
+.member-add-table td:last-child { min-width: 76px; }
+.member-add-actions { justify-content: flex-end; }
 .admin-filter-grid {
   display: grid;
   grid-template-columns: minmax(240px, 2fr) repeat(2, minmax(150px, 1fr));
@@ -4456,6 +4472,10 @@ progress {
 
 @media (max-width: 760px) {
   .member-filter-panel, .applicant-filter-panel, .admin-filter-panel, .admin-filter-grid, .recruit-metrics-grid { grid-template-columns: 1fr; }
+  .member-add-heading { flex-direction: column; }
+  .member-add-heading .toolbar { width: 100%; justify-content: stretch; }
+  .member-add-heading .toolbar > * { flex: 1 1 0; }
+  .member-add-actions > * { flex: 1 1 0; }
   .admin-user-editor .admin-filter-grid { grid-template-columns: 1fr; }
   .user-management-table { overflow: visible; }
   .user-management-table table, .user-management-table tbody, .user-management-table tr, .user-management-table td { display: block; width: 100%; }
