@@ -4472,10 +4472,30 @@ progress {
 
 @media (max-width: 760px) {
   .member-filter-panel, .applicant-filter-panel, .admin-filter-panel, .admin-filter-grid, .recruit-metrics-grid { grid-template-columns: 1fr; }
+  /* 2026-08-29: Replace the horizontally scrolling member-entry table with touch-friendly stacked cards. */
+  .member-add-panel { padding: 16px; }
   .member-add-heading { flex-direction: column; }
-  .member-add-heading .toolbar { width: 100%; justify-content: stretch; }
-  .member-add-heading .toolbar > * { flex: 1 1 0; }
-  .member-add-actions > * { flex: 1 1 0; }
+  .member-add-heading .toolbar { display: grid; grid-template-columns: 1fr; width: 100%; }
+  .member-add-heading .toolbar > * { width: 100%; min-height: 48px; }
+  .member-add-table-wrap { overflow: visible; border: 0; background: transparent; }
+  .member-add-table,
+  .member-add-table tbody,
+  .member-add-table tr,
+  .member-add-table td { display: block; width: 100%; min-width: 0; }
+  .member-add-table { min-width: 0; }
+  .member-add-table thead { display: none; }
+  .member-add-table tbody { display: grid; gap: 16px; }
+  .member-add-table tr { padding: 16px; background: #fffdf8; border: 1px solid var(--brand-border); border-radius: 14px; box-shadow: var(--brand-shadow-soft); }
+  .member-add-table tr::before { display: block; margin-bottom: 12px; color: var(--brand-brown); font-size: .92rem; font-weight: 900; content: "회원 정보"; }
+  .member-add-table td { display: grid; gap: 6px; padding: 0 0 13px; border: 0; }
+  .member-add-table td::before { color: var(--brand-muted); font-size: .82rem; font-weight: 800; content: attr(data-label); }
+  .member-add-table input,
+  .member-add-table select { width: 100%; min-width: 0; min-height: 48px; font-size: 16px; }
+  .member-add-table .member-add-row-action { padding: 3px 0 0; }
+  .member-add-table .member-add-row-action::before { content: none; }
+  .member-add-table .member-add-row-action button { width: 100%; min-height: 46px; }
+  .member-add-actions { display: grid; grid-template-columns: 1fr; width: 100%; }
+  .member-add-actions > * { width: 100%; min-height: 48px; }
   .admin-user-editor .admin-filter-grid { grid-template-columns: 1fr; }
   .user-management-table { overflow: visible; }
   .user-management-table table, .user-management-table tbody, .user-management-table tr, .user-management-table td { display: block; width: 100%; }

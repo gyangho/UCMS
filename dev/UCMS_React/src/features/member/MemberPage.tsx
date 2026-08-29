@@ -427,14 +427,14 @@ export function MemberPage() {
               <tbody>
                 {newMembers.map((row) => (
                   <tr key={row.key}>
-                    <td><input aria-label="학번" inputMode="numeric" value={row.studentId} onChange={(event) => updateNewMemberRow(row.key, "studentId", event.target.value)} /></td>
-                    <td><input aria-label="이름" value={row.name} onChange={(event) => updateNewMemberRow(row.key, "name", event.target.value)} /></td>
-                    <td><input aria-label="학과(부)" value={row.major} onChange={(event) => updateNewMemberRow(row.key, "major", event.target.value)} /></td>
-                    <td><input aria-label="전화번호" inputMode="tel" value={row.phone} onChange={(event) => updateNewMemberRow(row.key, "phone", event.target.value)} /></td>
-                    <td><select aria-label="성별" value={row.gender} onChange={(event) => updateNewMemberRow(row.key, "gender", event.target.value as NewMemberRow["gender"])}><option value="남자">남자</option><option value="여자">여자</option></select></td>
-                    <td><input aria-label="기수" min={1} type="number" value={row.generation} onChange={(event) => updateNewMemberRow(row.key, "generation", Math.max(1, Number(event.target.value) || 1))} /></td>
-                    <td><select aria-label="권한" value={row.authority} onChange={(event) => updateNewMemberRow(row.key, "authority", event.target.value as NewMemberRow["authority"])}>{MEMBER_AUTHORITIES.map((authority) => <option key={authority} value={authority}>{authority}</option>)}</select></td>
-                    <td><button aria-label={`${row.name || "새 회원"} 행 삭제`} className="danger-button" type="button" onClick={() => setNewMembers((current) => current.filter((item) => item.key !== row.key))}>삭제</button></td>
+                    <td data-label="학번"><input aria-label="학번" inputMode="numeric" placeholder="학번 입력" value={row.studentId} onChange={(event) => updateNewMemberRow(row.key, "studentId", event.target.value)} /></td>
+                    <td data-label="이름"><input aria-label="이름" placeholder="이름 입력" value={row.name} onChange={(event) => updateNewMemberRow(row.key, "name", event.target.value)} /></td>
+                    <td data-label="학과(부)"><input aria-label="학과(부)" placeholder="학과(부) 입력" value={row.major} onChange={(event) => updateNewMemberRow(row.key, "major", event.target.value)} /></td>
+                    <td data-label="전화번호"><input aria-label="전화번호" inputMode="tel" placeholder="010-0000-0000" value={row.phone} onChange={(event) => updateNewMemberRow(row.key, "phone", event.target.value)} /></td>
+                    <td data-label="성별"><select aria-label="성별" value={row.gender} onChange={(event) => updateNewMemberRow(row.key, "gender", event.target.value as NewMemberRow["gender"])}><option value="남자">남자</option><option value="여자">여자</option></select></td>
+                    <td data-label="기수"><input aria-label="기수" min={1} type="number" value={row.generation} onChange={(event) => updateNewMemberRow(row.key, "generation", Math.max(1, Number(event.target.value) || 1))} /></td>
+                    <td data-label="권한"><select aria-label="권한" value={row.authority} onChange={(event) => updateNewMemberRow(row.key, "authority", event.target.value as NewMemberRow["authority"])}>{MEMBER_AUTHORITIES.map((authority) => <option key={authority} value={authority}>{authority}</option>)}</select></td>
+                    <td className="member-add-row-action"><button aria-label={`${row.name || "새 회원"} 행 삭제`} className="danger-button" type="button" onClick={() => setNewMembers((current) => current.filter((item) => item.key !== row.key))}>이 입력 행 삭제</button></td>
                   </tr>
                 ))}
               </tbody>
