@@ -2,7 +2,7 @@
 
 UCMS (University Club Management System) is a club operations platform for managing members, events, recruiting, interviews, settlements, POS sales, and real-time evaluation notes. The current production schema baseline is 0.0.1, and the next planned application/database version is 0.1.1.
 
-The root `VERSION` tracks development application deployments separately from Flyway schema versions. Each dev deployment increments the `0.1.x` patch number with `powershell -ExecutionPolicy Bypass -File infra/scripts/bump-dev-version.ps1`, uses the resulting value in its release record, and commits and pushes the deployed source after verification. The current dev deployment version is `0.1.8`; Flyway remains at the pending production migration `0.1.1` until that database release is finalized.
+The root `VERSION` tracks development application deployments separately from Flyway schema versions. Each dev deployment increments the `0.1.x` patch number with `powershell -ExecutionPolicy Bypass -File infra/scripts/bump-dev-version.ps1`, uses the resulting value in its release record, and commits and pushes the deployed source after verification. The current dev deployment version is `0.1.15`; Flyway remains at the pending production migration `0.1.1` until that database release is finalized.
 
 ## Project Structure
 
@@ -32,7 +32,7 @@ The web server follows an MVC-style layout:
 - Administrator-controlled session and trusted-device revocation with audit logging
 - Member management and authority-based access control
 - Event calendar, participation, recruiting period management, and holiday import
-- Recruiting form sync, response review, and interview planning
+- Recruiting form sync, response review, interview planning, and lifecycle-wide overall evaluation ratios
 - Automated interview scheduling with OR-Tools
 - Finance settlement creation and participant payment tracking
 - POS instances, sales entry, and records
