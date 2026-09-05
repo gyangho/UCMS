@@ -169,6 +169,7 @@ async function startRegistration(body) {
     [email],
   );
   let existing = existingByEmail[0];
+  let unlinkedMemberStudentId = null;
 
   // 2026-08-23: Migrated members have no email, so claim their stable users.id by the unique member name + phone pair.
   if (!existing) {
@@ -195,6 +196,27 @@ async function startRegistration(body) {
       );
     }
     existing = matchingLegacyAccounts[0];
+
+    // 2026-08-24: A member imported without a users row must be claimable by the same unique name + phone pair.
+    if (!existing) {
+      const [unlinkedMembers] = await db.execute(
+        `SELECT student_id, name, phone
+           FROM members
+          WHERE user_id IS NULL AND name = ?`,
+        [name],
+      );
+      const matchingUnlinkedMembers = unlinkedMembers.filter(
+        (member) => normalizePhone(member.phone) === phone,
+      );
+      if (matchingUnlinkedMembers.length > 1) {
+        throw authError(
+          "REGISTRATION_IDENTITY_AMBIGUOUS",
+          "Multiple unlinked members match the submitted name and phone number.",
+          409,
+        );
+      }
+      unlinkedMemberStudentId = matchingUnlinkedMembers[0]?.student_id || null;
+    }
   }
 
   if (
@@ -248,6 +270,20 @@ async function startRegistration(body) {
     );
     userId = Number(result.insertId);
     createdPendingUser = true;
+    if (unlinkedMemberStudentId) {
+      const [linkResult] = await db.execute(
+        "UPDATE members SET user_id = ? WHERE student_id = ? AND user_id IS NULL",
+        [userId, unlinkedMemberStudentId],
+      );
+      if (linkResult.affectedRows !== 1) {
+        await db.execute("DELETE FROM users WHERE id = ?", [userId]);
+        throw authError(
+          "REGISTRATION_IDENTITY_CONFLICT",
+          "The member was linked by another account. Please try again.",
+          409,
+        );
+      }
+    }
   }
 
   if (!isEmailVerificationEnabled()) {
