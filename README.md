@@ -115,6 +115,10 @@ python main.py 32
 
 Input files are read from `inputs/input_<id>.json`, and results are written to `outputs/output_<id>.json`.
 
+## Production restart policy
+
+2026-09-05: On the deployment host, UCMS production (`prod_ucms_spring`, `prod_ucms_web`, `prod_ucms_sharedb`, `prod_ucms_react`) and infrastructure (`ucms_mysql`, `ucms_nginx`) use Docker's `restart: always` policy. The development containers use `restart: no`, so they do not return after a host restart. This policy changes only automatic startup; stop the development Compose project separately when it must be unavailable immediately.
+
 ## Jenkins CI
 
 The root `Jenkinsfile` runs credential-free checks on the isolated `ucms-ci docker linux` agent. It rejects tracked secret/runtime paths, runs React lint/build, checks both Node services, tests Spring and both Flyway paths against a disposable MySQL container, and builds the three production images with BuildKit. The Flyway stage covers a fresh `0.0.1 -> 0.1.1` database and first adoption of a non-empty 0.0.1 database, including stable user/reference checks. Node and React stages fail on high or critical `npm audit` findings. PR CI does not deploy and receives no production credentials.
